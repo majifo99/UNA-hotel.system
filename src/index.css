@@ -1,19 +1,68 @@
 @import "tailwindcss";
 
+/* UNA Hotel System - Global Styles */
 
-@theme{
-    --color-darkGreen1: #1A3636;
-    --color-darkGreen2: #40534C;
-    --color-mediumGreen: #677D6A;
-    --color-sand: #D6BD98;
-    --color-blackCustom: #000000;
-    --color-cream: #F3EDE3;
-    --color-lightGreen1: #D3E2D2;
-    --color-lightGreen2: #E1F2E2;
-    --color-lightGreen3: #D8EAD3;
-    --color-paleGreen: #BAD9B1;
+/* CSS Custom Properties for UNA Hotel colors */
+:root {
+  --color-darkGreen1: #1A3636;
+  --color-darkGreen2: #40534C;
+  --color-mediumGreen: #677D6A;
+  --color-sand: #D6BD98;
+  --color-blackCustom: #000000;
+  --color-cream: #F3EDE3;
+  --color-lightGreen1: #D3E2D2;
+  --color-lightGreen2: #E1F2E2;
+  --color-lightGreen3: #D8EAD3;
+  --color-paleGreen: #BAD9B1;
 }
 
- body {
-    background-color: var(--color-darkGreen1);
-  }
+/* Global body styling */
+body {
+  background-color: var(--color-lightGreen2);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(26, 54, 54, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(26, 54, 54, 0.5);
+}
+
+/* Glass morphism effect utilities */
+.glass-effect {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Elegant shadow utilities */
+.shadow-elegant {
+  box-shadow: 0 4px 20px rgba(26, 54, 54, 0.1);
+}
+
+.shadow-elegant-lg {
+  box-shadow: 0 10px 40px rgba(26, 54, 54, 0.15);
+}
+
+/* Smooth transitions for better UX */
+* {
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
