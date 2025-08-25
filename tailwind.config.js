@@ -5,7 +5,25 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-
+        // UNA Hotel Brand Colors
+        'una-primary': {
+          900: '#1A3636',
+          800: '#40534C', 
+          600: '#677D6A',
+        },
+        'una-accent': {
+          gold: '#D6BD98',
+        },
+        'una-neutral': {
+          black: '#000000',
+          cream: '#F3EDE3',
+        },
+        'una-bg': {
+          100: '#E1F2E2',
+          200: '#D8EAD3', 
+          300: '#D3E2D2',
+          400: '#BAD9B1',
+        }
       }
     },
   },

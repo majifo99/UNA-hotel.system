@@ -1,0 +1,356 @@
+import React, { useState } from 'react';
+import { Clock, Users, Bed, Filter, RefreshCw, Calendar, Grid } from 'lucide-react';
+import { 
+  useRooms, 
+  useDashboardStats, 
+  useUpdateRoomStatus 
+} from '../hooks';
+import type { Room, RoomFilters } from '../types';
+import CalendarView from './CalendarView';
+
+// =================== CONSTANTS ===================
+const ROOM_STATUS_COLORS = {
+  available: 'bg-green-100 text-green-800 border-green-200',
+  reserved: 'bg-purple-100 text-purple-800 border-purple-200',
+  'checked-in': 'bg-red-100 text-red-800 border-red-200',
+  'checked-out': 'bg-orange-100 text-orange-800 border-orange-200',
+  maintenance: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  cleaning: 'bg-blue-100 text-blue-800 border-blue-200'
+} as const;
+
+const ROOM_STATUS_LABELS = {
+  available: 'Disponible',
+  reserved: 'Reservada',
+  'checked-in': 'Ocupada',
+  'checked-out': 'Check-out',
+  maintenance: 'Mantenimiento',
+  cleaning: 'Limpieza'
+} as const;
+
+// =================== INTERFACES ===================
+interface StatsCardProps {
+  title: string;
+  value: number;
+  icon: React.ReactNode;
+  color: string;
+  subtitle?: string;
+}
+
+interface RoomCardProps {
+  room: Room;
+  onStatusChange: (roomId: string, status: Room['status']) => void;
+}
+
+// =================== COMPONENTS ===================
+
+const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtitle }) => (
+  <div className="p-6 rounded-lg border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-gray-600">{title}</p>
+        <p className={`text-3xl font-bold ${color}`}>{value}</p>
+        {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
+      </div>
+      <div className={`p-3 rounded-full ${color} bg-opacity-10`}>
+        {icon}
+      </div>
+    </div>
+  </div>
+);
+
+const RoomCard: React.FC<RoomCardProps> = ({ room, onStatusChange }) => {
+  const statusColor = ROOM_STATUS_COLORS[room.status];
+  const statusLabel = ROOM_STATUS_LABELS[room.status];
+
+  return (
+    <div className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex justify-between items-start mb-3">
+        <div>
+          <h3 className="font-semibold text-lg text-[var(--text-primary)]">
+            Habitación {room.roomNumber}
+          </h3>
+          <p className="text-sm text-gray-600">{room.type}</p>
+        </div>
+        <span className={`px-2 py-1 rounded-full text-xs font-medium border ${statusColor}`}>
+          {statusLabel}
+        </span>
+      </div>
+
+      <div className="space-y-2 mb-4">
+        <div className="flex items-center text-sm text-gray-600">
+          <Users className="w-4 h-4 mr-2" />
+          Capacidad: {room.capacity} personas
+        </div>
+        <div className="flex items-center text-sm text-gray-600">
+          <Bed className="w-4 h-4 mr-2" />
+          Tipo: {room.type}
+        </div>
+        {room.guestName && (
+          <div className="flex items-center text-sm text-gray-600">
+            <Users className="w-4 h-4 mr-2" />
+            Huésped: {room.guestName}
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <select 
+          value={room.status}
+          onChange={(e) => onStatusChange(room.id, e.target.value as Room['status'])}
+          className="text-xs px-2 py-1 border rounded flex-1 bg-white"
+        >
+          <option value="available">Disponible</option>
+          <option value="reserved">Reservada</option>
+          <option value="checked-in">Ocupada</option>
+          <option value="checked-out">Check-out</option>
+          <option value="maintenance">Mantenimiento</option>
+          <option value="cleaning">Limpieza</option>
+        </select>
+      </div>
+    </div>
+  );
+};
+
+// =================== MAIN COMPONENT ===================
+
+const FrontDesk: React.FC = () => {
+  const [filters, setFilters] = useState<RoomFilters>({});
+  const [showFilters, setShowFilters] = useState(false);
+  const [activeView, setActiveView] = useState<'grid' | 'calendar'>('calendar');
+
+  // Hooks
+  const { data: rooms = [], isLoading: roomsLoading, refetch: refetchRooms } = useRooms(filters);
+  const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const updateRoomStatusMutation = useUpdateRoomStatus();
+
+  // Handlers
+  const handleStatusChange = (roomId: string, status: Room['status']) => {
+    updateRoomStatusMutation.mutate({ id: roomId, status });
+  };
+
+  const handleRefresh = () => {
+    refetchRooms();
+  };
+
+  const filteredRooms = rooms.filter(room => {
+    if (filters.status && room.status !== filters.status) return false;
+    if (filters.type && room.type !== filters.type) return false;
+    if (filters.floor && room.floor !== filters.floor) return false;
+    return true;
+  });
+
+  // Get unique values for filters
+  const roomTypes = [...new Set(rooms.map(r => r.type))];
+  const floors = [...new Set(rooms.map(r => r.floor))];
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-[var(--text-primary)]">
+            Front Desk
+          </h1>
+          <p className="text-gray-600">Gestión en tiempo real de habitaciones</p>
+        </div>
+        <div className="flex gap-3">
+          {/* View Toggle */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setActiveView('calendar')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+                activeView === 'calendar'
+                  ? 'bg-white shadow-sm text-[var(--primary)] font-medium'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              Calendario
+            </button>
+            <button
+              onClick={() => setActiveView('grid')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+                activeView === 'grid'
+                  ? 'bg-white shadow-sm text-[var(--primary)] font-medium'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <Grid className="w-4 h-4" />
+              Grilla
+            </button>
+          </div>
+
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            <Filter className="w-4 h-4" />
+            Filtros
+          </button>
+          <button
+            onClick={handleRefresh}
+            disabled={roomsLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--primary)] text-white rounded-lg hover:bg-[var(--primary-dark)] disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${roomsLoading ? 'animate-spin' : ''}`} />
+            Actualizar
+          </button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      {!statsLoading && stats && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatsCard
+            title="Habitaciones Ocupadas"
+            value={stats.occupiedRooms}
+            icon={<Bed className="w-6 h-6" />}
+            color="text-red-600"
+            subtitle={`${stats.occupancyRate}% ocupación`}
+          />
+          <StatsCard
+            title="Disponibles"
+            value={stats.availableRooms}
+            icon={<Bed className="w-6 h-6" />}
+            color="text-green-600"
+          />
+          <StatsCard
+            title="Check-ins Hoy"
+            value={stats.todayCheckIns}
+            icon={<Clock className="w-6 h-6" />}
+            color="text-blue-600"
+          />
+          <StatsCard
+            title="Check-outs Hoy"
+            value={stats.todayCheckOuts}
+            icon={<Clock className="w-6 h-6" />}
+            color="text-purple-600"
+          />
+        </div>
+      )}
+
+      {/* Content Based on Active View */}
+      {activeView === 'calendar' ? (
+        <CalendarView />
+      ) : (
+        <>
+          {/* Filters Panel */}
+          {showFilters && (
+            <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-4">
+              <h3 className="font-semibold text-gray-800">Filtrar Habitaciones</h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Estado
+                  </label>
+                  <select
+                    value={filters.status || ''}
+                    onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as Room['status'] || undefined }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent"
+                  >
+                    <option value="">Todos los estados</option>
+                    <option value="available">Disponible</option>
+                    <option value="reserved">Reservada</option>
+                    <option value="checked-in">Ocupada</option>
+                    <option value="checked-out">Check-out</option>
+                    <option value="maintenance">Mantenimiento</option>
+                    <option value="cleaning">Limpieza</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tipo
+                  </label>
+                  <select
+                    value={filters.type || ''}
+                    onChange={(e) => setFilters(prev => ({ 
+                      ...prev, 
+                      type: e.target.value as Room['type'] || undefined 
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent"
+                  >
+                    <option value="">Todos los tipos</option>
+                    {roomTypes.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Piso
+                  </label>
+                  <select
+                    value={filters.floor || ''}
+                    onChange={(e) => setFilters(prev => ({ ...prev, floor: e.target.value ? Number(e.target.value) : undefined }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent"
+                  >
+                    <option value="">Todos los pisos</option>
+                    {floors.map(floor => (
+                      <option key={floor} value={floor}>Piso {floor}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-end">
+                  <button
+                    onClick={() => setFilters({})}
+                    className="w-full px-3 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Limpiar Filtros
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Rooms Grid */}
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+                Habitaciones ({filteredRooms.length})
+              </h2>
+              <div className="text-sm text-gray-600">
+                {roomsLoading ? 'Cargando...' : `${filteredRooms.length} de ${rooms.length} habitaciones`}
+              </div>
+            </div>
+
+            {roomsLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="animate-pulse bg-gray-200 h-48 rounded-lg"></div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredRooms.map((room) => (
+                  <RoomCard
+                    key={room.id}
+                    room={room}
+                    onStatusChange={handleStatusChange}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Empty State */}
+          {!roomsLoading && filteredRooms.length === 0 && (
+            <div className="text-center py-12">
+              <Bed className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No se encontraron habitaciones
+              </h3>
+              <p className="text-gray-600">
+                Ajusta los filtros para ver más resultados
+              </p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+export default FrontDesk;
