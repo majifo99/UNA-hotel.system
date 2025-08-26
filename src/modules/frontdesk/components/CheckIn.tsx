@@ -3,9 +3,15 @@ import { useState } from 'react';
 import { useCheckIn } from '../hooks/useCheckIn';
 import type { CheckInData } from '../types/checkin';
 
-type LocalState = CheckInData & {
+type LocalState = {
+  reservationId: string;
   firstName: string;
   lastName: string;
+  roomNumber: string;
+  checkInDate: string;
+  numberOfGuests: number;
+  identificationNumber: string;
+  paymentStatus: 'pending' | 'completed';
   phone: string;
   countryCode: string;
   email: string;

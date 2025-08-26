@@ -1,6 +1,6 @@
 import type { CheckInData, CheckInResponse } from '../types/checkin';
 
-const API_URL = '/api/checkins'; // Puedes cambiar esto por tu ruta real más adelante
+// const API_URL = '/api/checkins'; // Para uso futuro cuando conectemos con backend real
 
 const checkinService = {
   getCheckIns: async (): Promise<CheckInData[]> => {
@@ -16,8 +16,8 @@ const checkinService = {
     };
   },
 
-  getCheckInByReservationId: async (reservationId: string): Promise<CheckInResponse> => {
-    // No busca nada porque no hay datos
+  getCheckInByReservationId: async (_reservationId: string): Promise<CheckInResponse> => {
+    // No busca nada porque no hay datos (mock service)
     return {
       success: false,
       error: 'Check-in not found (mock)',
