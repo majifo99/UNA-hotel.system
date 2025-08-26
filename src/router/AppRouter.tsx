@@ -4,6 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MainLayout } from '../layouts/MainLayout';
 import { Home } from '../pages/Home';
 import { CreateReservationPage } from '../modules/reservations/pages/CreateReservationPage';
+import FrontDesk from '../modules/frontdesk/components/FrontDesk';
+import { default as CheckInPage } from '../modules/frontdesk/pages/CheckInPage';
+import ReservationForm from '../modules/frontdesk/components/ReservationForm';
 
 /**
  * TanStack Query Client Configuration
@@ -77,6 +80,28 @@ const router = createBrowserRouter([
         // Default route - Dashboard
         index: true,
         element: <Home />,
+      },
+      {
+        // Front Desk module routes
+        path: 'frontdesk',
+        children: [
+          {
+            path: 'dashboard',
+            element: <FrontDesk />,
+          },
+          {
+            index: true,
+            element: <FrontDesk />,
+          },
+          {
+            path: 'checkin',
+            element: <CheckInPage />,
+          },
+            {
+            path: 'register',
+            element: <ReservationForm />,
+          },
+        ],
       },
       {
         // Reservations module routes
