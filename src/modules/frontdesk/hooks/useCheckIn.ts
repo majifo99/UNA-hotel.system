@@ -9,14 +9,15 @@ export const useCheckIn = () => {
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: checkIns = [], isLoading: isLoadingCheckIns } = useQuery<CheckInData[]>({
+  const { data: checkIns = [], isLoading: isLoadingCheckIns, error: queryError } = useQuery({
     queryKey: ['checkIns'],
     queryFn: () => checkinService.getCheckIns(),
-    onError: (err: unknown) => {
-      console.error('Error loading check-ins:', err);
-      setError('Failed to load check‑ins');
-    }
-  });
+  }) as { data: CheckInData[], isLoading: boolean, error: any };
+
+  // Handle query error
+  if (queryError && !error) {
+    setError('Failed to load check-ins');
+  }
 
   const createMutation = useMutation({
     mutationFn: (data: CheckInData) => checkinService.createCheckIn(data),
@@ -48,7 +49,7 @@ export const useCheckIn = () => {
   return {
     checkIns,
     isLoadingCheckIns,
-    isSubmitting: createMutation.isLoading,
+    isSubmitting: createMutation.isPending,
     error,
     validateAndSubmit,
   };

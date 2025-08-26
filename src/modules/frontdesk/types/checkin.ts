@@ -1,11 +1,10 @@
-import type { Guest } from './guest';
-
 export interface CheckInData {
   reservationId: string;
-  guest: Guest;
+  guestName?: string;
   roomNumber: string;
   checkInDate: string;
   numberOfGuests: number;
+  identificationNumber: string;
   paymentStatus: 'pending' | 'completed';
 }
 

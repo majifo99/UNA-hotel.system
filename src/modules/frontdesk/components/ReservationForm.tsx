@@ -97,10 +97,9 @@ const ReservationForm = () => {
         <PhoneInput
           country={'cr'}
           value={guestData.phone}
-          onChange={(phone) => setGuestData(prev => ({ ...prev, phone }))}
+          onChange={(phone: string) => setGuestData(prev => ({ ...prev, phone }))}
           inputClass="!w-full !py-2 !px-3 !text-base"
           containerClass="mt-1"
-          required
         />
       </div>
 
@@ -108,7 +107,7 @@ const ReservationForm = () => {
         <label className="block text-sm font-medium text-gray-700 mb-1">Nacionalidad</label>
         <ReactFlagsSelect
           selected={guestData.nationality}
-          onSelect={(val) => setGuestData(prev => ({ ...prev, nationality: val }))}
+          onSelect={(val: string) => setGuestData(prev => ({ ...prev, nationality: val }))}
           placeholder="Selecciona una nacionalidad"
           searchable
         />
