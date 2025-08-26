@@ -18,6 +18,14 @@ export const ROUTES = {
   // Dashboard and Home
   HOME: '/',
   
+  // Front Desk Module
+  FRONTDESK: {
+    BASE: '/frontdesk',
+    CHECKIN: '/frontdesk/checkin',
+    DASHBOARD: '/frontdesk/dashboard',
+    REGISTER: '/frontdesk/register',
+  },
+
   // Reservations Module
   RESERVATIONS: {
     // Base path for reservations module

@@ -54,7 +54,7 @@ const navigationItems: NavigationItem[] = [
     category: 'management'
   },
   {
-    path: ROUTES.GUESTS.BASE,
+    path: ROUTES.FRONTDESK.REGISTER,
     label: 'Huéspedes',
     icon: Users,
     description: 'Base de datos de huéspedes',

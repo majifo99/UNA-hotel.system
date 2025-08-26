@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Clock, Users, Bed, Filter, RefreshCw, Calendar, Grid } from 'lucide-react';
+import { Clock, Users, Bed, Filter, RefreshCw, Calendar, Grid, LogIn } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../router/routes';
 import { 
   useRooms, 
   useDashboardStats, 
@@ -114,6 +116,7 @@ const RoomCard: React.FC<RoomCardProps> = ({ room, onStatusChange }) => {
 // =================== MAIN COMPONENT ===================
 
 const FrontDesk: React.FC = () => {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<RoomFilters>({});
   const [showFilters, setShowFilters] = useState(false);
   const [activeView, setActiveView] = useState<'grid' | 'calendar'>('calendar');
@@ -194,6 +197,13 @@ const FrontDesk: React.FC = () => {
           >
             <RefreshCw className={`w-4 h-4 ${roomsLoading ? 'animate-spin' : ''}`} />
             Actualizar
+          </button>
+          <button
+            onClick={() => navigate(ROUTES.FRONTDESK.CHECKIN)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+          >
+            <LogIn className="w-4 h-4" />
+            Check-in
           </button>
         </div>
       </div>
