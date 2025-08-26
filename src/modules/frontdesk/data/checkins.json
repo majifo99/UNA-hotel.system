@@ -1,0 +1,22 @@
+{
+  "checkIns": [
+    {
+      "reservationId": "RES001",
+      "guestName": "John Doe",
+      "roomNumber": "101",
+      "checkInDate": "2025-08-25",
+      "numberOfGuests": 2,
+      "identificationNumber": "ID12345",
+      "paymentStatus": "completed"
+    },
+    {
+      "reservationId": "RES002",
+      "guestName": "Jane Smith",
+      "roomNumber": "202",
+      "checkInDate": "2025-08-25",
+      "numberOfGuests": 1,
+      "identificationNumber": "ID67890",
+      "paymentStatus": "pending"
+    }
+  ]
+}
