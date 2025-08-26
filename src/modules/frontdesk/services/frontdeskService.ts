@@ -8,7 +8,6 @@ import type {
   CheckIn, 
   CheckOut, 
   DashboardStats,
-  CalendarView,
   Reservation
 } from '../types';
 import { 
@@ -23,7 +22,6 @@ import {
 import { 
   mockRooms, 
   mockDashboardStats, 
-  mockCalendarView, 
   simulateNetworkDelay, 
   simulateRandomError 
 } from '../data/mockData';
