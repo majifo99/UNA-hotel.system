@@ -1,7 +1,13 @@
 // CheckIn.tsx — Rediseño estilo "Hotel Check-in Form"
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
+import ReactFlagsSelect from 'react-flags-select';
 import { useCheckIn } from '../hooks/useCheckIn';
+import { useReservationSearch, useReservationSearchByGuest } from '../hooks/useReservationSearch';
 import type { CheckInData } from '../types/checkin';
+import type { Reservation } from '../../reservations/types';
 
 type LocalState = {
   reservationId: string;
@@ -13,7 +19,8 @@ type LocalState = {
   identificationNumber: string;
   paymentStatus: 'pending' | 'completed';
   phone: string;
-  countryCode: string;
+  phoneCountryCode: string;
+  nationality: string;
   email: string;
   checkInTime: string;
   checkOutTime: string;
@@ -63,7 +70,13 @@ const Select = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => (
 );
 
 export const CheckIn = () => {
+  const navigate = useNavigate();
   const { checkIns, isLoadingCheckIns, isSubmitting, error, validateAndSubmit } = useCheckIn();
+  
+  // Search state
+  const [searchMode, setSearchMode] = useState<'confirmation' | 'guest'>('confirmation');
+  const [foundReservation, setFoundReservation] = useState<Reservation | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   const [formData, setFormData] = useState<LocalState>({
     reservationId: '',
@@ -77,8 +90,9 @@ export const CheckIn = () => {
     identificationNumber: '',
     paymentStatus: 'pending',
     phone: '',
+    phoneCountryCode: 'us',
+    nationality: 'US',
     email: '',
-    countryCode: '+1',
     roomPreferences: '',
     paymentMethod: 'credit_card',
     cardNumber: '',
@@ -91,6 +105,64 @@ export const CheckIn = () => {
     step: 'search'
   });
 
+  // Search hooks
+  const { 
+    data: reservationByConfirmation, 
+    isLoading: searchingByConfirmation, 
+    error: errorByConfirmation,
+    isError: hasErrorByConfirmation
+  } = useReservationSearch(
+    formData.reservationId, 
+    isSearching && searchMode === 'confirmation'
+  );
+  
+  const { 
+    data: reservationByGuest, 
+    isLoading: searchingByGuest, 
+    error: errorByGuest,
+    isError: hasErrorByGuest
+  } = useReservationSearchByGuest(
+    formData.lastName,
+    formData.identificationNumber,
+    isSearching && searchMode === 'guest'
+  );
+
+  // Handle search results
+  useEffect(() => {
+    const reservation = searchMode === 'confirmation' ? reservationByConfirmation : reservationByGuest;
+    const hasError = searchMode === 'confirmation' ? hasErrorByConfirmation : hasErrorByGuest;
+    const isLoading = searchMode === 'confirmation' ? searchingByConfirmation : searchingByGuest;
+    
+    if (reservation && isSearching && !isLoading) {
+      setFoundReservation(reservation);
+      // Auto-populate form with reservation data
+      setFormData(prev => ({
+        ...prev,
+        firstName: reservation.guest.firstName,
+        lastName: reservation.guest.lastName,
+        email: reservation.guest.email,
+        phone: reservation.guest.phone,
+        phoneCountryCode: 'us', // Default, could be extracted from phone if needed
+        nationality: 'US', // Default, could be extracted from guest data if available
+        identificationNumber: reservation.guest.documentNumber,
+        numberOfGuests: reservation.numberOfGuests,
+        checkInDate: reservation.checkInDate.split('T')[0],
+        checkOutTime: reservation.checkOutDate.split('T')[1]?.substring(0, 5) || '12:00',
+        specialRequests: reservation.specialRequests || '',
+        roomNumber: reservation.roomId || '',
+      }));
+      setIsSearching(false);
+    } else if (isSearching && !isLoading && !hasError && !reservation) {
+      // Search completed but no results found
+      setFoundReservation(null);
+      setIsSearching(false);
+    } else if (isSearching && hasError) {
+      // Search failed due to API error
+      setFoundReservation(null);
+      setIsSearching(false);
+    }
+  }, [reservationByConfirmation, reservationByGuest, isSearching, searchMode, searchingByConfirmation, searchingByGuest, hasErrorByConfirmation, hasErrorByGuest]);
+
   const onChange =
     (name: keyof LocalState) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -99,6 +171,14 @@ export const CheckIn = () => {
         ...prev,
         [name]: name === 'numberOfGuests' ? Math.max(1, parseInt(value || '1', 10)) : value,
       }));
+    };
+
+  const handleSearch = () => {
+    if (searchMode === 'confirmation' && formData.reservationId.trim()) {
+      setIsSearching(true);
+    } else if (searchMode === 'guest' && formData.lastName.trim() && formData.identificationNumber.trim()) {
+      setIsSearching(true);
+    }
     };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -128,17 +208,46 @@ export const CheckIn = () => {
         return (
           <section className="space-y-6">
             <h2 className="text-lg font-semibold text-[var(--color-sand)]">Search Reservation</h2>
+            
+            {/* Search Mode Toggle */}
+            <div className="flex gap-4 mb-6">
+              <button
+                type="button"
+                onClick={() => setSearchMode('confirmation')}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  searchMode === 'confirmation'
+                    ? 'bg-[var(--color-sand)] text-[var(--color-darkGreen1)]'
+                    : 'bg-[var(--color-darkGreen1)]/50 text-[var(--color-sand)] hover:bg-[var(--color-sand)]/10'
+                }`}
+              >
+                By Confirmation Number
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchMode('guest')}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  searchMode === 'guest'
+                    ? 'bg-[var(--color-sand)] text-[var(--color-darkGreen1)]'
+                    : 'bg-[var(--color-darkGreen1)]/50 text-[var(--color-sand)] hover:bg-[var(--color-sand)]/10'
+                }`}
+              >
+                By Guest Information
+              </button>
+            </div>
+
+            {searchMode === 'confirmation' ? (
             <div>
-              <Label htmlFor="reservationId">Reservation Number</Label>
+                <Label htmlFor="reservationId">Confirmation Number</Label>
               <Input
                 id="reservationId"
                 name="reservationId"
-                placeholder="Enter your reservation number"
+                  placeholder="Enter your confirmation number (e.g., CONF-ABC123)"
                 value={formData.reservationId}
                 onChange={onChange('reservationId')}
                 required
               />
             </div>
+            ) : (
             <div className="flex gap-4">
               <div className="flex-1">
                 <Label htmlFor="lastName">Last Name</Label>
@@ -163,6 +272,72 @@ export const CheckIn = () => {
                 />
               </div>
             </div>
+            )}
+
+            {/* Search Button */}
+            <button
+              type="button"
+              onClick={handleSearch}
+              disabled={isSearching || searchingByConfirmation || searchingByGuest}
+              className="w-full rounded-lg bg-[var(--color-sand)] px-6 py-3 font-semibold text-[var(--color-darkGreen1)] shadow-sm transition hover:bg-[var(--color-cream)] disabled:opacity-50"
+            >
+              {isSearching || searchingByConfirmation || searchingByGuest ? 'Searching...' : 'Search Reservation'}
+            </button>
+
+            {/* Search Results */}
+            {foundReservation && (
+              <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-4">
+                <h3 className="text-green-400 font-semibold mb-2">✓ Reservation Found!</h3>
+                <div className="text-sm text-white space-y-1">
+                  <p><span className="font-semibold text-[var(--color-sand)]">Guest:</span> {foundReservation.guest.firstName} {foundReservation.guest.lastName}</p>
+                  <p><span className="font-semibold text-[var(--color-sand)]">Confirmation:</span> {foundReservation.confirmationNumber}</p>
+                  <p><span className="font-semibold text-[var(--color-sand)]">Check-in:</span> {foundReservation.checkInDate}</p>
+                  <p><span className="font-semibold text-[var(--color-sand)]">Room Type:</span> {foundReservation.roomType}</p>
+                  <p><span className="font-semibold text-[var(--color-sand)]">Status:</span> {foundReservation.status}</p>
+                </div>
+              </div>
+            )}
+
+            {/* No results found */}
+            {isSearching && !searchingByConfirmation && !searchingByGuest && !foundReservation && !hasErrorByConfirmation && !hasErrorByGuest && (
+              <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-4">
+                <h3 className="text-red-400 font-semibold mb-2">✗ No Reservation Found</h3>
+                <p className="text-sm text-white">Please check your information and try again.</p>
+              </div>
+            )}
+
+            {/* API Error */}
+            {(hasErrorByConfirmation || hasErrorByGuest) && (
+              <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-4">
+                <h3 className="text-red-400 font-semibold mb-2">⚠️ Search Error</h3>
+                <p className="text-sm text-white mb-2">
+                  Unable to search reservations at this time. This could be due to:
+                </p>
+                <ul className="text-sm text-white/80 list-disc list-inside space-y-1">
+                  <li>Network connection issues</li>
+                  <li>Server temporarily unavailable</li>
+                  <li>Invalid search parameters</li>
+                </ul>
+                {(errorByConfirmation || errorByGuest) && (
+                  <details className="mt-2">
+                    <summary className="text-xs text-red-300 cursor-pointer">Technical Details</summary>
+                    <p className="text-xs text-red-200 mt-1 font-mono">
+                      {errorByConfirmation?.message || errorByGuest?.message}
+                    </p>
+                  </details>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSearching(false);
+                    setFoundReservation(null);
+                  }}
+                  className="mt-3 text-sm text-[var(--color-sand)] hover:text-[var(--color-sand)]/80 underline"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
           </section>
         );
       
@@ -207,27 +382,77 @@ export const CheckIn = () => {
               </div>
               <div>
                 <Label htmlFor="phone">Phone</Label>
-                <div className="flex gap-2">
-                  <Select
-                    id="countryCode"
-                    value={formData.countryCode}
-                    onChange={onChange('countryCode')}
-                    className="w-24"
-                  >
-                    <option value="+1">🇺🇸 +1</option>
-                    <option value="+44">🇬🇧 +44</option>
-                    <option value="+34">🇪🇸 +34</option>
-                  </Select>
-                  <Input
-                    id="phone"
-                    name="phone"
+                                <PhoneInput
+                  country={formData.phoneCountryCode}
                     value={formData.phone}
-                    onChange={onChange('phone')}
-                    className="flex-1"
-                    required
+                  onChange={((value: string, country: any) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      phone: value,
+                      phoneCountryCode: country.countryCode.toLowerCase()
+                    }));
+                  }) as any}
+                  inputStyle={{
+                    width: '100%',
+                    height: '48px',
+                    backgroundColor: 'rgba(var(--color-darkGreen1), 0.5)',
+                    border: '1px solid rgba(var(--color-sand), 0.2)',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '16px'
+                  }}
+                  buttonStyle={{
+                    backgroundColor: 'rgba(var(--color-darkGreen1), 0.5)',
+                    border: '1px solid rgba(var(--color-sand), 0.2)',
+                    borderRadius: '8px 0 0 8px'
+                  }}
+                  dropdownStyle={{
+                    backgroundColor: 'var(--color-darkGreen2)',
+                    border: '1px solid rgba(var(--color-sand), 0.2)',
+                    borderRadius: '8px'
+                  }}
+                  searchStyle={{
+                    backgroundColor: 'var(--color-darkGreen1)',
+                    color: 'white',
+                    border: '1px solid rgba(var(--color-sand), 0.2)'
+                  }}
                   />
                 </div>
               </div>
+
+            <div>
+              <Label htmlFor="nationality">Nationality</Label>
+              <ReactFlagsSelect
+                selected={formData.nationality}
+                onSelect={(countryCode) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    nationality: countryCode
+                  }));
+                }}
+                placeholder="Select your nationality"
+                searchable
+                className="flag-select"
+                selectButtonClassName="flag-select-button"
+                optionsSize={14}
+                customLabels={{
+                  US: "United States",
+                  CR: "Costa Rica",
+                  MX: "Mexico",
+                  CA: "Canada",
+                  GB: "United Kingdom",
+                  ES: "Spain",
+                  FR: "France",
+                  DE: "Germany",
+                  IT: "Italy",
+                  BR: "Brazil",
+                  AR: "Argentina",
+                  CL: "Chile",
+                  CO: "Colombia",
+                  PE: "Peru",
+                  VE: "Venezuela"
+                }}
+              />
             </div>
           </section>
         );
@@ -419,6 +644,12 @@ export const CheckIn = () => {
   const handleNext = () => {
     const steps: LocalState['step'][] = ['search', 'guest-info', 'room-assignment', 'payment', 'confirmation'];
     const currentIndex = steps.indexOf(formData.step);
+    
+    // Only allow proceeding from search step if a reservation is found
+    if (formData.step === 'search' && !foundReservation) {
+      return;
+    }
+    
     if (currentIndex < steps.length - 1) {
       setFormData(prev => ({ ...prev, step: steps[currentIndex + 1] }));
     }
@@ -442,11 +673,65 @@ export const CheckIn = () => {
 
   return (
     <div className="min-h-screen bg-[var(--color-darkGreen1)] text-white py-8 px-4">
+      <style>{`
+        .flag-select-button {
+          background-color: rgba(var(--color-darkGreen1), 0.5) !important;
+          border: 1px solid rgba(var(--color-sand), 0.2) !important;
+          border-radius: 8px !important;
+          color: white !important;
+          height: 48px !important;
+        }
+        .flag-select-button:hover {
+          border-color: rgba(var(--color-sand), 0.3) !important;
+        }
+        .flag-select-button:focus {
+          border-color: var(--color-sand) !important;
+          box-shadow: 0 0 0 2px rgba(var(--color-sand), 0.5) !important;
+        }
+        .flag-select .flag-select__options {
+          background-color: var(--color-darkGreen2) !important;
+          border: 1px solid rgba(var(--color-sand), 0.2) !important;
+          border-radius: 8px !important;
+          max-height: 200px !important;
+        }
+        .flag-select .flag-select__option {
+          color: white !important;
+        }
+        .flag-select .flag-select__option:hover {
+          background-color: rgba(var(--color-sand), 0.1) !important;
+        }
+        .flag-select .flag-select__option--selected {
+          background-color: rgba(var(--color-sand), 0.2) !important;
+        }
+        .flag-select .flag-select__search {
+          background-color: var(--color-darkGreen1) !important;
+          color: white !important;
+          border: 1px solid rgba(var(--color-sand), 0.2) !important;
+          border-radius: 4px !important;
+        }
+        .flag-select .flag-select__search::placeholder {
+          color: rgba(var(--color-sand), 0.5) !important;
+        }
+      `}</style>
       <div className="max-w-5xl mx-auto">
         <div className="bg-[var(--color-darkGreen2)]/90 backdrop-blur-lg rounded-xl shadow-2xl border border-[var(--color-sand)]/10 overflow-hidden">
           <div className="bg-gradient-to-r from-[var(--color-darkGreen1)] to-[var(--color-darkGreen2)] px-8 py-6 border-b border-[var(--color-sand)]/10">
-            <h1 className="text-center text-2xl font-bold text-[var(--color-sand)]">Guest Check-in</h1>
-            <p className="text-center text-[var(--color-sand)]/70 text-sm mt-1">Complete the form below to process the check-in</p>
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => navigate('/frontdesk')}
+                className="flex items-center gap-2 px-4 py-2 text-[var(--color-sand)] hover:text-[var(--color-sand)]/80 hover:bg-[var(--color-sand)]/10 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Regresar
+              </button>
+              <div className="flex-1 text-center">
+                <h1 className="text-2xl font-bold text-[var(--color-sand)]">Guest Check-in</h1>
+                <p className="text-[var(--color-sand)]/70 text-sm mt-1">Complete the form below to process the check-in</p>
+              </div>
+              <div className="w-24"></div> {/* Spacer for centering */}
+            </div>
           </div>
 
           <div className="p-8">
@@ -496,11 +781,13 @@ export const CheckIn = () => {
                 <button
                   type={formData.step === 'confirmation' ? 'submit' : 'button'}
                   onClick={formData.step === 'confirmation' ? undefined : handleNext}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || (formData.step === 'search' && !foundReservation)}
                   className="ml-auto rounded-lg bg-[var(--color-sand)] px-6 py-2 font-semibold text-[var(--color-darkGreen1)] shadow-sm transition hover:bg-[var(--color-cream)] disabled:opacity-50"
                 >
                   {formData.step === 'confirmation' 
                     ? (isSubmitting ? 'Processing…' : 'Complete Check-In')
+                    : formData.step === 'search' && !foundReservation
+                    ? 'Search Reservation First'
                     : 'Continue →'}
                 </button>
               </div>

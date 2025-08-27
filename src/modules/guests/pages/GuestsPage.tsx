@@ -10,7 +10,7 @@ export const GuestsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const { guests, totalGuests, isSearching } = useGuests();
 
-  // Filter guests based on search term
+  // Filtrar huéspedes por término de búsqueda
   const filteredGuests = guests.filter((guest: Guest) =>
     guest.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     guest.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -85,7 +85,7 @@ export const GuestsPage: React.FC = () => {
             <Users className="text-blue-600" size={32} />
           </div>
         </div>
-        
+
         <div className="bg-green-50 p-6 rounded-lg border border-green-200">
           <div className="flex items-center justify-between">
             <div>
@@ -95,7 +95,7 @@ export const GuestsPage: React.FC = () => {
             <Users className="text-green-600" size={32} />
           </div>
         </div>
-        
+
         <div className="bg-purple-50 p-6 rounded-lg border border-purple-200">
           <div className="flex items-center justify-between">
             <div>
@@ -112,7 +112,7 @@ export const GuestsPage: React.FC = () => {
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Lista de Huéspedes</h2>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
@@ -138,10 +138,8 @@ export const GuestsPage: React.FC = () => {
               {filteredGuests.length > 0 ? filteredGuests.map((guest) => (
                 <tr key={guest.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {guest.firstName} {guest.lastName}
-                      </div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {guest.firstName} {guest.lastName}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -157,14 +155,12 @@ export const GuestsPage: React.FC = () => {
                     <div className="text-sm text-gray-900">{guest.nationality}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button className="text-blue-600 hover:text-blue-900">
-                        <Edit size={16} />
-                      </button>
-                      <button className="text-red-600 hover:text-red-900">
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => navigate(ROUTES.GUESTS.DETAIL(guest.id))}
+                      className="text-blue-600 hover:underline"
+                    >
+                      Ver perfil
+                    </button>
                   </td>
                 </tr>
               )) : (
