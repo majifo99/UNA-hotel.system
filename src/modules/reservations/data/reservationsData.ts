@@ -9,6 +9,7 @@ export const reservationsData: Reservation[] = [
       lastName: "González",
       email: "maria.gonzalez@email.com",
       phone: "8888-1234",
+      nationality: "CR",
       documentType: "id",
       documentNumber: "1-1234-5678"
     },
@@ -38,6 +39,7 @@ export const reservationsData: Reservation[] = [
       lastName: "Rodríguez",
       email: "carlos.rodriguez@email.com",
       phone: "8888-5678",
+      nationality: "CR",
       documentType: "passport",
       documentNumber: "P123456789"
     },

@@ -1,10 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Guest } from '../types';
-import type { ReservationFormData } from '../schemas/reservationSchema';
+import type { SimpleReservationFormData } from '../types';
 
 // Import service layer for API calls
 import { roomService } from '../services/roomService';
-import { guestService } from '../services/guestService';
 import { reservationService } from '../services/reservationService';
 
 /**
@@ -36,10 +34,6 @@ export const reservationKeys = {
   
   // Service-related query keys
   services: () => [...reservationKeys.all, 'services'] as const,
-  
-  // Guest-related query keys
-  guests: () => [...reservationKeys.all, 'guests'] as const,
-  guestSearch: (query: string) => [...reservationKeys.guests(), 'search', query] as const,
 };
 
 /**
@@ -75,22 +69,12 @@ export const useAdditionalServices = () => {
   });
 };
 
-// Guest Search Query
-export const useGuestSearch = (searchQuery: string) => {
-  return useQuery({
-    queryKey: reservationKeys.guestSearch(searchQuery),
-    queryFn: () => guestService.searchGuests(searchQuery),
-    enabled: searchQuery.length >= 2,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-  });
-};
-
 // Create Reservation Mutation
 export const useCreateReservation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (reservationData: ReservationFormData) => {
+    mutationFn: (reservationData: SimpleReservationFormData & { roomId: string }) => {
       return reservationService.createReservation(reservationData);
     },
     onSuccess: (data) => {
@@ -102,21 +86,6 @@ export const useCreateReservation = () => {
     },
     onError: (error) => {
       console.error('Error creating reservation:', error);
-    },
-  });
-};
-
-// Create Guest Mutation
-export const useCreateGuest = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (guestData: Omit<Guest, 'id'>) => {
-      return guestService.createGuest(guestData);
-    },
-    onSuccess: () => {
-      // Invalidate guest queries
-      queryClient.invalidateQueries({ queryKey: reservationKeys.guests() });
     },
   });
 };

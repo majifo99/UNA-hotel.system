@@ -37,8 +37,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       {/* Navigation Sidebar */}
       <Sidebar />
       
-      {/* Main Content Area */}
-      <main className="flex-1 overflow-auto" style={{ backgroundColor: 'var(--color-darkGreen1)' }}>
+      {/* Main Content Area - con margen para sidebar fija */}
+      <main className="flex-1 overflow-auto ml-72" style={{ backgroundColor: 'var(--color-darkGreen1)' }}>
         {/* Content container matching Figma design */}
         <div className="p-8 min-h-full">
           <div className="max-w-7xl mx-auto space-y-6">

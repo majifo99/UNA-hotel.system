@@ -1,10 +1,10 @@
-import type { ReservationFormData, Reservation, AdditionalService } from '../types';
+import type { SimpleReservationFormData, Reservation, AdditionalService } from '../types';
 import { simulateApiCall, cloneData } from '../utils/mockApi';
 import { servicesData } from '../data/servicesData';
 import { reservationsData } from '../data/reservationsData';
 
 class ReservationService {
-  async createReservation(reservationData: ReservationFormData): Promise<Reservation> {
+  async createReservation(reservationData: SimpleReservationFormData & { roomId: string }): Promise<Reservation> {
     // Simulate API call with realistic delay for creating a reservation
     await simulateApiCall(null, 1200);
 
@@ -15,6 +15,17 @@ class ReservationService {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       confirmationNumber: `CONF-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+      // Note: Guest information will need to be added separately through the guest management system
+      guest: {
+        id: 'pending-guest-assignment',
+        firstName: 'Pendiente',
+        lastName: 'Asignación',
+        email: 'pending@example.com',
+        phone: '',
+        nationality: '',
+        documentType: 'id',
+        documentNumber: '',
+      }
     };
 
     console.log('Reservation created successfully:', reservation);
@@ -62,7 +73,7 @@ class ReservationService {
     });
   }
 
-  async updateReservation(id: string, updates: Partial<ReservationFormData>): Promise<Reservation> {
+  async updateReservation(id: string, updates: Partial<SimpleReservationFormData>): Promise<Reservation> {
     // Simulate API call to update reservation
     await simulateApiCall(null, 900);
     

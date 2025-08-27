@@ -68,7 +68,7 @@ const RoomCard: React.FC<RoomCardProps> = ({ room, onStatusChange }) => {
     <div className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
       <div className="flex justify-between items-start mb-3">
         <div>
-          <h3 className="font-semibold text-lg text-[var(--text-primary)]">
+          <h3 className="font-semibold text-lg text-gray-900">
             Habitación {room.roomNumber}
           </h3>
           <p className="text-sm text-gray-600">{room.type}</p>
@@ -151,10 +151,10 @@ const FrontDesk: React.FC = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-[var(--text-primary)]">
+          <h1 className="text-3xl font-bold" style={{ color: 'var(--color-sand)' }}>
             Front Desk
           </h1>
-          <p className="text-gray-600">Gestión en tiempo real de habitaciones</p>
+          <p className="text-lg" style={{ color: 'var(--color-mediumGreen)' }}>Gestión en tiempo real de habitaciones</p>
         </div>
         <div className="flex gap-3">
           {/* View Toggle */}
@@ -163,7 +163,7 @@ const FrontDesk: React.FC = () => {
               onClick={() => setActiveView('calendar')}
               className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
                 activeView === 'calendar'
-                  ? 'bg-white shadow-sm text-[var(--primary)] font-medium'
+                  ? 'bg-white shadow-sm text-gray-800 font-medium'
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
@@ -174,7 +174,7 @@ const FrontDesk: React.FC = () => {
               onClick={() => setActiveView('grid')}
               className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
                 activeView === 'grid'
-                  ? 'bg-white shadow-sm text-[var(--primary)] font-medium'
+                  ? 'bg-white shadow-sm text-gray-800 font-medium'
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
@@ -193,7 +193,8 @@ const FrontDesk: React.FC = () => {
           <button
             onClick={handleRefresh}
             disabled={roomsLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-[var(--primary)] text-white rounded-lg hover:bg-[var(--primary-dark)] disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg disabled:opacity-50 transition-all hover:opacity-90"
+            style={{ backgroundColor: 'var(--color-darkGreen2)' }}
           >
             <RefreshCw className={`w-4 h-4 ${roomsLoading ? 'animate-spin' : ''}`} />
             Actualizar
@@ -256,7 +257,7 @@ const FrontDesk: React.FC = () => {
                   <select
                     value={filters.status || ''}
                     onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as Room['status'] || undefined }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Todos los estados</option>
                     <option value="available">Disponible</option>
@@ -278,7 +279,7 @@ const FrontDesk: React.FC = () => {
                       ...prev, 
                       type: e.target.value as Room['type'] || undefined 
                     }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Todos los tipos</option>
                     {roomTypes.map(type => (
@@ -294,7 +295,7 @@ const FrontDesk: React.FC = () => {
                   <select
                     value={filters.floor || ''}
                     onChange={(e) => setFilters(prev => ({ ...prev, floor: e.target.value ? Number(e.target.value) : undefined }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Todos los pisos</option>
                     {floors.map(floor => (
@@ -318,7 +319,7 @@ const FrontDesk: React.FC = () => {
           {/* Rooms Grid */}
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+              <h2 className="text-xl font-semibold text-gray-900">
                 Habitaciones ({filteredRooms.length})
               </h2>
               <div className="text-sm text-gray-600">

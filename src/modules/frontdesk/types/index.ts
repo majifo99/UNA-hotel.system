@@ -156,7 +156,7 @@ export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
 };
 
 // Re-exportación de tipos
-export type { Guest } from './guest';
+export type { Guest } from '../../../types/guest';
 export type { CheckInData, CheckInResponse } from './checkin';
 export type { CheckInForm } from './frontdesk';
 
