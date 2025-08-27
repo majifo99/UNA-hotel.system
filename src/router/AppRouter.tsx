@@ -9,6 +9,7 @@ import { GuestsPage } from '../modules/guests/pages/GuestsPage';
 import { CreateGuestPage } from '../modules/guests/pages/CreateGuestPage';
 import FrontDesk from '../modules/frontdesk/components/FrontDesk';
 import { default as CheckInPage } from '../modules/frontdesk/pages/CheckInPage';
+import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
 
 /**
  * TanStack Query Client Configuration
@@ -146,6 +147,10 @@ const router = createBrowserRouter([
             path: 'create',
             element: <CreateGuestPage />,
           },
+          {
+            path: ':id',
+            element: <GuestProfilePage />, 
+          }
         ],
       },
     ],

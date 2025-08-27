@@ -60,6 +60,7 @@ export const ROUTES = {
     DETAIL: (id: string) => `/guests/${id}`,
     CREATE: '/guests/create',
     SEARCH: '/guests/search',
+    PROFILE: (id: string) => `/guests/${id}`,
   },
   
   // Payments Module (future implementation)
