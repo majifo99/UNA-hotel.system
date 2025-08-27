@@ -20,7 +20,7 @@ export interface Reservation {
   status: 'reserved' | 'cancelled';
 }
 
-import type { Guest } from './guest';
+import type { Guest } from '../../../types/guest';
 
 export interface CheckInForm {
   reservationId: string | null;

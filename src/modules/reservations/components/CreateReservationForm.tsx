@@ -1,13 +1,12 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useCreateReservation } from '../hooks/useCreateReservation';
+import { GuestSelector } from './GuestSelector';
 import {
   FormHeader,
   SectionWrapper,
-  GuestSearch,
-  GuestForm,
   ReservationDetailsForm,
   RoomSelection,
-  ServicesSelection,
   PricingSummary,
   SpecialRequests,
   ErrorDisplay,
@@ -15,20 +14,25 @@ import {
 } from './index';
 
 export const CreateReservationForm: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const {
     formData,
     errors,
     isLoading,
     availableRooms,
-    additionalServices,
-    selectedGuest,
-    isCreatingNewGuest,
     updateFormField,
-    updateGuestField,
     submitReservation,
-    handleGuestSelection,
-    handleCreateNewGuest,
   } = useCreateReservation();
+
+  // Recibir datos de servicios seleccionados cuando se regresa de la página de servicios
+  React.useEffect(() => {
+    if (location.state?.additionalServices) {
+      updateFormField('additionalServices', location.state.additionalServices);
+      // Scroll to top when returning from services page
+      window.scrollTo(0, 0);
+    }
+  }, [location.state, updateFormField]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,13 +42,17 @@ export const CreateReservationForm: React.FC = () => {
     }
   };
 
-  const handleServiceToggle = (serviceId: string) => {
-    const currentServices = formData.additionalServices;
-    const updatedServices = currentServices.includes(serviceId)
-      ? currentServices.filter(id => id !== serviceId)
-      : [...currentServices, serviceId];
-    
-    updateFormField('additionalServices', updatedServices);
+  const handleSelectServices = () => {
+    navigate('/reservations/create/services', {
+      state: {
+        reservationData: formData,
+        selectedServices: formData.additionalServices
+      }
+    });
+  };
+
+  const handleCreateNewGuest = () => {
+    navigate('/guests/create');
   };
 
   return (
@@ -56,31 +64,18 @@ export const CreateReservationForm: React.FC = () => {
       />
 
       <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Gestión de Huésped */}
+        {/* Selector de Huésped */}
         <SectionWrapper
           title="Información del Huésped"
-          description="Busque un huésped existente o registre uno nuevo"
+          description="Seleccione o cree un huésped para la reserva"
         >
-          <GuestSearch
-            onGuestSelected={handleGuestSelection}
+          <GuestSelector
+            selectedGuestId={formData.guestId}
+            onGuestSelect={(guestId) => updateFormField('guestId', guestId)}
             onCreateNewGuest={handleCreateNewGuest}
-            selectedGuest={selectedGuest}
+            error={errors.guestId}
           />
         </SectionWrapper>
-
-        {/* Registro de Nuevo Cliente */}
-        {(isCreatingNewGuest || !selectedGuest) && (
-          <SectionWrapper
-            title="Registro de Nuevo Cliente"
-            description="Complete la información personal del huésped"
-          >
-            <GuestForm
-              formData={formData.guest}
-              errors={errors.guest || {}}
-              onFieldChange={updateGuestField}
-            />
-          </SectionWrapper>
-        )}
 
         {/* Detalles de la Reserva */}
         <SectionWrapper
@@ -115,18 +110,55 @@ export const CreateReservationForm: React.FC = () => {
         )}
 
         {/* Servicios Adicionales */}
-        {additionalServices.length > 0 && (
-          <SectionWrapper
-            title="Servicios Adicionales"
-            description="Seleccione servicios adicionales para la estadía"
-          >
-            <ServicesSelection
-              services={additionalServices}
-              selectedServices={formData.additionalServices}
-              onServiceToggle={handleServiceToggle}
-            />
-          </SectionWrapper>
-        )}
+        <SectionWrapper
+          title="Servicios Adicionales"
+          description="Seleccione servicios adicionales para la estadía"
+        >
+          <div className="space-y-4">
+            {formData.additionalServices?.length > 0 ? (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-medium text-green-800">
+                      Servicios seleccionados: {formData.additionalServices.length}
+                    </h4>
+                    <p className="text-sm text-green-600">
+                      Los servicios han sido configurados para esta reserva
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSelectServices}
+                    className="px-4 py-2 text-sm font-medium text-green-700 bg-green-100 border border-green-300 rounded-lg hover:bg-green-200 transition-colors"
+                  >
+                    Modificar servicios
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="border border-gray-200 rounded-lg p-6 text-center">
+                <div className="space-y-3">
+                  <h4 className="text-lg font-medium text-gray-900">
+                    ¿Desea agregar servicios adicionales?
+                  </h4>
+                  <p className="text-sm text-gray-600">
+                    Puede seleccionar servicios como desayuno, spa, wifi premium, etc.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleSelectServices}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    Seleccionar servicios
+                  </button>
+                  <p className="text-xs text-gray-500">
+                    Opcional - Puede omitir este paso
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </SectionWrapper>
 
         {/* Resumen de Precios */}
         {formData.total > 0 && (

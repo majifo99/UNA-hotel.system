@@ -1,12 +1,14 @@
 
-import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Outlet, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MainLayout } from '../layouts/MainLayout';
 import { Home } from '../pages/Home';
 import { CreateReservationPage } from '../modules/reservations/pages/CreateReservationPage';
+import { SelectServicesPage } from '../modules/reservations/pages/SelectServicesPage';
+import { GuestsPage } from '../modules/guests/pages/GuestsPage';
+import { CreateGuestPage } from '../modules/guests/pages/CreateGuestPage';
 import FrontDesk from '../modules/frontdesk/components/FrontDesk';
 import { default as CheckInPage } from '../modules/frontdesk/pages/CheckInPage';
-import ReservationForm from '../modules/frontdesk/components/ReservationForm';
 
 /**
  * TanStack Query Client Configuration
@@ -97,9 +99,9 @@ const router = createBrowserRouter([
             path: 'checkin',
             element: <CheckInPage />,
           },
-            {
+          {
             path: 'register',
-            element: <ReservationForm />,
+            element: <Navigate to="/reservations/create" replace />,
           },
         ],
       },
@@ -111,6 +113,11 @@ const router = createBrowserRouter([
             // Create new reservation
             path: 'create',
             element: <CreateReservationPage />,
+          },
+          {
+            // Select services for reservation
+            path: 'create/services',
+            element: <SelectServicesPage />,
           },
           // Add more reservation routes here:
           // {
@@ -128,10 +135,19 @@ const router = createBrowserRouter([
       //   path: 'rooms',
       //   element: <RoomsPage />,
       // },
-      // {
-      //   path: 'guests',
-      //   element: <GuestsPage />,
-      // },
+      {
+        path: 'guests',
+        children: [
+          {
+            index: true,
+            element: <GuestsPage />,
+          },
+          {
+            path: 'create',
+            element: <CreateGuestPage />,
+          },
+        ],
+      },
     ],
   },
 ]);
