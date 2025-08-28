@@ -3,7 +3,8 @@ import { createBrowserRouter, RouterProvider, Outlet, Navigate } from 'react-rou
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MainLayout } from '../layouts/MainLayout';
 import { Home } from '../pages/Home';
-import { CreateReservationPage } from '../modules/reservations/pages/CreateReservationPage';
+import { CreateReservationPage } from '../modules/reservations/pages/CreateReservationPage'; 
+import HousekeepingDashboard from '../modules/housekeeping/pages/HousekeepingDashboard';
 import { SelectServicesPage } from '../modules/reservations/pages/SelectServicesPage';
 import { GuestsPage } from '../modules/guests/pages/GuestsPage';
 import { CreateGuestPage } from '../modules/guests/pages/CreateGuestPage';
@@ -131,6 +132,11 @@ const router = createBrowserRouter([
           // },
         ],
       },
+      {
+  path: 'housekeeping',
+  element: <HousekeepingDashboard />,
+},
+
       // Add more top-level routes here:
       // {
       //   path: 'rooms',
