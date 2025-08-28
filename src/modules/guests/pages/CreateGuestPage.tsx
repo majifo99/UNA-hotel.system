@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, User, Heart, Phone, Star } from 'lucide-react';
-import type { Guest } from '../../../types/guest';
+import type { Guest } from '../types';
 
 export const CreateGuestPage: React.FC = () => {
   const navigate = useNavigate();
@@ -12,7 +12,7 @@ export const CreateGuestPage: React.FC = () => {
     email: '',
     phone: '',
     nationality: '',
-    documentType: 'id',
+    documentType: 'id_card',
     documentNumber: '',
     dateOfBirth: '',
     gender: undefined,

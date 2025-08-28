@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Search, Plus, Users, Filter, Edit, Trash2 } from 'lucide-react';
+import { Search, Plus, Users, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useGuests } from '../../../hooks/useGuests';
+import { useGuests } from '../hooks';
 import { ROUTES } from '../../../router/routes';
 import type { Guest } from '../../../types/guest';
 

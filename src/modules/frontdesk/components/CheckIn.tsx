@@ -7,7 +7,7 @@ import ReactFlagsSelect from 'react-flags-select';
 import { useCheckIn } from '../hooks/useCheckIn';
 import { useReservationSearch, useReservationSearchByGuest } from '../hooks/useReservationSearch';
 import type { CheckInData } from '../types/checkin';
-import type { Reservation } from '../../reservations/types';
+import type { Reservation } from '../../../types/core';
 
 type LocalState = {
   reservationId: string;
@@ -138,13 +138,13 @@ export const CheckIn = () => {
       // Auto-populate form with reservation data
       setFormData(prev => ({
         ...prev,
-        firstName: reservation.guest.firstName,
-        lastName: reservation.guest.lastName,
-        email: reservation.guest.email,
-        phone: reservation.guest.phone,
+        firstName: reservation.guest?.firstName || '',
+        lastName: reservation.guest?.lastName || '',
+        email: reservation.guest?.email || '',
+        phone: reservation.guest?.phone || '',
         phoneCountryCode: 'us', // Default, could be extracted from phone if needed
         nationality: 'US', // Default, could be extracted from guest data if available
-        identificationNumber: reservation.guest.documentNumber,
+        identificationNumber: reservation.guest?.documentNumber || '',
         numberOfGuests: reservation.numberOfGuests,
         checkInDate: reservation.checkInDate.split('T')[0],
         checkOutTime: reservation.checkOutDate.split('T')[1]?.substring(0, 5) || '12:00',
@@ -289,7 +289,7 @@ export const CheckIn = () => {
               <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-4">
                 <h3 className="text-green-400 font-semibold mb-2">✓ Reservation Found!</h3>
                 <div className="text-sm text-white space-y-1">
-                  <p><span className="font-semibold text-[var(--color-sand)]">Guest:</span> {foundReservation.guest.firstName} {foundReservation.guest.lastName}</p>
+                  <p><span className="font-semibold text-[var(--color-sand)]">Guest:</span> {foundReservation.guest?.firstName} {foundReservation.guest?.lastName}</p>
                   <p><span className="font-semibold text-[var(--color-sand)]">Confirmation:</span> {foundReservation.confirmationNumber}</p>
                   <p><span className="font-semibold text-[var(--color-sand)]">Check-in:</span> {foundReservation.checkInDate}</p>
                   <p><span className="font-semibold text-[var(--color-sand)]">Room Type:</span> {foundReservation.roomType}</p>

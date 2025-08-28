@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plus, User, X } from 'lucide-react';
-import { useGuests } from '../../../hooks/useGuests';
-import type { Guest } from '../../../types/guest';
+import { useGuests } from '../../guests/hooks';
+import type { Guest } from '../../guests/types';
 
 interface GuestSelectorProps {
   selectedGuestId?: string;
