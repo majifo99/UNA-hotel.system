@@ -18,6 +18,14 @@ export const ROUTES = {
   // Dashboard and Home
   HOME: '/',
   
+  // Front Desk Module
+  FRONTDESK: {
+    BASE: '/frontdesk',
+    CHECKIN: '/frontdesk/checkin',
+    DASHBOARD: '/frontdesk/dashboard',
+    REGISTER: '/frontdesk/register',
+  },
+
   // Reservations Module
   RESERVATIONS: {
     // Base path for reservations module
@@ -52,6 +60,7 @@ export const ROUTES = {
     DETAIL: (id: string) => `/guests/${id}`,
     CREATE: '/guests/create',
     SEARCH: '/guests/search',
+    PROFILE: (id: string) => `/guests/${id}`,
   },
   
   // Payments Module (future implementation)
@@ -88,7 +97,18 @@ export const ROUTES = {
     PERMISSIONS: '/settings/permissions',
     INTEGRATIONS: '/settings/integrations',
   },
+
+ // Agrega esta sección sin modificar lo anterior
+  HOUSEKEEPING: {
+  BASE: '/housekeeping',
+},
+
 } as const;
+
+
+
+
+
 
 /**
  * Route parameter types for type safety
@@ -143,4 +163,6 @@ export const navigation = {
   toRooms: () => ROUTES.ROOMS.BASE,
   toGuests: () => ROUTES.GUESTS.BASE,
   toSettings: () => ROUTES.SETTINGS.BASE,
+  toHousekeeping: () => ROUTES.HOUSEKEEPING.BASE,
+
 } as const;

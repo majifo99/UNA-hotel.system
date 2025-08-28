@@ -1,21 +1,17 @@
 import { useState, useEffect } from 'react';
-import type { ReservationFormData, ReservationValidationErrors, Room, AdditionalService, Guest } from '../types';
+import type { 
+  SimpleReservationFormData, 
+  ReservationValidationErrors, 
+  Room, 
+  AdditionalService 
+} from '../../../types/core';
 import { reservationService } from '../services/reservationService';
 import { roomService } from '../services/roomService';
-import { guestService } from '../services/guestService';
+import { adaptLegacyServices } from '../adapters/serviceAdapter';
 
 export const useCreateReservation = () => {
-  const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
-  const [isCreatingNewGuest, setIsCreatingNewGuest] = useState(false);
-  const [formData, setFormData] = useState<ReservationFormData>({
-    guest: {
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      documentType: 'id',
-      documentNumber: '',
-    },
+  const [formData, setFormData] = useState<SimpleReservationFormData>({
+    guestId: '',
     checkInDate: '',
     checkOutDate: '',
     numberOfGuests: 1,
@@ -39,40 +35,47 @@ export const useCreateReservation = () => {
     if (formData.checkInDate && formData.checkOutDate) {
       const checkIn = new Date(formData.checkInDate);
       const checkOut = new Date(formData.checkOutDate);
-      const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
       
-      if (nights > 0) {
-        setFormData((prev: ReservationFormData) => ({ ...prev, numberOfNights: nights }));
-        checkRoomAvailability(checkIn, checkOut);
+      if (checkOut > checkIn) {
+        const diffTime = Math.abs(checkOut.getTime() - checkIn.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        setFormData(prev => ({ ...prev, numberOfNights: diffDays }));
       }
     }
   }, [formData.checkInDate, formData.checkOutDate]);
 
-  // Calculate pricing when relevant data changes
+  // Search for available rooms when dates change
+  useEffect(() => {
+    if (formData.checkInDate && formData.checkOutDate) {
+      searchAvailableRooms();
+    }
+  }, [formData.checkInDate, formData.checkOutDate]);
+
+  // Calculate pricing when relevant fields change
   useEffect(() => {
     calculatePricing();
-  }, [formData.numberOfNights, formData.roomType, formData.additionalServices, availableRooms]);
+  }, [formData.roomType, formData.numberOfNights, formData.additionalServices, availableRooms, additionalServices]);
 
-  const checkRoomAvailability = async (checkIn: Date, checkOut: Date) => {
+  const searchAvailableRooms = async () => {
     try {
-      setIsLoading(true);
-      const rooms = await roomService.getAvailableRooms(checkIn, checkOut, formData.numberOfGuests, formData.roomType);
+      const rooms = await roomService.getAvailableRooms(
+        formData.checkInDate,
+        formData.checkOutDate
+      );
       setAvailableRooms(rooms);
     } catch (error) {
-      console.error('Error checking room availability:', error);
-      setErrors((prev: ReservationValidationErrors) => ({ ...prev, general: 'Error al verificar disponibilidad de habitaciones' }));
-    } finally {
-      setIsLoading(false);
+      console.error('Error searching rooms:', error);
+      setAvailableRooms([]);
     }
   };
 
   const calculatePricing = () => {
-    if (!formData.numberOfNights || availableRooms.length === 0) return;
-
     const selectedRoom = availableRooms.find(room => room.type === formData.roomType);
     if (!selectedRoom) return;
 
-    const subtotal = selectedRoom.pricePerNight * formData.numberOfNights;
+    const roomPrice = selectedRoom.pricePerNight || selectedRoom.basePrice || 0;
+    const subtotal = roomPrice * formData.numberOfNights;
     
     const servicesTotal = additionalServices
       .filter(service => formData.additionalServices.includes(service.id))
@@ -82,7 +85,7 @@ export const useCreateReservation = () => {
     const total = subtotal + servicesTotal + taxes;
     const depositRequired = total * 0.5; // 50% deposit
 
-    setFormData((prev: ReservationFormData) => ({
+    setFormData((prev: SimpleReservationFormData) => ({
       ...prev,
       subtotal,
       servicesTotal,
@@ -96,26 +99,8 @@ export const useCreateReservation = () => {
     const newErrors: ReservationValidationErrors = {};
 
     // Guest validation
-    if (!formData.guest.firstName.trim()) {
-      newErrors.guest = { ...newErrors.guest, firstName: 'El nombre es requerido' };
-    }
-
-    if (!formData.guest.lastName.trim()) {
-      newErrors.guest = { ...newErrors.guest, lastName: 'El apellido es requerido' };
-    }
-
-    if (!formData.guest.email.trim()) {
-      newErrors.guest = { ...newErrors.guest, email: 'El email es requerido' };
-    } else if (!/\S+@\S+\.\S+/.test(formData.guest.email)) {
-      newErrors.guest = { ...newErrors.guest, email: 'Email inválido' };
-    }
-
-    if (!formData.guest.phone.trim()) {
-      newErrors.guest = { ...newErrors.guest, phone: 'El teléfono es requerido' };
-    }
-
-    if (!formData.guest.documentNumber.trim()) {
-      newErrors.guest = { ...newErrors.guest, documentNumber: 'El número de documento es requerido' };
+    if (!formData.guestId) {
+      newErrors.guestId = 'Debe seleccionar un huésped';
     }
 
     // Date validation
@@ -161,27 +146,12 @@ export const useCreateReservation = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const updateFormField = (field: keyof ReservationFormData, value: any) => {
-    setFormData((prev: ReservationFormData) => ({ ...prev, [field]: value }));
+  const updateFormField = (field: keyof SimpleReservationFormData, value: any) => {
+    setFormData((prev: SimpleReservationFormData) => ({ ...prev, [field]: value }));
     
     // Clear related errors
     if (errors[field as keyof ReservationValidationErrors]) {
       setErrors((prev: ReservationValidationErrors) => ({ ...prev, [field]: undefined }));
-    }
-  };
-
-  const updateGuestField = (field: keyof ReservationFormData['guest'], value: string) => {
-    setFormData((prev: ReservationFormData) => ({
-      ...prev,
-      guest: { ...prev.guest, [field]: value }
-    }));
-
-    // Clear related errors
-    if (errors.guest && field in errors.guest) {
-      setErrors((prev: ReservationValidationErrors) => ({
-        ...prev,
-        guest: { ...prev.guest, [field]: undefined }
-      }));
     }
   };
 
@@ -190,37 +160,20 @@ export const useCreateReservation = () => {
       return false;
     }
 
-    // Validate guest data before submission
-    if (!(await validateGuestBeforeSubmit())) {
-      return false;
-    }
+    setIsLoading(true);
+    setErrors({});
 
     try {
-      setIsLoading(true);
       const selectedRoom = availableRooms.find(room => room.type === formData.roomType);
-      
       if (!selectedRoom) {
-        setErrors({ general: 'No se pudo encontrar la habitación seleccionada' });
+        setErrors({ general: 'Debe seleccionar una habitación válida' });
         return false;
       }
 
-      // Create guest if it's a new one
-      let guestId = selectedGuest?.id;
-      if (!selectedGuest) {
-        const newGuest = await guestService.createGuest(formData.guest);
-        guestId = newGuest.id;
-      }
-
-      const reservationData = {
+      await reservationService.createReservation({
         ...formData,
         roomId: selectedRoom.id,
-        guest: {
-          ...formData.guest,
-          id: guestId,
-        }
-      };
-
-      await reservationService.createReservation(reservationData);
+      });
       return true;
     } catch (error) {
       console.error('Error creating reservation:', error);
@@ -233,58 +186,11 @@ export const useCreateReservation = () => {
 
   const loadAdditionalServices = async () => {
     try {
-      const services = await reservationService.getAdditionalServices();
-      setAdditionalServices(services);
+      const legacyServices = await reservationService.getAdditionalServices();
+      const adaptedServices = adaptLegacyServices(legacyServices);
+      setAdditionalServices(adaptedServices);
     } catch (error) {
       console.error('Error loading additional services:', error);
-    }
-  };
-
-  const handleGuestSelection = (guest: Guest | null) => {
-    setSelectedGuest(guest);
-    if (guest) {
-      setFormData((prev: ReservationFormData) => ({
-        ...prev,
-        guest: { ...guest }
-      }));
-      setIsCreatingNewGuest(false);
-    }
-  };
-
-  const handleCreateNewGuest = () => {
-    setSelectedGuest(null);
-    setIsCreatingNewGuest(true);
-    // Reset guest data
-    setFormData((prev: ReservationFormData) => ({
-      ...prev,
-      guest: {
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        documentType: 'id',
-        documentNumber: '',
-      }
-    }));
-  };
-
-  const validateGuestBeforeSubmit = async (): Promise<boolean> => {
-    if (selectedGuest) return true; // Guest already exists, no validation needed
-    
-    try {
-      const validation = await guestService.validateGuestData(formData.guest);
-      
-      if (!validation.isValid) {
-        const errorMsg = validation.errors.join(', ');
-        setErrors({ general: `Error en datos del huésped: ${errorMsg}` });
-        return false;
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Error validating guest:', error);
-      setErrors({ general: 'Error al validar datos del huésped' });
-      return false;
     }
   };
 
@@ -299,13 +205,8 @@ export const useCreateReservation = () => {
     isLoading,
     availableRooms,
     additionalServices,
-    selectedGuest,
-    isCreatingNewGuest,
     updateFormField,
-    updateGuestField,
     submitReservation,
     validateForm,
-    handleGuestSelection,
-    handleCreateNewGuest,
   };
 };

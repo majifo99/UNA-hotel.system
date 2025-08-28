@@ -1,7 +1,11 @@
-function CheckInPage() {
-  return (
-    <div>CheckInPage</div>
-  )
-}
+import { CheckIn } from '../components/CheckIn';
 
-export default CheckInPage
+const CheckInPage = () => {
+  return (
+    <div className="min-h-screen bg-[var(--color-darkGreen1)]">
+      <CheckIn />
+    </div>
+  );
+};
+
+export default CheckInPage;

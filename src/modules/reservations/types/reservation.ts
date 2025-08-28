@@ -1,64 +1,16 @@
-import type { Guest } from './guest';
-import type { Room } from './room';
+/**
+ * @deprecated This file has been consolidated into src/types/core.ts
+ * 
+ * Use: import type { SimpleReservationFormData, Reservation } from '@/types/core'
+ * 
+ * This file provides backward compatibility but will be removed in future versions.
+ */
 
-export interface ReservationFormData {
-  // Guest information
-  guest: Guest;
-  
-  // Reservation details
-  checkInDate: string;
-  checkOutDate: string;
-  numberOfGuests: number;
-  numberOfNights: number;
-  
-  // Room selection
-  roomType: Room['type'];
-  roomId?: string;
-  
-  // Additional services
-  additionalServices: string[]; // Array of service IDs
-  
-  // Pricing
-  subtotal: number;
-  servicesTotal: number;
-  taxes: number;
-  total: number;
-  
-  // Special requests
-  specialRequests?: string;
-  
-  // Payment
-  paymentMethod?: 'credit_card' | 'debit_card' | 'cash' | 'transfer';
-  depositRequired: number;
-}
-
-export interface ReservationValidationErrors {
-  guest?: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    phone?: string;
-    documentNumber?: string;
-  };
-  checkInDate?: string;
-  checkOutDate?: string;
-  numberOfGuests?: string;
-  roomType?: string;
-  general?: string;
-}
-
-export type ReservationStatus = 
-  | 'pending' 
-  | 'confirmed' 
-  | 'checked_in' 
-  | 'checked_out' 
-  | 'cancelled' 
-  | 'no_show';
-
-export interface Reservation extends ReservationFormData {
-  id: string;
-  status: ReservationStatus;
-  createdAt: string;
-  updatedAt: string;
-  confirmationNumber: string;
-}
+// Re-export from core types for backward compatibility
+export type {
+  SimpleReservationFormData,
+  ReservationValidationErrors,
+  Reservation,
+  ReservationStatus,
+  PaymentMethod
+} from '../../../types/core';

@@ -155,6 +155,11 @@ export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
   Presidential: 'Presidencial'
 };
 
+// Re-exportación de tipos
+export type { Guest } from '../../../types/guest';
+export type { CheckInData, CheckInResponse } from './checkin';
+export type { CheckInForm } from './frontdesk';
+
 // =================== TIPOS ADICIONALES ===================
 
 // Estadísticas del dashboard
@@ -201,3 +206,6 @@ export interface CalendarView {
   endDate: string;
   rooms: CalendarRoom[];
 }
+
+// Export calendar types
+export * from './calendar';

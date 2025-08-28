@@ -20,3 +20,6 @@ export {
   // Utilities
   useInvalidateFrontdesk,
 } from './useFrontdesk';
+
+// Calendar navigation
+export { useCalendarNavigation } from './useCalendarNavigation';

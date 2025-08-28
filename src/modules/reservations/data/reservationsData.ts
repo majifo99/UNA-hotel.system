@@ -9,8 +9,12 @@ export const reservationsData: Reservation[] = [
       lastName: "González",
       email: "maria.gonzalez@email.com",
       phone: "8888-1234",
-      documentType: "id",
-      documentNumber: "1-1234-5678"
+      nationality: "CR",
+      documentType: "id_card",
+      documentNumber: "1-1234-5678",
+      isActive: true,
+      createdAt: "2025-08-25T10:00:00Z",
+      updatedAt: "2025-08-25T10:00:00Z"
     },
     checkInDate: "2025-08-26",
     checkOutDate: "2025-08-28",
@@ -38,8 +42,12 @@ export const reservationsData: Reservation[] = [
       lastName: "Rodríguez",
       email: "carlos.rodriguez@email.com",
       phone: "8888-5678",
+      nationality: "CR",
       documentType: "passport",
-      documentNumber: "P123456789"
+      documentNumber: "P123456789",
+      isActive: true,
+      createdAt: "2025-08-25T14:00:00Z",
+      updatedAt: "2025-08-25T14:00:00Z"
     },
     checkInDate: "2025-08-30",
     checkOutDate: "2025-09-03",
