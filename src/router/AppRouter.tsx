@@ -4,6 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MainLayout } from '../layouts/MainLayout';
 import { Home } from '../pages/Home';
 import { CreateReservationPage } from '../modules/reservations/pages/CreateReservationPage';
+import HousekeepingDashboard from '../modules/housekeeping/pages/HousekeepingDashboard';
+
+
 
 /**
  * TanStack Query Client Configuration
@@ -98,6 +101,11 @@ const router = createBrowserRouter([
           // },
         ],
       },
+      {
+  path: 'housekeeping',
+  element: <HousekeepingDashboard />,
+},
+
       // Add more top-level routes here:
       // {
       //   path: 'rooms',

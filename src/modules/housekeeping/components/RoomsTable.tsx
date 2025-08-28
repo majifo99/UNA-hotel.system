@@ -1,0 +1,245 @@
+import { useEffect, useState, type JSX } from "react";
+import { ArrowUpDown, MoreHorizontal, UserCheck, KeyRound } from "lucide-react";
+import type { Room } from "../types/typesRoom";
+
+type RoomsTableProps = {
+  sortedAndFilteredRooms: Room[];
+  selectedRooms?: string[];
+  toggleRoomSelection?: (id: string) => void;
+  toggleAllRooms?: () => void;
+  handleSort?: (field: keyof Room) => void;
+  getStatusBadge?: (status: string) => JSX.Element;
+};
+
+export default function RoomsTable({
+  sortedAndFilteredRooms,
+  selectedRooms,
+  toggleRoomSelection,
+  toggleAllRooms,
+  handleSort,
+  getStatusBadge,
+}: RoomsTableProps) {
+  const [internalSelected, setInternalSelected] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+
+  const selected = selectedRooms ?? internalSelected;
+
+  const handleToggleOne =
+    toggleRoomSelection ??
+    ((id: string) =>
+      setInternalSelected((prev) =>
+        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      ));
+
+  const onSort =
+    handleSort ??
+    (() => {
+      console.log("Sorting not implemented externally");
+    });
+
+  const handleToggleAll =
+    toggleAllRooms ??
+    (() => {
+      const pageIds = paginatedRooms.map((r) => r.id);
+      const allSelected = pageIds.every((id) => selected.includes(id));
+      return setInternalSelected((prev) =>
+        allSelected
+          ? prev.filter((id) => !pageIds.includes(id))
+          : Array.from(new Set([...prev, ...pageIds]))
+      );
+    });
+
+  const badge =
+    getStatusBadge ??
+    ((nomenclatura: string) => {
+      const map: Record<string, string> = {
+        DISP: "bg-emerald-50 border border-emerald-200 text-emerald-700",
+        PEND: "bg-red-50 border border-red-200 text-red-700",
+        LIM: "bg-blue-50 border border-blue-200 text-blue-700",
+        INS: "bg-yellow-50 border border-yellow-200 text-yellow-700",
+        NM: "bg-gray-100 border border-gray-300 text-gray-800",
+      };
+      return (
+        <span
+          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+            map[nomenclatura] || "bg-slate-50 border border-slate-200 text-slate-700"
+          }`}
+        >
+          {nomenclatura}
+        </span>
+      );
+    });
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRooms = sortedAndFilteredRooms.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(sortedAndFilteredRooms.length / itemsPerPage);
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  useEffect(() => {
+    const totalPages = Math.ceil(sortedAndFilteredRooms.length / itemsPerPage);
+    if (currentPage > totalPages) {
+      setCurrentPage(1);
+    }
+  }, [sortedAndFilteredRooms]);
+
+  if (sortedAndFilteredRooms.length === 0) {
+    return (
+      <div className="text-center text-slate-500 py-10 text-sm">
+        No hay habitaciones para mostrar.
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-xl overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-slate-50/80 border-b border-slate-200">
+            <tr>
+              <th className="px-6 py-3">
+                <input
+                  type="checkbox"
+                  checked={
+                    paginatedRooms.length > 0 &&
+                    paginatedRooms.every((r) => selected.includes(r.id))
+                  }
+                  onChange={handleToggleAll}
+                  className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                />
+              </th>
+              {(["number", "type", "floor"] as (keyof Room)[]).map((field) => (
+                <th
+                  key={field}
+                  className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider"
+                >
+                  <button
+                    onClick={() => onSort(field)}
+                    className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+                  >
+                    {field === "number" ? "Número" : field === "type" ? "Tipo" : "Piso"}
+                    <ArrowUpDown className="w-3 h-3" />
+                  </button>
+                </th>
+              ))}
+              <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Clave</th>
+              <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Estado 
+              </th>
+              <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Responsable</th>
+              <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Última limpieza</th>
+              <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-slate-100">
+            {paginatedRooms.map((room) => {
+              const isSelected = selected.includes(room.id);
+              const isPending = room.status === "Pendiente";
+              return (
+                <tr
+                  key={room.id}
+                  className={`hover:bg-slate-50/50 transition-colors ${isSelected ? "bg-teal-50/30" : ""}`}
+                >
+                  <td className="px-6 py-4">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleToggleOne(room.id)}
+                      disabled={!isPending}
+                      className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                    />
+                  </td>
+                  <td className="px-6 py-4 text-sm text-slate-900 font-medium">{room.number}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{room.type}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{room.floor}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">
+                    {room.keyCode ? (
+                      <div className="flex items-center gap-2">
+                        <KeyRound className="w-4 h-4 text-teal-600" />
+                        {room.keyCode}
+                      </div>
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">{badge(room.status)}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">
+                    {room.assignedTo ? (
+                      <div className="flex items-center gap-2">
+                        <UserCheck className="w-4 h-4 text-teal-600" />
+                        {room.assignedTo}
+                      </div>
+                    ) : (
+                      <span className="text-slate-400">Sin asignar</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-slate-600">
+                    {room.lastCleaned || <span className="text-slate-400">—</span>}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <details className="relative">
+                      <summary className="list-none cursor-pointer inline-flex items-center gap-1 text-slate-600 hover:text-slate-900 px-2 py-1 rounded-lg hover:bg-slate-100">
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="text-xs">Opciones</span>
+                      </summary>
+                      <div className="absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
+                        <ul className="text-sm text-slate-700">
+                          <li className="px-3 py-2 hover:bg-slate-50 cursor-pointer">Cambiar estado</li>
+                          <li className="px-3 py-2 hover:bg-slate-50 cursor-pointer">Asignar personal</li>
+                          <li className="px-3 py-2 hover:bg-slate-50 cursor-pointer">Ver historial</li>
+                          <li className="px-3 py-2 hover:bg-slate-50 cursor-pointer">Reportar problema</li>
+                        </ul>
+                      </div>
+                    </details>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* PAGINACIÓN EXTERNA */}
+      <div className="flex justify-center items-center gap-1 py-5 bg-white border-t border-slate-100">
+        <button
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-teal-600 disabled:opacity-30"
+          aria-label="Página anterior"
+        >
+          ←
+        </button>
+
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+          <button
+            key={page}
+            onClick={() => handlePageChange(page)}
+            className={`w-8 h-8 rounded-md text-sm transition-colors ${
+              currentPage === page
+                ? "text-teal-700 font-semibold bg-slate-100"
+                : "text-slate-500 hover:text-teal-600"
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+
+        <button
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-teal-600 disabled:opacity-30"
+          aria-label="Página siguiente"
+        >
+          →
+        </button>
+      </div>
+    </div>
+  );
+}

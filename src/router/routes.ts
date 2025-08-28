@@ -88,7 +88,18 @@ export const ROUTES = {
     PERMISSIONS: '/settings/permissions',
     INTEGRATIONS: '/settings/integrations',
   },
+
+ // Agrega esta sección sin modificar lo anterior
+  HOUSEKEEPING: {
+  BASE: '/housekeeping',
+},
+
 } as const;
+
+
+
+
+
 
 /**
  * Route parameter types for type safety
@@ -143,4 +154,6 @@ export const navigation = {
   toRooms: () => ROUTES.ROOMS.BASE,
   toGuests: () => ROUTES.GUESTS.BASE,
   toSettings: () => ROUTES.SETTINGS.BASE,
+  toHousekeeping: () => ROUTES.HOUSEKEEPING.BASE,
+
 } as const;

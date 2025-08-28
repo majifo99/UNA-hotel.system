@@ -10,7 +10,8 @@ import {
   BarChart3,
   FileText,
   Settings,
-  ChevronRight
+  ChevronRight,
+ Brush,
 } from 'lucide-react';
 import { ROUTES } from '../router/routes';
 
@@ -45,6 +46,7 @@ const navigationItems: NavigationItem[] = [
     category: 'main'
   },
   
+  
   // Gestión
   {
     path: ROUTES.ROOMS.BASE,
@@ -67,7 +69,14 @@ const navigationItems: NavigationItem[] = [
     description: 'Gestión de pagos y facturación',
     category: 'management'
   },
-  
+  {
+  path: '/housekeeping',
+  label: 'Housekeeping',
+  icon: Brush,
+  description: 'Limpieza y mantenimiento de habitaciones',
+  category: 'management'
+},
+
   // Reportes
   {
     path: ROUTES.REPORTS.BASE,
