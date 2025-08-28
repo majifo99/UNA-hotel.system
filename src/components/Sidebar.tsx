@@ -161,8 +161,8 @@ function Sidebar() {
   }, {} as Record<string, NavigationItem[]>);
 
   return (
-    <aside className="w-72 min-h-screen" style={{ backgroundColor: 'var(--color-darkGreen2)' }}>
-      <div className="h-full flex flex-col">
+    <aside className="w-72 min-h-screen fixed left-0 top-0 z-10" style={{ backgroundColor: 'var(--color-darkGreen2)' }}>
+      <div className="h-full flex flex-col overflow-y-auto">
         {/* Header UNA Hotel */}
         <div className="p-6 border-b" style={{ borderColor: 'rgba(0,0,0,0.2)' }}>
           <div className="flex items-center gap-3 mb-3">

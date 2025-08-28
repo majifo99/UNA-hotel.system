@@ -9,3 +9,6 @@ export * from './sections';
 
 // Main Form Component
 export { CreateReservationForm } from './CreateReservationForm';
+
+// Service Components
+export { ServicesSelection } from './ServicesSelection';

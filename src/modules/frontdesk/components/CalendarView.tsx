@@ -226,7 +226,7 @@ const CalendarView: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary)]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--color-darkGreen2)' }}></div>
       </div>
     );
   }
@@ -234,27 +234,27 @@ const CalendarView: React.FC = () => {
   return (
     <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[var(--primary)] to-[var(--primary-dark)] p-6 text-white">
+      <div className="p-6 text-white" style={{ backgroundColor: 'var(--color-darkGreen2)' }}>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold">Calendario de Habitaciones</h1>
-            <p className="text-blue-100">Vista de ocupación y reservaciones</p>
+            <h1 className="text-2xl font-bold text-white">Calendario de Habitaciones</h1>
+            <p className="text-white/80">Vista de ocupación y reservaciones</p>
           </div>
           
           {/* Stats Summary */}
           {stats && (
-            <div className="flex gap-4 text-sm">
-              <div className="text-center">
-                <div className="text-2xl font-bold">{stats.availableRooms}</div>
-                <div className="text-blue-100">Disponibles</div>
+            <div className="flex gap-6 text-sm">
+              <div className="text-center bg-white/20 rounded-lg p-3 backdrop-blur-sm">
+                <div className="text-2xl font-bold text-white">{stats.availableRooms}</div>
+                <div className="text-white/90 font-medium">Disponibles</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">{stats.occupiedRooms}</div>
-                <div className="text-blue-100">Ocupadas</div>
+              <div className="text-center bg-white/20 rounded-lg p-3 backdrop-blur-sm">
+                <div className="text-2xl font-bold text-white">{stats.occupiedRooms}</div>
+                <div className="text-white/90 font-medium">Ocupadas</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">{stats.occupancyRate}%</div>
-                <div className="text-blue-100">Ocupación</div>
+              <div className="text-center bg-white/20 rounded-lg p-3 backdrop-blur-sm">
+                <div className="text-2xl font-bold text-white">{stats.occupancyRate}%</div>
+                <div className="text-white/90 font-medium">Ocupación</div>
               </div>
             </div>
           )}
@@ -347,8 +347,8 @@ const CalendarView: React.FC = () => {
 
       {/* Room Details Modal */}
       {selectedRoom && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 m-4 max-w-md w-full">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white/95 backdrop-blur-md rounded-xl p-6 m-4 max-w-md w-full shadow-2xl border border-white/50">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold">Habitación {selectedRoom.roomNumber}</h3>
               <button

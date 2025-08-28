@@ -18,6 +18,14 @@ export const ROUTES = {
   // Dashboard and Home
   HOME: '/',
   
+  // Front Desk Module
+  FRONTDESK: {
+    BASE: '/frontdesk',
+    CHECKIN: '/frontdesk/checkin',
+    DASHBOARD: '/frontdesk/dashboard',
+    REGISTER: '/frontdesk/register',
+  },
+
   // Reservations Module
   RESERVATIONS: {
     // Base path for reservations module
@@ -52,6 +60,7 @@ export const ROUTES = {
     DETAIL: (id: string) => `/guests/${id}`,
     CREATE: '/guests/create',
     SEARCH: '/guests/search',
+    PROFILE: (id: string) => `/guests/${id}`,
   },
   
   // Payments Module (future implementation)
