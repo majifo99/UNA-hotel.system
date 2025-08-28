@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { reservationService } from '../../reservations/services/reservationService';
 import { searchReservationByConfirmation, searchReservationByGuest } from '../services/apiService';
-import type { Reservation } from '../../reservations/types';
 
 // Configuration flag to switch between mock and real API
 const USE_REAL_API = import.meta.env.VITE_USE_REAL_API === 'true';
@@ -59,8 +58,8 @@ export const useReservationSearchByGuest = (lastName: string, identificationNumb
           // Use mock service for development
           const allReservations = await reservationService.getAllReservations();
           const reservation = allReservations.find(reservation => 
-            reservation.guest.lastName.toLowerCase() === lastName.toLowerCase() &&
-            reservation.guest.documentNumber === identificationNumber
+            reservation.guest?.lastName.toLowerCase() === lastName.toLowerCase() &&
+            reservation.guest?.documentNumber === identificationNumber
           );
           return reservation || null;
         }

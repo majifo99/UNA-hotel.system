@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react';
-import type { SimpleReservationFormData, ReservationValidationErrors, Room, AdditionalService } from '../types';
+import type { 
+  SimpleReservationFormData, 
+  ReservationValidationErrors, 
+  Room, 
+  AdditionalService 
+} from '../../../types/core';
 import { reservationService } from '../services/reservationService';
 import { roomService } from '../services/roomService';
+import { adaptLegacyServices } from '../adapters/serviceAdapter';
 
 export const useCreateReservation = () => {
   const [formData, setFormData] = useState<SimpleReservationFormData>({
@@ -68,7 +74,8 @@ export const useCreateReservation = () => {
     const selectedRoom = availableRooms.find(room => room.type === formData.roomType);
     if (!selectedRoom) return;
 
-    const subtotal = selectedRoom.pricePerNight * formData.numberOfNights;
+    const roomPrice = selectedRoom.pricePerNight || selectedRoom.basePrice || 0;
+    const subtotal = roomPrice * formData.numberOfNights;
     
     const servicesTotal = additionalServices
       .filter(service => formData.additionalServices.includes(service.id))
@@ -179,8 +186,9 @@ export const useCreateReservation = () => {
 
   const loadAdditionalServices = async () => {
     try {
-      const services = await reservationService.getAdditionalServices();
-      setAdditionalServices(services);
+      const legacyServices = await reservationService.getAdditionalServices();
+      const adaptedServices = adaptLegacyServices(legacyServices);
+      setAdditionalServices(adaptedServices);
     } catch (error) {
       console.error('Error loading additional services:', error);
     }

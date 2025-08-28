@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Heart, Phone, Star } from 'lucide-react';
-import type { Guest } from '../../../types/guest';
-import { useGuests } from '../../../hooks/useGuests';
+import type { Guest } from '../types';
+import { useGuests } from '../hooks';
 
 export const GuestProfilePage: React.FC = () => {
   const { id } = useParams();

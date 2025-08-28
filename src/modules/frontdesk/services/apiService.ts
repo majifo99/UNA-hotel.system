@@ -8,7 +8,7 @@
  * actual HTTP requests to your backend API.
  */
 
-import type { Reservation } from '../../reservations/types';
+import type { Reservation } from '../../../types/core';
 
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';

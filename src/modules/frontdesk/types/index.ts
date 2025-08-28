@@ -206,3 +206,6 @@ export interface CalendarView {
   endDate: string;
   rooms: CalendarRoom[];
 }
+
+// Export calendar types
+export * from './calendar';

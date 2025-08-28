@@ -8,4 +8,4 @@ export type {
   ReservationValidationErrors, 
   ReservationStatus, 
   Reservation 
-} from './reservation';
+} from './reservations';
