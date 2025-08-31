@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Search, Plus, User, Mail, Phone, MapPin } from 'lucide-react';
 import { Modal } from '../../../../components/ui/Modal';
 import { useGuests } from '../../hooks';
-import type { Guest } from '../../types';
+import type { Guest } from '../../../../types/core';
 
 interface GuestSearchModalProps {
   isOpen: boolean;

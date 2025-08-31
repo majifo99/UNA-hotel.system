@@ -1,28 +1,49 @@
 import { useQuery } from '@tanstack/react-query';
-import { reservationService } from '../../reservations/services/reservationService';
-import { searchReservationByConfirmation, searchReservationByGuest } from '../services/apiService';
 
-// Configuration flag to switch between mock and real API
-const USE_REAL_API = import.meta.env.VITE_USE_REAL_API === 'true';
+// Mock data para desarrollo
+const mockReservations = [
+  {
+    id: 'RES-001',
+    confirmationNumber: 'CONF-2024-001',
+    guestName: 'Juan Pérez',
+    roomNumber: '101',
+    checkIn: '2024-01-15',
+    checkOut: '2024-01-18',
+    status: 'confirmed'
+  }
+];
+
+// Mock service
+const mockReservationService = {
+  getReservationByConfirmation: async (confirmationNumber: string) => {
+    return new Promise(resolve => {
+      setTimeout(() => {
+        const reservation = mockReservations.find(r => r.confirmationNumber === confirmationNumber);
+        resolve(reservation || null);
+      }, 300);
+    });
+  },
+  searchByGuest: async (guestName: string) => {
+    return new Promise(resolve => {
+      setTimeout(() => {
+        const reservations = mockReservations.filter(r => 
+          r.guestName.toLowerCase().includes(guestName.toLowerCase())
+        );
+        resolve(reservations);
+      }, 300);
+    });
+  }
+};
 
 /**
  * Hook to search for reservations by confirmation number
- * 
- * In a real API implementation, this would make a direct API call to:
- * GET /api/reservations/search?confirmationNumber={confirmationNumber}
  */
 export const useReservationSearch = (confirmationNumber: string, enabled: boolean = false) => {
   return useQuery({
     queryKey: ['reservation-search', confirmationNumber],
     queryFn: async () => {
       try {
-        if (USE_REAL_API) {
-          // Use real API service
-          return await searchReservationByConfirmation(confirmationNumber);
-        } else {
-          // Use mock service for development
-          return await reservationService.getReservationByConfirmationNumber(confirmationNumber);
-        }
+        return await mockReservationService.getReservationByConfirmation(confirmationNumber);
       } catch (error) {
         console.error('Error searching reservation by confirmation number:', error);
         throw error;
@@ -42,27 +63,13 @@ export const useReservationSearch = (confirmationNumber: string, enabled: boolea
 
 /**
  * Hook to search for reservations by guest information
- * 
- * In a real API implementation, this would make a direct API call to:
- * GET /api/reservations/search?lastName={lastName}&documentNumber={identificationNumber}
  */
 export const useReservationSearchByGuest = (lastName: string, identificationNumber: string, enabled: boolean = false) => {
   return useQuery({
     queryKey: ['reservation-search-guest', lastName, identificationNumber],
     queryFn: async () => {
       try {
-        if (USE_REAL_API) {
-          // Use real API service
-          return await searchReservationByGuest(lastName, identificationNumber);
-        } else {
-          // Use mock service for development
-          const allReservations = await reservationService.getAllReservations();
-          const reservation = allReservations.find(reservation => 
-            reservation.guest?.lastName.toLowerCase() === lastName.toLowerCase() &&
-            reservation.guest?.documentNumber === identificationNumber
-          );
-          return reservation || null;
-        }
+        return await mockReservationService.searchByGuest(lastName + ' ' + identificationNumber);
       } catch (error) {
         console.error('Error searching reservation by guest info:', error);
         throw error;

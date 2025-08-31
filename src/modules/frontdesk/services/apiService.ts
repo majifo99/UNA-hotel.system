@@ -8,7 +8,16 @@
  * actual HTTP requests to your backend API.
  */
 
-import type { Reservation } from '../../../types/core';
+// Tipos básicos para el servicio (sin dependencias externas)
+interface ReservationSearchResult {
+  id: string;
+  confirmationNumber: string;
+  guestName: string;
+  roomNumber: string;
+  checkIn: string;
+  checkOut: string;
+  status: string;
+}
 
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
@@ -79,9 +88,9 @@ async function apiRequest<T>(
  */
 export async function searchReservationByConfirmation(
   confirmationNumber: string
-): Promise<Reservation | null> {
+): Promise<ReservationSearchResult | null> {
   try {
-    const reservation = await apiRequest<Reservation>(
+    const reservation = await apiRequest<ReservationSearchResult>(
       `/reservations/search?confirmationNumber=${encodeURIComponent(confirmationNumber)}`
     );
     return reservation;
@@ -101,14 +110,14 @@ export async function searchReservationByConfirmation(
 export async function searchReservationByGuest(
   lastName: string,
   documentNumber: string
-): Promise<Reservation | null> {
+): Promise<ReservationSearchResult | null> {
   try {
     const params = new URLSearchParams({
       lastName: lastName.trim(),
       documentNumber: documentNumber.trim(),
     });
     
-    const reservation = await apiRequest<Reservation>(
+    const reservation = await apiRequest<ReservationSearchResult>(
       `/reservations/search?${params.toString()}`
     );
     return reservation;

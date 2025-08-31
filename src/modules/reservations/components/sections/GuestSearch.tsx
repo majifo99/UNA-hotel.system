@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Guest } from '../../../../types/guest';
+import type { Guest } from '../../../../types/core';
 
 interface GuestSearchProps {
   onGuestSelected: (guest: Guest | null) => void;
