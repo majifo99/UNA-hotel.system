@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Minus, Trash2, Calculator, Split, Receipt } from 'lucide-react';
+import { Plus, Trash2, Calculator, Split, Receipt } from 'lucide-react';
 import type { BillingItem, BillSplit } from '../types/checkout';
 
 interface BillingSectionProps {

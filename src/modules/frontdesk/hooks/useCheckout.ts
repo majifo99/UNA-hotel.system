@@ -223,6 +223,7 @@ export const useCheckout = () => {
     isSubmitting: createMutation.isPending,
     isSearching: searchReservationMutation.isPending,
     error,
+    setError,
     validateAndSubmit,
     searchReservation,
   };

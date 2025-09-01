@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import ReactFlagsSelect from 'react-flags-select';
-import { Search, Calculator, CreditCard, FileText, LogOut, Receipt } from 'lucide-react';
+import { Search, CreditCard, FileText, LogOut } from 'lucide-react';
 import { useCheckout } from '../hooks/useCheckout';
 import type { CheckoutFormData, ReceiptData } from '../types/checkout';
 import BillingSection from './BillingSection';
@@ -11,7 +11,7 @@ import ReceiptModal from './ReceiptModal';
 
 const CheckOut = () => {
   const navigate = useNavigate();
-  const { validateAndSubmit, searchReservation, isSubmitting, isSearching, error } = useCheckout();
+  const { validateAndSubmit, searchReservation, isSubmitting, isSearching, error, setError } = useCheckout();
 
   const [formData, setFormData] = useState<CheckoutFormData>({
     reservationId: '',
