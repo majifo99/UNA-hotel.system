@@ -8,6 +8,10 @@
 // Core domain entities (shared)
 export type { Guest, Room } from '../../../types/core';
 
+// Check-in and Check-out types
+export * from './checkin';
+export * from './checkout';
+
 // Frontdesk-specific domain types
 export type { 
   CheckInForm,
