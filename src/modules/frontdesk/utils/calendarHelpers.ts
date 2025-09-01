@@ -15,12 +15,14 @@ export const generateCalendarDays = (
     
     const isToday = date.getTime() === today.getTime();
     const isPast = date < today;
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6; // Domingo o Sábado
     
     days.push({
       date: new Date(date),
       dateString: date.toISOString().split('T')[0],
       isToday,
-      isPast
+      isPast,
+      isWeekend
     });
   }
   

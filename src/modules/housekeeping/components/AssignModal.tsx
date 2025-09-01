@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { fetchStaff } from "../services/staffService";
 import { fetchRoomById, updateRoom } from "../services/roomService";
-import { STATUS_TO_KEY } from "../utils/statustoKEY";
+import { STATUS_TO_KEY } from "../utils/statusToKey";
 import type { Staff, Room } from "../types/typesRoom";
 
 type AssignModalProps = {

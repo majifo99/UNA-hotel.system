@@ -3,7 +3,7 @@ import { Search, Plus, Users, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGuests } from '../hooks';
 import { ROUTES } from '../../../router/routes';
-import type { Guest } from '../../../types/guest';
+import type { Guest } from '../../../types/core';
 
 export const GuestsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -135,7 +135,7 @@ export const GuestsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredGuests.length > 0 ? filteredGuests.map((guest) => (
+              {filteredGuests.length > 0 ? filteredGuests.map((guest: Guest) => (
                 <tr key={guest.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">

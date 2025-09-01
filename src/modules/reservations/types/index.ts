@@ -1,11 +1,19 @@
-// Central export file for all reservation types
-export type { Guest } from '../../../types/guest';
-export type { Room } from './room';
-export type { AdditionalService } from './service';
+/**
+ * Reservations Module Types - Central Export
+ * 
+ * All types specific to the reservations module.
+ * For shared domain entities (Guest, Room), import from @/types/core
+ */
+
+// Core domain entities (shared)
+export type { Guest, Room, AdditionalService } from '../../../types/core';
+
+// Reservation-specific domain types
 export type { 
+  Reservation,
+  ReservationStatus,
+  PaymentMethod,
+  ReservationFormData,
   SimpleReservationFormData,
-  ReservationFormData, 
-  ReservationValidationErrors, 
-  ReservationStatus, 
-  Reservation 
-} from './reservations';
+  ReservationValidationErrors
+} from './domain';

@@ -5,6 +5,7 @@ export interface CalendarDay {
   dateString: string;
   isToday: boolean;
   isPast: boolean;
+  isWeekend: boolean;
 }
 
 export interface RoomReservation {

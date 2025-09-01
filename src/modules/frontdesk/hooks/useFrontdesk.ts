@@ -1,14 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import FrontdeskService from '../services/frontdeskService';
-import type { 
-  Room, 
-  RoomFilters, 
-  QuickReservation, 
-  CheckIn, 
-  CheckOut,
-  UpdateRoom 
-} from '../types';
+import type { Room } from '../../../types/core';
+import type { RoomFilters } from '../types';
 
 // =================== QUERY KEYS ===================
 export const frontdeskKeys = {
@@ -60,18 +54,6 @@ export function useDashboardStats() {
   });
 }
 
-/**
- * Hook para obtener calendario de habitaciones
- */
-export function useRoomCalendar(startDate: string, endDate: string) {
-  return useQuery({
-    queryKey: frontdeskKeys.calendar(startDate, endDate),
-    queryFn: () => FrontdeskService.getRoomCalendar(startDate, endDate),
-    enabled: !!startDate && !!endDate,
-    staleTime: 1000 * 60 * 3, // 3 minutos
-  });
-}
-
 // =================== MUTATIONS ===================
 
 /**
@@ -96,90 +78,6 @@ export function useUpdateRoomStatus() {
     onError: (error) => {
       console.error('Error updating room status:', error);
       toast.error('Error al actualizar estado de habitación');
-    },
-  });
-}
-
-/**
- * Hook para actualizar habitación
- */
-export function useUpdateRoom() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateRoom }) =>
-      FrontdeskService.updateRoom(id, data),
-    onSuccess: (updatedRoom) => {
-      queryClient.invalidateQueries({ queryKey: frontdeskKeys.rooms() });
-      queryClient.setQueryData(frontdeskKeys.room(updatedRoom.id), updatedRoom);
-      toast.success('Habitación actualizada correctamente');
-    },
-    onError: (error) => {
-      console.error('Error updating room:', error);
-      toast.error('Error al actualizar habitación');
-    },
-  });
-}
-
-/**
- * Hook para crear reservación rápida
- */
-export function useCreateQuickReservation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: QuickReservation) => FrontdeskService.createQuickReservation(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: frontdeskKeys.rooms() });
-      queryClient.invalidateQueries({ queryKey: frontdeskKeys.stats() });
-      queryClient.invalidateQueries({ queryKey: frontdeskKeys.reservations() });
-      toast.success('Reservación creada exitosamente');
-    },
-    onError: (error) => {
-      console.error('Error creating reservation:', error);
-      toast.error('Error al crear reservación');
-    },
-  });
-}
-
-/**
- * Hook para realizar check-in
- */
-export function useCheckInMutation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: CheckIn) => FrontdeskService.checkIn(data),
-    onSuccess: (updatedRoom) => {
-      queryClient.invalidateQueries({ queryKey: frontdeskKeys.rooms() });
-      queryClient.invalidateQueries({ queryKey: frontdeskKeys.stats() });
-      queryClient.setQueryData(frontdeskKeys.room(updatedRoom.id), updatedRoom);
-      toast.success('Check-in realizado correctamente');
-    },
-    onError: (error) => {
-      console.error('Error during check-in:', error);
-      toast.error('Error al realizar check-in');
-    },
-  });
-}
-
-/**
- * Hook para realizar check-out
- */
-export function useCheckOutMutation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: CheckOut) => FrontdeskService.checkOut(data),
-    onSuccess: (updatedRoom) => {
-      queryClient.invalidateQueries({ queryKey: frontdeskKeys.rooms() });
-      queryClient.invalidateQueries({ queryKey: frontdeskKeys.stats() });
-      queryClient.setQueryData(frontdeskKeys.room(updatedRoom.id), updatedRoom);
-      toast.success('Check-out realizado correctamente');
-    },
-    onError: (error) => {
-      console.error('Error during check-out:', error);
-      toast.error('Error al realizar check-out');
     },
   });
 }

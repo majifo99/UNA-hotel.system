@@ -1,6 +1,28 @@
 import React from 'react';
-import type { RoomDetailsModalProps } from '../../types/calendar';
-import { ROOM_STATUS_COLORS, STATUS_LABELS } from '../../constants/calendar';
+import type { FrontdeskRoom, FrontdeskRoomStatus } from '../../types';
+
+interface RoomDetailsModalProps {
+  room: FrontdeskRoom | null;
+  onClose: () => void;
+}
+
+// Room status colors mapping
+const ROOM_STATUS_COLORS: Record<FrontdeskRoomStatus, string> = {
+  available: '#10B981',
+  reserved: '#8B5CF6',
+  'checked-in': '#EF4444', 
+  'checked-out': '#F97316',
+  maintenance: '#F59E0B'
+};
+
+// Status labels mapping
+const STATUS_LABELS: Record<FrontdeskRoomStatus, string> = {
+  available: 'Disponible',
+  reserved: 'Reservada',
+  'checked-in': 'Ocupada',
+  'checked-out': 'Check-out',
+  maintenance: 'Mantenimiento'
+};
 
 const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({ room, onClose }) => {
   if (!room) return null;
@@ -37,27 +59,21 @@ const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({ room, onClose }) =>
               {STATUS_LABELS[room.status]}
             </span>
           </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Precio por noche:</span>
+            <span className="font-medium">${room.pricePerNight}</span>
+          </div>
           {room.guestName && (
             <div className="flex justify-between">
               <span className="text-gray-600">Huésped:</span>
               <span className="font-medium">{room.guestName}</span>
             </div>
           )}
-          {room.checkIn && room.checkOut && (
-            <>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Check-in:</span>
-                <span className="font-medium">
-                  {new Date(room.checkIn).toLocaleDateString()}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Check-out:</span>
-                <span className="font-medium">
-                  {new Date(room.checkOut).toLocaleDateString()}
-                </span>
-              </div>
-            </>
+          {room.description && (
+            <div className="pt-2">
+              <span className="text-gray-600">Descripción:</span>
+              <p className="text-sm mt-1">{room.description}</p>
+            </div>
           )}
         </div>
       </div>

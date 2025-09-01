@@ -1,52 +1,25 @@
-/**
- * Service Data Adapter
- * 
- * Handles conversion between legacy AdditionalService interfaces and the new consolidated interface.
- */
+import type { AdditionalService } from '../../../types/core/domain';
 
-import type { AdditionalService } from '../../../types/core';
-
-// Legacy AdditionalService interface
+// Legacy service interface (from old adapters)
 interface LegacyAdditionalService {
   id: string;
   name: string;
   description: string;
   price: number;
   category: 'food' | 'spa' | 'transport' | 'entertainment' | 'other';
+  isActive: boolean;
 }
 
 /**
- * Convert legacy service data to new AdditionalService interface
+ * Adapts legacy additional services to the new domain format
  */
-export function adaptLegacyService(legacyService: LegacyAdditionalService): AdditionalService {
-  return {
-    ...legacyService,
-    isActive: true, // Default to active for existing services
-  };
-}
-
-/**
- * Convert array of legacy services to new AdditionalService interface
- */
-export function adaptLegacyServices(legacyServices: LegacyAdditionalService[]): AdditionalService[] {
-  return legacyServices.map(adaptLegacyService);
-}
-
-/**
- * Convert new AdditionalService interface back to legacy format
- */
-export function toLegacyService(service: AdditionalService): LegacyAdditionalService {
-  return {
+export const adaptLegacyServices = (legacyServices: LegacyAdditionalService[]): AdditionalService[] => {
+  return legacyServices.map((service): AdditionalService => ({
     id: service.id,
     name: service.name,
     description: service.description,
     price: service.price,
-    category: service.category as LegacyAdditionalService['category'],
-  };
-}
-
-export default {
-  adaptLegacyService,
-  adaptLegacyServices,
-  toLegacyService,
+    category: service.category === 'food' ? 'restaurant' : service.category,
+    isActive: service.isActive,
+  }));
 };

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plus, User, X } from 'lucide-react';
 import { useGuests } from '../../guests/hooks';
-import type { Guest } from '../../guests/types';
+import type { Guest } from '../../../types/core';
 
 interface GuestSelectorProps {
   selectedGuestId?: string;
@@ -21,7 +21,7 @@ export const GuestSelector: React.FC<GuestSelectorProps> = ({
   const { guests } = useGuests();
 
   // Find selected guest
-  const selectedGuest = guests.find(guest => guest.id === selectedGuestId);
+  const selectedGuest = guests.find((guest: Guest) => guest.id === selectedGuestId);
 
   // Filter guests based on search
   const filteredGuests = guests.filter((guest: Guest) =>
@@ -137,7 +137,7 @@ export const GuestSelector: React.FC<GuestSelectorProps> = ({
                 <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg">
                   {filteredGuests.length > 0 ? (
                     <div className="divide-y divide-gray-200">
-                      {filteredGuests.map((guest) => (
+                      {filteredGuests.map((guest: Guest) => (
                         <button
                           key={guest.id}
                           type="button"
