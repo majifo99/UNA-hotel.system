@@ -39,6 +39,15 @@ export const guestService = {
     }
 
     return {
+      success: true,
+      data: filteredGuests,
+      timestamp: new Date().toISOString(),
+      pagination: {
+        page: 1,
+        limit: 50,
+        total: filteredGuests.length,
+        totalPages: Math.ceil(filteredGuests.length / 50)
+      },
       guests: filteredGuests,
       total: filteredGuests.length,
       page: 1,
@@ -53,6 +62,7 @@ export const guestService = {
     const newGuest: Guest = {
       ...guestData,
       id: `guest_${Date.now()}`,
+      isActive: guestData.isActive ?? true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -80,6 +90,7 @@ export const guestService = {
     
     // En una app real, esto haría la actualización en el backend
     const updatedGuest: Guest = {
+      ...guestData,
       id,
       firstName: guestData.firstName || 'Nombre',
       lastName: guestData.lastName || 'Apellido',
@@ -90,7 +101,6 @@ export const guestService = {
       documentNumber: guestData.documentNumber || '0-0000-0000',
       isActive: guestData.isActive !== undefined ? guestData.isActive : true,
       createdAt: existingGuest?.createdAt || new Date().toISOString(),
-      ...guestData,
       updatedAt: new Date().toISOString()
     };
 

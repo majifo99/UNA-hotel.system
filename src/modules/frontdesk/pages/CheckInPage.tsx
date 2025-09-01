@@ -1,4 +1,4 @@
-import { CheckIn } from '../components/CheckIn';
+import CheckIn from '../components/CheckIn';
 
 const CheckInPage = () => {
   return (

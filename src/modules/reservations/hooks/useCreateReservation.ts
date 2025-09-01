@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import type { 
   SimpleReservationFormData, 
-  ReservationValidationErrors, 
-  Room, 
-  AdditionalService 
-} from '../../../types/core';
+  ReservationValidationErrors 
+} from '../types/domain';
+import type { Room } from '../../../types/core';
+import type { AdditionalService } from '../../../types/core/domain';
 import { reservationService } from '../services/reservationService';
 import { roomService } from '../services/roomService';
-import { adaptLegacyServices } from '../adapters/serviceAdapter';
 
 export const useCreateReservation = () => {
   const [formData, setFormData] = useState<SimpleReservationFormData>({
@@ -186,9 +185,8 @@ export const useCreateReservation = () => {
 
   const loadAdditionalServices = async () => {
     try {
-      const legacyServices = await reservationService.getAdditionalServices();
-      const adaptedServices = adaptLegacyServices(legacyServices);
-      setAdditionalServices(adaptedServices);
+      const services = await reservationService.getAdditionalServices();
+      setAdditionalServices(services);
     } catch (error) {
       console.error('Error loading additional services:', error);
     }

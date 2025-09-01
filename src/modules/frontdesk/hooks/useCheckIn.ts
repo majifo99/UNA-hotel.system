@@ -1,9 +1,23 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { CheckInData } from '../types/checkin';
-import { checkInSchema } from '../schemas/checkinSchema';
-import { z } from 'zod';
-import checkinService from '../services/checkinService';
+
+// Mock data para desarrollo
+const mockCheckIns: CheckInData[] = [];
+
+// Simular servicio de check-in
+const mockCheckinService = {
+  getCheckIns: async (): Promise<CheckInData[]> => {
+    return new Promise(resolve => setTimeout(() => resolve(mockCheckIns), 300));
+  },
+  createCheckIn: async (data: CheckInData): Promise<CheckInData> => {
+    return new Promise(resolve => {
+      const newCheckIn = { ...data, id: Date.now().toString() };
+      mockCheckIns.push(newCheckIn);
+      setTimeout(() => resolve(newCheckIn), 300);
+    });
+  }
+};
 
 export const useCheckIn = () => {
   const [error, setError] = useState<string | null>(null);
@@ -11,8 +25,8 @@ export const useCheckIn = () => {
 
   const { data: checkIns = [], isLoading: isLoadingCheckIns, error: queryError } = useQuery({
     queryKey: ['checkIns'],
-    queryFn: () => checkinService.getCheckIns(),
-  }) as { data: CheckInData[], isLoading: boolean, error: any };
+    queryFn: () => mockCheckinService.getCheckIns(),
+  });
 
   // Handle query error
   if (queryError && !error) {
@@ -20,7 +34,7 @@ export const useCheckIn = () => {
   }
 
   const createMutation = useMutation({
-    mutationFn: (data: CheckInData) => checkinService.createCheckIn(data),
+    mutationFn: (data: CheckInData) => mockCheckinService.createCheckIn(data),
     onSuccess: () => {
       setError(null);
       queryClient.invalidateQueries({ queryKey: ['checkIns'] });
@@ -33,15 +47,15 @@ export const useCheckIn = () => {
 
   const validateAndSubmit = async (data: CheckInData) => {
     try {
-      const sanitized = checkInSchema.parse(data);
-      await createMutation.mutateAsync(sanitized);
+      // Validación básica sin Zod
+      if (!data.reservationId || !data.roomNumber) {
+        throw new Error('Reservation ID and Room Number are required');
+      }
+      
+      await createMutation.mutateAsync(data);
       return true;
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        setError(err.issues[0]?.message ?? 'Validation failed');
-      } else {
-        setError('Unexpected error');
-      }
+      setError(err instanceof Error ? err.message : 'Unexpected error');
       return false;
     }
   };

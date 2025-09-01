@@ -1,8 +1,9 @@
-import type { Reservation } from '../types';
+import type { Reservation } from '../types/domain';
 
 export const reservationsData: Reservation[] = [
   {
     id: "res-001",
+    guestId: "guest-001", // Added guestId field
     guest: {
       id: "guest-001",
       firstName: "María",
@@ -36,6 +37,7 @@ export const reservationsData: Reservation[] = [
   },
   {
     id: "res-002",
+    guestId: "guest-002", // Added guestId field
     guest: {
       id: "guest-002",
       firstName: "Carlos",

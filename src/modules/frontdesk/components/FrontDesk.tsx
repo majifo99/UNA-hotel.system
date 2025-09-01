@@ -7,8 +7,51 @@ import {
   useDashboardStats, 
   useUpdateRoomStatus 
 } from '../hooks';
-import type { Room, RoomFilters } from '../types';
+import type { Room } from '../../../types/core/domain';
+import type { FrontdeskRoom, RoomFilters, FrontdeskRoomStatus, FrontdeskRoomType } from '../types';
 import CalendarView from './CalendarView';
+
+// Convert core Room to FrontdeskRoom
+const adaptRoomToFrontdesk = (room: Room): FrontdeskRoom => ({
+  ...room,
+  roomNumber: room.number || room.id,
+  guestName: undefined, // This would come from reservation data
+  status: mapRoomStatusToFrontdesk(room.status),
+  type: mapRoomTypeToFrontdesk(room.type),
+});
+
+const mapRoomStatusToFrontdesk = (status: Room['status']): FrontdeskRoomStatus => {
+  const statusMap: Record<NonNullable<Room['status']>, FrontdeskRoomStatus> = {
+    'available': 'available',
+    'occupied': 'checked-in',
+    'maintenance': 'maintenance',
+    'cleaning': 'checked-out',
+  };
+  return status ? statusMap[status] : 'available';
+};
+
+const mapRoomTypeToFrontdesk = (type: Room['type']): FrontdeskRoomType => {
+  const typeMap: Record<Room['type'], FrontdeskRoomType> = {
+    'single': 'Standard',
+    'double': 'Standard',
+    'triple': 'Standard',
+    'suite': 'Suite',
+    'family': 'Deluxe',
+    'deluxe': 'Deluxe',
+  };
+  return typeMap[type];
+};
+
+const mapFrontdeskStatusToRoom = (status: FrontdeskRoomStatus): Room['status'] => {
+  const statusMap: Record<FrontdeskRoomStatus, Room['status']> = {
+    'available': 'available',
+    'reserved': 'available', // Reserved rooms are technically available in core
+    'checked-in': 'occupied',
+    'checked-out': 'cleaning',
+    'maintenance': 'maintenance',
+  };
+  return statusMap[status];
+};
 
 // =================== CONSTANTS ===================
 const ROOM_STATUS_COLORS = {
@@ -16,8 +59,7 @@ const ROOM_STATUS_COLORS = {
   reserved: 'bg-purple-100 text-purple-800 border-purple-200',
   'checked-in': 'bg-red-100 text-red-800 border-red-200',
   'checked-out': 'bg-orange-100 text-orange-800 border-orange-200',
-  maintenance: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  cleaning: 'bg-blue-100 text-blue-800 border-blue-200'
+  maintenance: 'bg-yellow-100 text-yellow-800 border-yellow-200'
 } as const;
 
 const ROOM_STATUS_LABELS = {
@@ -25,8 +67,7 @@ const ROOM_STATUS_LABELS = {
   reserved: 'Reservada',
   'checked-in': 'Ocupada',
   'checked-out': 'Check-out',
-  maintenance: 'Mantenimiento',
-  cleaning: 'Limpieza'
+  maintenance: 'Mantenimiento'
 } as const;
 
 // =================== INTERFACES ===================
@@ -39,8 +80,8 @@ interface StatsCardProps {
 }
 
 interface RoomCardProps {
-  room: Room;
-  onStatusChange: (roomId: string, status: Room['status']) => void;
+  room: FrontdeskRoom;
+  onStatusChange: (roomId: string, status: FrontdeskRoom['status']) => void;
 }
 
 // =================== COMPONENTS ===================
@@ -98,7 +139,7 @@ const RoomCard: React.FC<RoomCardProps> = ({ room, onStatusChange }) => {
       <div className="flex gap-2">
         <select 
           value={room.status}
-          onChange={(e) => onStatusChange(room.id, e.target.value as Room['status'])}
+          onChange={(e) => onStatusChange(room.id, e.target.value as FrontdeskRoomStatus)}
           className="text-xs px-2 py-1 border rounded flex-1 bg-white"
         >
           <option value="available">Disponible</option>
@@ -127,8 +168,9 @@ const FrontDesk: React.FC = () => {
   const updateRoomStatusMutation = useUpdateRoomStatus();
 
   // Handlers
-  const handleStatusChange = (roomId: string, status: Room['status']) => {
-    updateRoomStatusMutation.mutate({ id: roomId, status });
+  const handleStatusChange = (roomId: string, status: FrontdeskRoomStatus) => {
+    const coreStatus = mapFrontdeskStatusToRoom(status);
+    updateRoomStatusMutation.mutate({ id: roomId, status: coreStatus });
   };
 
   const handleRefresh = () => {
@@ -136,14 +178,17 @@ const FrontDesk: React.FC = () => {
   };
 
   const filteredRooms = rooms.filter(room => {
-    if (filters.status && room.status !== filters.status) return false;
-    if (filters.type && room.type !== filters.type) return false;
+    const frontdeskRoom = adaptRoomToFrontdesk(room);
+    if (filters.status && frontdeskRoom.status !== filters.status) return false;
+    if (filters.type && frontdeskRoom.type !== filters.type) return false;
     if (filters.floor && room.floor !== filters.floor) return false;
+    if (filters.roomNumber && !frontdeskRoom.roomNumber?.includes(filters.roomNumber)) return false;
+    if (filters.guestName && !frontdeskRoom.guestName?.toLowerCase().includes(filters.guestName.toLowerCase())) return false;
     return true;
   });
 
-  // Get unique values for filters
-  const roomTypes = [...new Set(rooms.map(r => r.type))];
+  // Get unique values for filters - map to frontdesk types
+  const roomTypes: FrontdeskRoomType[] = [...new Set(rooms.map(r => mapRoomTypeToFrontdesk(r.type)))];
   const floors = [...new Set(rooms.map(r => r.floor))];
 
   return (
@@ -227,13 +272,13 @@ const FrontDesk: React.FC = () => {
           />
           <StatsCard
             title="Check-ins Hoy"
-            value={stats.todayCheckIns}
+            value={stats.checkInsToday}
             icon={<Clock className="w-6 h-6" />}
             color="text-blue-600"
           />
           <StatsCard
             title="Check-outs Hoy"
-            value={stats.todayCheckOuts}
+            value={stats.checkOutsToday}
             icon={<Clock className="w-6 h-6" />}
             color="text-purple-600"
           />
@@ -256,7 +301,7 @@ const FrontDesk: React.FC = () => {
                   </label>
                   <select
                     value={filters.status || ''}
-                    onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as Room['status'] || undefined }))}
+                    onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as FrontdeskRoomStatus || undefined }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Todos los estados</option>
@@ -277,7 +322,7 @@ const FrontDesk: React.FC = () => {
                     value={filters.type || ''}
                     onChange={(e) => setFilters(prev => ({ 
                       ...prev, 
-                      type: e.target.value as Room['type'] || undefined 
+                      type: e.target.value as FrontdeskRoomType || undefined 
                     }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
@@ -338,7 +383,7 @@ const FrontDesk: React.FC = () => {
                 {filteredRooms.map((room) => (
                   <RoomCard
                     key={room.id}
-                    room={room}
+                    room={adaptRoomToFrontdesk(room)}
                     onStatusChange={handleStatusChange}
                   />
                 ))}
