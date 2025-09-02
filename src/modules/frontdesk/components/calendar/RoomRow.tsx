@@ -60,10 +60,18 @@ const RoomRow: React.FC<RoomRowProps> = ({ room, calendarDays, onRoomClick }) =>
   return (
     <div className="flex border-b border-gray-200 hover:bg-gray-50">
       {/* Room Info Column */}
-      <div 
-        className="flex items-center p-3 bg-white sticky left-0 z-10 border-r border-gray-200 cursor-pointer hover:bg-gray-50"
+      <button
+        className="flex items-center p-3 bg-white sticky left-0 z-10 border-r border-gray-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
         style={{ minWidth: '200px' }}
         onClick={() => onRoomClick(room)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onRoomClick(room);
+          }
+        }}
+        aria-label={`Seleccionar habitación ${room.roomNumber || room.number}, tipo ${room.type}, estado ${room.status}`}
+        type="button"
       >
         <Bed className="w-4 h-4 text-gray-500 mr-2" />
         <div>
@@ -72,7 +80,7 @@ const RoomRow: React.FC<RoomRowProps> = ({ room, calendarDays, onRoomClick }) =>
           </div>
           <div className="text-sm text-gray-500">{room.type}</div>
         </div>
-      </div>
+      </button>
 
       {/* Calendar Days */}
       <div className="flex flex-1 relative">
