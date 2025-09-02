@@ -2,15 +2,21 @@ import { useEffect, useState, type JSX } from "react";
 import { ArrowUpDown, MoreHorizontal, UserCheck, KeyRound } from "lucide-react";
 import type { Room } from "../types/typesRoom";
 
-type RoomsTableProps = {
+type RoomsTableProps = Readonly<{
   sortedAndFilteredRooms: Room[];
   selectedRooms?: string[];
   toggleRoomSelection?: (id: string) => void;
   toggleAllRooms?: () => void;
   handleSort?: (field: keyof Room) => void;
   getStatusBadge?: (status: string) => JSX.Element;
-  // ⬇️ Un solo callback que recibe la acción
   onRowEdit?: (room: Room, action: "status" | "reassign") => void;
+}>;
+
+// ✅ Mapa para los títulos de columnas (evita ternario anidado)
+const COLUMN_LABEL: Record<"number" | "type" | "floor", string> = {
+  number: "Número",
+  type: "Tipo",
+  floor: "Piso",
 };
 
 export default function RoomsTable({
@@ -38,7 +44,7 @@ export default function RoomsTable({
   const onSortLocal =
     handleSort ??
     (() => {
-      console.log("Sorting not implemented externally");
+      /* noop */
     });
 
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -78,6 +84,11 @@ export default function RoomsTable({
     );
   }
 
+  const closeDetails = (el: HTMLElement) => {
+    const detailsEl = el.closest("details");
+    if (detailsEl instanceof HTMLDetailsElement) detailsEl.open = false;
+  };
+
   return (
     <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-xl overflow-hidden">
       <div className="overflow-x-auto">
@@ -95,20 +106,24 @@ export default function RoomsTable({
                   className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                 />
               </th>
+
               {(["number", "type", "floor"] as (keyof Room)[]).map((field) => (
                 <th
                   key={field}
                   className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider"
                 >
                   <button
+                    type="button"
                     onClick={() => onSortLocal(field)}
                     className="flex items-center gap-1 hover:text-slate-900 transition-colors"
                   >
-                    {field === "number" ? "Número" : field === "type" ? "Tipo" : "Piso"}
+                    {/* ✅ sin ternarios anidados */}
+                    {COLUMN_LABEL[field as "number" | "type" | "floor"]}
                     <ArrowUpDown className="w-3 h-3" />
                   </button>
                 </th>
               ))}
+
               <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Clave</th>
               <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Estado</th>
               <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Responsable</th>
@@ -116,6 +131,7 @@ export default function RoomsTable({
               <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Acciones</th>
             </tr>
           </thead>
+
           <tbody className="bg-white divide-y divide-slate-100">
             {paginatedRooms.map((room) => {
               const isSelected = selected.includes(room.id);
@@ -132,9 +148,11 @@ export default function RoomsTable({
                       className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                     />
                   </td>
+
                   <td className="px-6 py-4 text-sm text-slate-900 font-medium">{room.number}</td>
                   <td className="px-6 py-4 text-sm text-slate-600">{room.type}</td>
                   <td className="px-6 py-4 text-sm text-slate-600">{room.floor}</td>
+
                   <td className="px-6 py-4 text-sm text-slate-600">
                     {room.keyCode ? (
                       <div className="flex items-center gap-2">
@@ -145,13 +163,17 @@ export default function RoomsTable({
                       <span className="text-slate-400">—</span>
                     )}
                   </td>
+
                   <td className="px-6 py-4">
-                    {getStatusBadge ? getStatusBadge(room.status) : (
+                    {getStatusBadge ? (
+                      getStatusBadge(room.status)
+                    ) : (
                       <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-50 border border-slate-200 text-slate-700">
                         {room.status}
                       </span>
                     )}
                   </td>
+
                   <td className="px-6 py-4 text-sm text-slate-600">
                     {room.assignedTo ? (
                       <div className="flex items-center gap-2">
@@ -162,40 +184,54 @@ export default function RoomsTable({
                       <span className="text-slate-400">Sin asignar</span>
                     )}
                   </td>
+
                   <td className="px-6 py-4 text-sm text-slate-600">
                     {room.lastCleaned || <span className="text-slate-400">—</span>}
                   </td>
+
                   <td className="px-6 py-4 text-right">
                     <details className="relative">
                       <summary className="list-none cursor-pointer inline-flex items-center gap-1 text-slate-600 hover:text-slate-900 px-2 py-1 rounded-lg hover:bg-slate-100">
                         <MoreHorizontal className="h-4 w-4" />
                         <span className="text-xs">Opciones</span>
                       </summary>
-                      <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
+
+                      {/* ✅ rol interactivo en contenedor, no en <ul> */}
+                      <div
+                        className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-10"
+                        role="menu"
+                        aria-label="Opciones de habitación"
+                      >
                         <ul className="text-sm text-slate-700">
-                          <li
-                              className="px-3 py-2 hover:bg-slate-50 cursor-pointer"
+                          <li className="px-3 py-2">
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="w-full text-left hover:bg-slate-50 rounded-md px-1 py-1"
                               onClick={(e) => {
-                                onRowEdit?.(room, "status");           // ⬅️ abrir modal en modo "status"
-                                const d = e.currentTarget.closest("details") as HTMLDetailsElement | null;
-                                if (d) d.open = false;
+                                onRowEdit?.(room, "status");
+                                closeDetails(e.currentTarget as HTMLElement);
                               }}
                             >
                               Cambiar estado
-                            </li>
+                            </button>
+                          </li>
 
-                            <li
-                              className="px-3 py-2 hover:bg-slate-50 cursor-pointer"
+                          <li className="px-3 py-2">
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="w-full text-left hover:bg-slate-50 rounded-md px-1 py-1"
                               onClick={(e) => {
-                                onRowEdit?.(room, "reassign");         // ⬅️ abrir modal en modo "reassign"
-                                const d = e.currentTarget.closest("details") as HTMLDetailsElement | null;
-                                if (d) d.open = false;
+                                onRowEdit?.(room, "reassign");
+                                closeDetails(e.currentTarget as HTMLElement);
                               }}
                             >
                               Reasignar personal
+                            </button>
                           </li>
-                          <li className="px-3 py-2 text-slate-400 cursor-not-allowed">Ver historial</li>
-                          
+
+                          <li className="px-3 py-2 text-slate-400">Ver historial</li>
                         </ul>
                       </div>
                     </details>

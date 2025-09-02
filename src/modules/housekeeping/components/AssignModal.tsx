@@ -5,13 +5,13 @@ import { updateRoom } from "../services/roomService";
 import { STATUS_TO_KEY } from "../utils/statusToKey";
 import type { Room } from "../types/typesRoom";
 
-type AssignModalProps = {
+type AssignModalProps = Readonly<{
   isOpen: boolean;
   onClose: () => void;
-  onAssign: (staffName: string) => void; // refetch/cerrar
+  onAssign: (staffName: string) => void;
   selectedRoomId: string | null;
   mode: "assign" | "reassign" | "status";
-};
+}>;
 
 const ALL_STATUSES = [
   "Disponible",
@@ -24,6 +24,23 @@ const ALL_STATUSES = [
   "Mantenimiento",
 ] as const;
 
+/** Badge de estado (fuera del componente principal) */
+function StatusBadge({ status }: Readonly<{ status?: string }>) {
+  const base = "px-2 py-1 rounded-full text-xs font-semibold";
+  const map: Record<string, string> = {
+    Disponible: "bg-green-100 text-green-700",
+    "En limpieza": "bg-yellow-100 text-yellow-700",
+    Pendiente: "bg-rose-100 text-rose-700",
+    Inspección: "bg-blue-100 text-blue-700",
+    "Fuera de servicio": "bg-gray-200 text-gray-700",
+    Ocupada: "bg-purple-100 text-purple-700",
+    "No molestar": "bg-orange-100 text-orange-700",
+    Mantenimiento: "bg-amber-100 text-amber-700",
+  };
+  const cls = status && map[status] ? map[status] : "bg-slate-200 text-slate-700";
+  return <span className={`${base} ${cls}`}>{status ?? "—"}</span>;
+}
+
 export default function AssignModal({
   isOpen,
   onClose,
@@ -34,7 +51,7 @@ export default function AssignModal({
   const canEditStaff = mode === "assign" || mode === "reassign";
   const canEditStatus = mode === "status";
 
-  const { staff } = useStaff(); // muestra todos (disponibles y no)
+  const { staff } = useStaff();
   const { room, setRoom, isLoading: loadingRoom, error: errorRoom } = useRoomById(
     selectedRoomId,
     isOpen
@@ -45,7 +62,6 @@ export default function AssignModal({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Sincroniza selects cuando llega la habitación
   useEffect(() => {
     if (room) {
       setSelectedStaff(room.assignedTo ?? "");
@@ -53,13 +69,24 @@ export default function AssignModal({
     }
   }, [room]);
 
-  // ¿Hay cambios reales?
   const isChanged = useMemo(() => {
     if (!room) return false;
     const staffChanged = canEditStaff && (selectedStaff ?? "") !== (room.assignedTo ?? "");
     const statusChanged = canEditStatus && (selectedStatus ?? "") !== (room.status ?? "");
     return staffChanged || statusChanged;
   }, [room, selectedStaff, selectedStatus, canEditStaff, canEditStatus]);
+
+  const title = useMemo(() => {
+    switch (mode) {
+      case "assign":
+        return "Asignar responsable";
+      case "reassign":
+        return "Reasignar responsable";
+      case "status":
+      default:
+        return "Cambiar estado";
+    }
+  }, [mode]);
 
   const handleSave = async () => {
     if (!room || !selectedRoomId) return;
@@ -69,19 +96,16 @@ export default function AssignModal({
     setSubmitError(null);
 
     const payload: Partial<Room> = {};
-
-    // Cambios de responsable
     const staffChanged = canEditStaff && (selectedStaff ?? "") !== (room.assignedTo ?? "");
     if (staffChanged) payload.assignedTo = selectedStaff || "";
 
-    // Cambios de estado
     const statusChanged = canEditStatus && (selectedStatus ?? "") !== (room.status ?? "");
     if (statusChanged) {
       payload.status = selectedStatus || "";
       payload.keyCode = STATUS_TO_KEY[selectedStatus] ?? room.keyCode ?? "";
     }
 
-    // Regla: si asigno (mode="assign") y estaba Pendiente → En limpieza
+    // Regla: si asigno una Pendiente -> En limpieza
     if (mode === "assign" && room.status === "Pendiente" && staffChanged && selectedStaff) {
       payload.status = "En limpieza";
       payload.keyCode = STATUS_TO_KEY["En limpieza"] ?? "LIM";
@@ -107,27 +131,6 @@ export default function AssignModal({
   };
 
   if (!isOpen) return null;
-
-  const title =
-    mode === "assign" ? "Asignar responsable" :
-    mode === "reassign" ? "Reasignar responsable" :
-    "Cambiar estado";
-
-  const StatusBadge = ({ status }: { status?: string }) => {
-    const base = "px-2 py-1 rounded-full text-xs font-semibold";
-    const map: Record<string, string> = {
-      Disponible: "bg-green-100 text-green-700",
-      "En limpieza": "bg-yellow-100 text-yellow-700",
-      Pendiente: "bg-rose-100 text-rose-700",
-      Inspección: "bg-blue-100 text-blue-700",
-      "Fuera de servicio": "bg-gray-200 text-gray-700",
-      Ocupada: "bg-purple-100 text-purple-700",
-      "No molestar": "bg-orange-100 text-orange-700",
-      Mantenimiento: "bg-amber-100 text-amber-700",
-    };
-    const cls = status && map[status] ? map[status] : "bg-slate-200 text-slate-700";
-    return <span className={`${base} ${cls}`}>{status ?? "—"}</span>;
-  };
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
@@ -178,10 +181,11 @@ export default function AssignModal({
         {/* Responsable (assign/reassign) */}
         {canEditStaff && (
           <div className="mb-4">
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
+            <label htmlFor="staff-select" className="block text-sm font-semibold text-slate-700 mb-2">
               Responsable de limpieza
             </label>
             <select
+              id="staff-select"
               value={selectedStaff}
               onChange={(e) => setSelectedStaff(e.target.value)}
               disabled={submitting}
@@ -200,10 +204,11 @@ export default function AssignModal({
         {/* Estado (status) */}
         {canEditStatus && (
           <div className="mb-6">
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
+            <label htmlFor="status-select" className="block text-sm font-semibold text-slate-700 mb-2">
               Estado de la habitación
             </label>
             <select
+              id="status-select"
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
               disabled={submitting}

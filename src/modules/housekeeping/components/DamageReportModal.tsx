@@ -3,12 +3,12 @@ import { useRoomById } from "../hooks/useRoomById";
 import { updateRoom } from "../services/roomService";
 import { STATUS_TO_KEY } from "../utils/statusToKey";
 
-type DamageReportModalProps = {
+type DamageReportModalProps = Readonly<{
   isOpen: boolean;
   onClose: () => void;
   selectedRoomId: string | null;
   onSent: () => Promise<void> | void;
-};
+}>;
 
 export default function DamageReportModal({
   isOpen,
@@ -83,10 +83,11 @@ export default function DamageReportModal({
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
+            <label htmlFor="damage-description" className="block text-sm font-semibold text-slate-700 mb-2">
               Descripción del daño <span className="text-rose-600">*</span>
             </label>
             <textarea
+              id="damage-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
@@ -96,10 +97,11 @@ export default function DamageReportModal({
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
+            <label htmlFor="damage-image" className="block text-sm font-semibold text-slate-700 mb-2">
               Adjuntar imagen (opcional)
             </label>
             <input
+              id="damage-image"
               type="file"
               accept="image/*"
               onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
