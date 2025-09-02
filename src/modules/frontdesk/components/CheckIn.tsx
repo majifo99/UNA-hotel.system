@@ -98,10 +98,11 @@ const CheckIn = () => {
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Información del Huésped</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
                     Nombre <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="firstName"
                     type="text"
                     value={formData.firstName}
                     onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
@@ -111,10 +112,11 @@ const CheckIn = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
                     Apellido <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="lastName"
                     type="text"
                     value={formData.lastName}
                     onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
@@ -124,10 +126,11 @@ const CheckIn = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                     Email <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
@@ -137,33 +140,42 @@ const CheckIn = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
                     Teléfono <span className="text-red-500">*</span>
                   </label>
                   <PhoneInput
                     country={formData.phoneCountryCode}
                     value={formData.phone}
                     onChange={(phone) => setFormData(prev => ({ ...prev, phone }))}
+                    inputProps={{
+                      id: 'phone',
+                      name: 'phone',
+                      required: true,
+                    }}
                     inputClass="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="nationality" className="block text-sm font-medium text-gray-700 mb-2">
                     Nacionalidad <span className="text-red-500">*</span>
                   </label>
-                  <ReactFlagsSelect
-                    selected={formData.nationality}
-                    onSelect={(code) => setFormData(prev => ({ ...prev, nationality: code }))}
-                    className="w-full"
-                  />
+                  <div id="nationality">
+                    <ReactFlagsSelect
+                      selected={formData.nationality}
+                      onSelect={(code) => setFormData(prev => ({ ...prev, nationality: code }))}
+                      className="w-full"
+                      selectButtonClassName="react-flags-select-button"
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="identificationNumber" className="block text-sm font-medium text-gray-700 mb-2">
                     Número de Identificación <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="identificationNumber"
                     type="text"
                     value={formData.identificationNumber}
                     onChange={(e) => setFormData(prev => ({ ...prev, identificationNumber: e.target.value }))}
@@ -179,10 +191,11 @@ const CheckIn = () => {
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Información de la Habitación</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="roomNumber" className="block text-sm font-medium text-gray-700 mb-2">
                     Número de Habitación <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="roomNumber"
                     type="text"
                     value={formData.roomNumber}
                     onChange={(e) => setFormData(prev => ({ ...prev, roomNumber: e.target.value }))}
@@ -192,10 +205,11 @@ const CheckIn = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="checkInDate" className="block text-sm font-medium text-gray-700 mb-2">
                     Fecha de Check-In <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="checkInDate"
                     type="date"
                     value={formData.checkInDate}
                     onChange={(e) => setFormData(prev => ({ ...prev, checkInDate: e.target.value }))}
@@ -205,10 +219,11 @@ const CheckIn = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="numberOfGuests" className="block text-sm font-medium text-gray-700 mb-2">
                     Número de Huéspedes <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="numberOfGuests"
                     type="number"
                     min="1"
                     value={formData.numberOfGuests}
