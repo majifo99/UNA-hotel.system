@@ -157,17 +157,17 @@ const CheckIn = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="nationality" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label id="nationality-label" className="block text-sm font-medium text-gray-700 mb-2">
                     Nacionalidad <span className="text-red-500">*</span>
                   </label>
-                  <div id="nationality">
-                    <ReactFlagsSelect
-                      selected={formData.nationality}
-                      onSelect={(code) => setFormData(prev => ({ ...prev, nationality: code }))}
-                      className="w-full"
-                      selectButtonClassName="react-flags-select-button"
-                    />
-                  </div>
+                  <ReactFlagsSelect
+                    selected={formData.nationality}
+                    onSelect={(code) => setFormData(prev => ({ ...prev, nationality: code }))}
+                    className="w-full"
+                    selectButtonClassName="react-flags-select-button"
+                    aria-labelledby="nationality-label"
+                    aria-required="true"
+                  />
                 </div>
 
                 <div>

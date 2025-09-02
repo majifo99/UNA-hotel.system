@@ -33,6 +33,15 @@ const ROOM_STATUS_COLORS: Record<FrontdeskRoomStatus, string> = {
   maintenance: '#F59E0B'
 };
 
+// Room status translations for accessibility
+const ROOM_STATUS_LABELS: Record<FrontdeskRoomStatus, string> = {
+  available: 'disponible',
+  reserved: 'reservada',
+  'checked-in': 'ocupada',
+  'checked-out': 'liberada',
+  maintenance: 'en mantenimiento'
+};
+
 const RoomRow: React.FC<RoomRowProps> = ({ room, calendarDays, onRoomClick }) => {
   const reservations = useMemo(() => {
     const result: RoomReservation[] = [];
@@ -70,7 +79,7 @@ const RoomRow: React.FC<RoomRowProps> = ({ room, calendarDays, onRoomClick }) =>
             onRoomClick(room);
           }
         }}
-        aria-label={`Seleccionar habitación ${room.roomNumber || room.number}, tipo ${room.type}, estado ${room.status}`}
+        aria-label={`Seleccionar habitación ${room.roomNumber || room.number}, tipo ${room.type}, estado ${ROOM_STATUS_LABELS[room.status]}`}
         type="button"
       >
         <Bed className="w-4 h-4 text-gray-500 mr-2" />

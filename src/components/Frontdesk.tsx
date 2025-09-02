@@ -496,19 +496,21 @@ export default function Frontdesk() {
       </div>
 
       {/* Modal Reserva */}
-      <div className={`${modalOpen ? '' : 'hidden'} fixed inset-0 z-50`} role="dialog" aria-modal="true" aria-labelledby="modal-title">
-        <div 
-          className="absolute inset-0 bg-black/40" 
+      <dialog 
+        open={modalOpen}
+        className="fixed inset-0 z-50 bg-transparent p-0 m-0 w-full h-full max-w-none max-h-none"
+        aria-labelledby="modal-title"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            setModalOpen(false);
+          }
+        }}
+      >
+        <button 
+          className="absolute inset-0 bg-black/40 border-0 p-0 cursor-default" 
           onClick={() => setModalOpen(false)}
-          role="button"
-          tabIndex={0}
           aria-label="Cerrar modal"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              setModalOpen(false);
-            }
-          }}
         />
         <div className="absolute inset-0 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow p-4 w-full max-w-lg">
@@ -599,7 +601,7 @@ export default function Frontdesk() {
             </div>
           </div>
         </div>
-      </div>
+      </dialog>
 
       {/* Toast */}
       {toast && (
