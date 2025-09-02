@@ -59,32 +59,30 @@ export const Modal: React.FC<ModalProps> = ({
     }
   };
 
-  const handleBackdropKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      if (e.target === e.currentTarget) {
-        e.preventDefault();
-        onClose();
-      }
-    }
-  };
-
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm"
-      onClick={handleBackdropClick}
-      onKeyDown={handleBackdropKeyDown}
-      role="button"
-      tabIndex={0}
-      aria-label="Cerrar modal haciendo clic en el fondo"
+    <dialog 
+      open={isOpen}
+      className="fixed inset-0 z-50 bg-transparent p-0 m-0 w-full h-full max-w-none max-h-none"
+      aria-labelledby="modal-title"
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          onClose();
+        }
+      }}
     >
-      <div 
-        ref={modalRef}
-        className={`w-full ${sizeClasses[size]} bg-white rounded-lg shadow-xl max-h-[90vh] overflow-hidden`}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="modal-title"
-        tabIndex={-1}
-      >
+      <button 
+        className="absolute inset-0 bg-black/20 backdrop-blur-sm border-0 cursor-default"
+        onClick={handleBackdropClick}
+        aria-label="Cerrar modal haciendo clic en el fondo"
+        type="button"
+      />
+      <div className="absolute inset-0 flex items-center justify-center p-4">
+        <div 
+          ref={modalRef}
+          className={`w-full ${sizeClasses[size]} bg-white rounded-lg shadow-xl max-h-[90vh] overflow-hidden`}
+          tabIndex={-1}
+        >
         {/* Modal Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 id="modal-title" className="text-xl font-semibold text-gray-900">{title}</h2>
@@ -103,7 +101,8 @@ export const Modal: React.FC<ModalProps> = ({
           {children}
         </div>
       </div>
-    </div>
+      </div>
+    </dialog>
   );
 };
 
