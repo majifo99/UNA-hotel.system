@@ -1,10 +1,12 @@
 // CheckIn.tsx — Simplificado para migración
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, LogIn } from 'lucide-react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import ReactFlagsSelect from 'react-flags-select';
 import { useCheckIn } from '../hooks/useCheckIn';
+import { ROUTES } from '../../../router/routes';
 import type { CheckInData } from '../types/checkin';
 
 type LocalState = {
@@ -56,7 +58,7 @@ const CheckIn = () => {
 
     const success = await validateAndSubmit(checkInData);
     if (success) {
-      navigate('/frontdesk');
+      navigate(ROUTES.FRONTDESK.BASE);
     }
   };
 
@@ -64,7 +66,25 @@ const CheckIn = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
         <div className="bg-white rounded-lg shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">Check-In</h1>
+          {/* Header with centered title and back button */}
+          <div className="relative flex items-center justify-center mb-8">
+            {/* Centered title */}
+            <div className="flex items-center gap-3">
+              <LogIn className="w-8 h-8 text-green-600" />
+              <h1 className="text-3xl font-bold text-gray-900">Check-In</h1>
+            </div>
+            
+            {/* Back button positioned in top right */}
+            <button
+              type="button"
+              onClick={() => navigate(ROUTES.FRONTDESK.BASE)}
+              className="absolute left-0 flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+              title="Regresar al Dashboard"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span className="hidden sm:inline">Regresar</span>
+            </button>
+          </div>
           
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
@@ -204,7 +224,7 @@ const CheckIn = () => {
             <div className="flex justify-end space-x-4">
               <button
                 type="button"
-                onClick={() => navigate('/frontdesk')}
+                onClick={() => navigate(ROUTES.FRONTDESK.BASE)}
                 className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 Cancelar
