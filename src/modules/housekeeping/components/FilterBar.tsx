@@ -78,6 +78,7 @@ export default function FilterBar({ filters, setFilters, totalRooms }: FilterBar
               <option value="En limpieza">En limpieza</option>
               <option value="Inspección">Inspección</option>
               <option value="Fuera de servicio">Fuera de servicio</option>
+                <option value="Mantenimiento">Mantenimiento</option> {/* 🆕 */}
             </select>
 
             {/* Tipo */}

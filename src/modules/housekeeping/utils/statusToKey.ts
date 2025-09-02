@@ -7,4 +7,5 @@ export const STATUS_TO_KEY: Record<string, string> = {
   "No molestar": "NM",
   "Fuera de servicio": "FS",
   "Ocupada": "OCC", // ajusta si usas otro código
+   "Mantenimiento": "MANT", // 🆕
 };

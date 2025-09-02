@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, ClipboardCheck, Users } from "lucide-react";
-import { FiLogOut } from "react-icons/fi";
 import { HiOutlineDocumentReport } from "react-icons/hi";
+import { FiLogOut } from "react-icons/fi";
+import { Users, ClipboardCheck, AlertTriangle } from "lucide-react";   
+import FilterBar from "../components/FilterBar";
 import RoomsTable from "../components/RoomsTable";
-import FilterBar, { type RoomFilters } from "../components/FilterBar";
-import { useRooms } from "../hooks/useRooms";
 import AssignModal from "../components/AssignModal";
-import { updateRoom } from "../services/roomService";
+import DamageReportModal from "../components/DamageReportModal";
+import { useRooms } from "../hooks/useRooms";
+import type { RoomFilters } from "../types/typesRoom";
+
 
 export default function HousekeepingDashboard() {
   const [filters, setFilters] = useState<RoomFilters>({
@@ -15,24 +17,23 @@ export default function HousekeepingDashboard() {
     type: "",
     floor: "",
   });
+
   const { rooms, isLoading, refetch } = useRooms(filters);
   const [selectedRooms, setSelectedRooms] = useState<string[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState<"assign" | "reassign" | "status">("assign");
+  const [showDamageModal, setShowDamageModal] = useState(false);
 
   const filteredRooms = useMemo(() => {
     return rooms
-      .filter((room) =>
-        room.number.toLowerCase().includes(filters.search.toLowerCase().trim())
-      )
+      .filter((room) => room.number.toLowerCase().includes(filters.search.toLowerCase().trim()))
       .filter((room) => (filters.status ? room.status === filters.status : true))
       .filter((room) => (filters.type ? room.type === filters.type : true))
       .filter((room) => (filters.floor ? room.floor === parseInt(filters.floor) : true));
   }, [rooms, filters]);
 
   const counts = useMemo(() => {
-    const countByStatus = (status: string) =>
-      filteredRooms.filter((r) => r.status === status).length;
-
+    const countByStatus = (status: string) => filteredRooms.filter((r) => r.status === status).length;
     return {
       Pendiente: countByStatus("Pendiente"),
       "En limpieza": countByStatus("En limpieza"),
@@ -42,33 +43,32 @@ export default function HousekeepingDashboard() {
     };
   }, [filteredRooms]);
 
-  const handleAssign = async (staffName: string) => {
-    if (selectedRooms.length > 0) {
-      try {
-        await updateRoom(selectedRooms[0], { assignedTo: staffName, status: "En limpieza" });
-        console.log(`Asignando habitación ${selectedRooms[0]} a ${staffName}`);
-        await refetch();
-        setShowModal(false);
-        setSelectedRooms([]);
-      } catch (error) {
-        console.error("Error al asignar:", error);
-      }
-    }
+  // Selección de una sola habitación
+  const handleToggleRoomSelection = (id: string) => {
+    setSelectedRooms((prev) => (prev.includes(id) ? prev.filter((roomId) => roomId !== id) : [id]));
   };
 
-  const handleOpenModal = () => {
-    console.log("Intentando abrir modal. selectedRooms:", selectedRooms);
+  // Botón superior: Asignar (solo responsable)
+  const handleOpenAssignModal = () => {
     if (selectedRooms.length > 0) {
+      setModalMode("assign");
       setShowModal(true);
     } else {
-      alert("Por favor, selecciona una habitación pendiente primero.");
+      alert("Por favor, selecciona una habitación primero.");
     }
   };
 
-  const handleToggleRoomSelection = (id: string) => {
-    setSelectedRooms((prev) =>
-      prev.includes(id) ? prev.filter((roomId) => roomId !== id) : [id] // Solo una selección a la vez
-    );
+  // Reportar daño
+  const handleOpenDamageModal = () => {
+    if (selectedRooms.length > 0) setShowDamageModal(true);
+    else alert("Por favor, selecciona una habitación primero.");
+  };
+
+  // El modal ya actualiza; aquí solo refrescamos y cerramos
+  const handleAssignDone = async () => {
+    await refetch();
+    setShowModal(false);
+    setSelectedRooms([]);
   };
 
   return (
@@ -139,20 +139,24 @@ export default function HousekeepingDashboard() {
           {/* Acciones */}
           <div className="flex flex-wrap gap-3">
             <button
-              onClick={handleOpenModal}
+              onClick={handleOpenAssignModal}
               className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white shadow-sm"
               disabled={selectedRooms.length === 0}
             >
               <Users className="h-4 w-4" />
-              Asignar limpieza
+              Asignar responsable
             </button>
             <button className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium border border-slate-300 text-slate-700 bg-white/80 hover:bg-white shadow-sm">
               <ClipboardCheck className="h-4 w-4" />
               Inspección Check-out
             </button>
-            <button className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium border border-slate-300 text-slate-700 bg-white/80 hover:bg-white shadow-sm">
+            <button
+              onClick={handleOpenDamageModal}
+              className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium border border-slate-300 text-slate-700 bg-white/80 hover:bg-white shadow-sm"
+              disabled={selectedRooms.length === 0}
+            >
               <AlertTriangle className="h-4 w-4" />
-              Reportar Daño
+              Reportar daño
             </button>
           </div>
 
@@ -164,6 +168,11 @@ export default function HousekeepingDashboard() {
               sortedAndFilteredRooms={filteredRooms}
               selectedRooms={selectedRooms}
               toggleRoomSelection={handleToggleRoomSelection}
+              onRowEdit={(room, action) => {
+                setSelectedRooms([room.id]);
+                setModalMode(action === "status" ? "status" : "reassign");
+                setShowModal(true);
+              }}
             />
           )}
 
@@ -171,11 +180,21 @@ export default function HousekeepingDashboard() {
             Total: {counts.total} habitaciones
           </div>
 
+          {/* Modal único con modos */}
           <AssignModal
             isOpen={showModal}
             onClose={() => setShowModal(false)}
-            onAssign={handleAssign}
-            selectedRoomId={selectedRooms[0]}
+            onAssign={handleAssignDone}
+            selectedRoomId={selectedRooms[0] ?? null}
+            mode={modalMode}
+          />
+
+          {/* Modal de reporte de daño */}
+          <DamageReportModal
+            isOpen={showDamageModal}
+            onClose={() => setShowDamageModal(false)}
+            selectedRoomId={selectedRooms[0] ?? null}
+            onSent={refetch}
           />
         </div>
       </main>
