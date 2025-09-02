@@ -1,46 +1,49 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useCreateReservation } from '../hooks/useCreateReservation';
+import { useCreateReservationForm } from '../hooks/useCreateReservationForm';
 import { GuestSelector } from './GuestSelector';
+import { RoomSelection } from './sections/RoomSelection';
 import {
   FormHeader,
   SectionWrapper,
   ReservationDetailsForm,
-  RoomSelection,
   PricingSummary,
   SpecialRequests,
-  ErrorDisplay,
   FormActions
 } from './index';
 
 export const CreateReservationForm: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  
   const {
+    form,
     formData,
     errors,
-    isLoading,
+    isValid,
+    isSubmitting,
     availableRooms,
-    updateFormField,
     submitReservation,
-  } = useCreateReservation();
+    setValue,
+    trigger,
+  } = useCreateReservationForm();
+
+  const { handleSubmit } = form;
 
   // Recibir datos de servicios seleccionados cuando se regresa de la página de servicios
   React.useEffect(() => {
     if (location.state?.additionalServices) {
-      updateFormField('additionalServices', location.state.additionalServices);
-      // Scroll to top when returning from services page
+      setValue('additionalServices', location.state.additionalServices);
       window.scrollTo(0, 0);
     }
-  }, [location.state, updateFormField]);
+  }, [location.state, setValue]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const success = await submitReservation();
+  const onSubmit = handleSubmit(async (data) => {
+    const success = await submitReservation(data);
     if (success) {
-      alert('Reserva creada exitosamente');
+      // navigate('/frontdesk');
     }
-  };
+  });
 
   const handleSelectServices = () => {
     navigate('/reservations/create/services', {
@@ -55,6 +58,11 @@ export const CreateReservationForm: React.FC = () => {
     navigate('/guests/create');
   };
 
+  // Helper function to get error message
+  const getErrorMessage = (error: any): string | undefined => {
+    return error?.message || undefined;
+  };
+
   return (
     <div className="max-w-6xl mx-auto p-8 bg-white">
       <FormHeader
@@ -63,7 +71,7 @@ export const CreateReservationForm: React.FC = () => {
         badge="FrontDesk"
       />
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={onSubmit} className="space-y-8">
         {/* Selector de Huésped */}
         <SectionWrapper
           title="Información del Huésped"
@@ -71,9 +79,9 @@ export const CreateReservationForm: React.FC = () => {
         >
           <GuestSelector
             selectedGuestId={formData.guestId}
-            onGuestSelect={(guestId) => updateFormField('guestId', guestId)}
+            onGuestSelect={(guestId) => setValue('guestId', guestId)}
             onCreateNewGuest={handleCreateNewGuest}
-            error={errors.guestId}
+            error={getErrorMessage(errors.guestId)}
           />
         </SectionWrapper>
 
@@ -86,28 +94,75 @@ export const CreateReservationForm: React.FC = () => {
             formData={{
               checkInDate: formData.checkInDate,
               checkOutDate: formData.checkOutDate,
+              numberOfAdults: formData.numberOfAdults,
+              numberOfChildren: formData.numberOfChildren,
               numberOfGuests: formData.numberOfGuests,
               numberOfNights: formData.numberOfNights,
             }}
-            errors={errors}
-            onFieldChange={updateFormField}
+            errors={{
+              checkInDate: getErrorMessage(errors.checkInDate),
+              checkOutDate: getErrorMessage(errors.checkOutDate),
+              numberOfAdults: getErrorMessage(errors.numberOfAdults),
+              numberOfChildren: getErrorMessage(errors.numberOfChildren),
+              numberOfGuests: getErrorMessage(errors.numberOfGuests),
+            }}
+            onFieldChange={(field, value) => setValue(field, value)}
           />
         </SectionWrapper>
 
         {/* Selección de Habitación */}
-        {availableRooms.length > 0 && (
-          <SectionWrapper
-            title="Selección de Habitación"
-            description="Elija el tipo de habitación disponible"
-          >
+        <SectionWrapper
+          title="Selección de Habitación"
+          description="Elija el tipo de habitación disponible"
+        >
+          {availableRooms.length > 0 ? (
             <RoomSelection
               availableRooms={availableRooms}
-              selectedRoomType={formData.roomType}
-              onRoomSelect={(roomType) => updateFormField('roomType', roomType)}
-              error={errors.roomType}
+              selectedRoomIds={formData.roomIds}
+              onRoomSelect={(roomIds: string[]) => {
+                console.log('Selecting room IDs:', roomIds, 'Previous:', formData.roomIds);
+                // Set the selected room IDs
+                setValue('roomIds', roomIds);
+                
+                // For backwards compatibility, also set roomId and roomType with the first selected room
+                if (roomIds.length > 0) {
+                  const firstRoom = availableRooms.find(room => room.id === roomIds[0]);
+                  setValue('roomId', roomIds[0]);
+                  if (firstRoom) {
+                    setValue('roomType', firstRoom.type as 'single' | 'double' | 'triple' | 'suite' | 'family');
+                  }
+                } else {
+                  setValue('roomId', '');
+                  setValue('roomType', 'single');
+                }
+                
+                // Trigger validation
+                trigger('roomIds');
+              }}
+              numberOfGuests={formData.numberOfGuests}
+              allowMultiple={formData.numberOfGuests > 2}
+              error={getErrorMessage(errors.roomIds) || getErrorMessage(errors.roomId) || getErrorMessage(errors.roomType)}
             />
-          </SectionWrapper>
-        )}
+          ) : (
+            <div className="border border-gray-200 rounded-lg p-6 text-center">
+              <div className="space-y-3">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-900">
+                  {!formData.checkInDate || !formData.checkOutDate 
+                    ? 'Seleccione las fechas para ver habitaciones disponibles' 
+                    : 'No hay habitaciones disponibles'}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {!formData.checkInDate || !formData.checkOutDate 
+                    ? 'Complete las fechas de entrada y salida en la sección anterior'
+                    : 'No se encontraron habitaciones disponibles para las fechas seleccionadas. Intente con otras fechas.'}
+                </p>
+              </div>
+            </div>
+          )}
+        </SectionWrapper>
 
         {/* Servicios Adicionales */}
         <SectionWrapper
@@ -161,11 +216,11 @@ export const CreateReservationForm: React.FC = () => {
         </SectionWrapper>
 
         {/* Resumen de Precios */}
-        {formData.total > 0 && (
-          <SectionWrapper
-            title="Resumen de Precios"
-            description="Desglose de costos de la reserva"
-          >
+        <SectionWrapper
+          title="Resumen de Precios"
+          description="Desglose de costos de la reserva"
+        >
+          {formData.total > 0 ? (
             <PricingSummary
               pricing={{
                 subtotal: formData.subtotal,
@@ -176,8 +231,22 @@ export const CreateReservationForm: React.FC = () => {
                 numberOfNights: formData.numberOfNights,
               }}
             />
-          </SectionWrapper>
-        )}
+          ) : (
+            <div className="border border-gray-200 rounded-lg p-6 text-center">
+              <div className="space-y-3">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-900">
+                  Precios por calcular
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Complete la información de fechas y habitación para ver el desglose de precios
+                </p>
+              </div>
+            </div>
+          )}
+        </SectionWrapper>
 
         {/* Solicitudes Especiales */}
         <SectionWrapper
@@ -186,18 +255,15 @@ export const CreateReservationForm: React.FC = () => {
         >
           <SpecialRequests
             value={formData.specialRequests || ''}
-            onChange={(value) => updateFormField('specialRequests', value)}
+            onChange={(value) => setValue('specialRequests', value)}
           />
         </SectionWrapper>
 
-        {/* Error General */}
-        <ErrorDisplay error={errors.general || ''} />
-
         {/* Botones de Acción */}
         <FormActions
-          isLoading={isLoading}
-          isDisabled={availableRooms.length === 0}
-          onSubmit={handleSubmit}
+          isLoading={isSubmitting}
+          isDisabled={!isValid || availableRooms.length === 0}
+          onSubmit={onSubmit}
           submitText="Crear Reserva"
         />
       </form>
