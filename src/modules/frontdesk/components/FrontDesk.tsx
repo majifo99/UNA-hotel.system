@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, Users, Bed, Filter, RefreshCw, Calendar, Grid, LogIn } from 'lucide-react';
+import { Clock, Users, Bed, Filter, RefreshCw, Calendar, Grid, LogIn, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../router/routes';
 import { 
@@ -250,6 +250,13 @@ const FrontDesk: React.FC = () => {
           >
             <LogIn className="w-4 h-4" />
             Check-in
+          </button>
+          <button
+            onClick={() => navigate(ROUTES.FRONTDESK.CHECKOUT)}
+            className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+          >
+            <LogOut className="w-4 h-4" />
+            Check-out
           </button>
         </div>
       </div>

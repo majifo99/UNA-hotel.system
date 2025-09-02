@@ -22,6 +22,7 @@ export const ROUTES = {
   FRONTDESK: {
     BASE: '/frontdesk',
     CHECKIN: '/frontdesk/checkin',
+    CHECKOUT: '/frontdesk/checkout',
     DASHBOARD: '/frontdesk/dashboard',
     REGISTER: '/frontdesk/register',
   },

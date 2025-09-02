@@ -10,6 +10,7 @@ import { GuestsPage } from '../modules/guests/pages/GuestsPage';
 import { CreateGuestPage } from '../modules/guests/pages/CreateGuestPage';
 import FrontDesk from '../modules/frontdesk/components/FrontDesk';
 import { default as CheckInPage } from '../modules/frontdesk/pages/CheckInPage';
+import { default as CheckOutPage } from '../modules/frontdesk/pages/CheckOutPage';
 import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
 
 /**
@@ -100,6 +101,10 @@ const router = createBrowserRouter([
           {
             path: 'checkin',
             element: <CheckInPage />,
+          },
+          {
+            path: 'checkout',
+            element: <CheckOutPage />,
           },
           {
             path: 'register',
