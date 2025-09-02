@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import ReactFlagsSelect from 'react-flags-select';
-import { Search, CreditCard, FileText, LogOut } from 'lucide-react';
+import { Search, CreditCard, FileText, LogOut, ArrowLeft } from 'lucide-react';
 import { useCheckout } from '../hooks/useCheckout';
+import { ROUTES } from '../../../router/routes';
 import type { CheckoutFormData, ReceiptData } from '../types/checkout';
 import BillingSection from './BillingSection';
 import ReceiptModal from './ReceiptModal';
@@ -45,20 +46,12 @@ const CheckOut = () => {
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
 
-  // Calculate final amount when total or additional charges change
-  useEffect(() => {
-    setFormData(prev => ({
-      ...prev,
-      finalAmount: prev.totalAmount + prev.additionalCharges
-    }));
-  }, [formData.totalAmount, formData.additionalCharges]);
-
   const handleSearchReservation = async () => {
     if (!searchId.trim()) {
       setError('Por favor ingrese un ID de reservación para buscar');
       return;
     }
-    
+
     const reservation = await searchReservation(searchId);
     if (reservation) {
       setFormData(reservation);
@@ -72,7 +65,7 @@ const CheckOut = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const success = await validateAndSubmit(formData);
     if (success) {
       // Generate receipt data
@@ -95,7 +88,7 @@ const CheckOut = () => {
         paymentStatus: formData.paymentStatus === 'completed' ? 'Completado' : 'Pendiente',
         notes: formData.notes
       };
-      
+
       setReceiptData(receipt);
       setShowReceipt(true);
     }
@@ -103,7 +96,7 @@ const CheckOut = () => {
 
   const handleCloseReceipt = () => {
     setShowReceipt(false);
-    navigate('/frontdesk');
+    navigate(ROUTES.FRONTDESK.BASE);
   };
 
   return (
@@ -111,11 +104,24 @@ const CheckOut = () => {
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-6xl mx-auto px-4">
           <div className="bg-white rounded-lg shadow-lg p-8">
-            <div className="flex items-center gap-3 mb-8">
-              <LogOut className="w-8 h-8 text-red-600" />
-              <h1 className="text-3xl font-bold text-gray-900">Check-Out</h1>
+            {/* Header with centered title and back button */}
+            <div className="relative flex items-center justify-center mb-8">
+              <div className="flex items-center gap-3">
+                <LogOut className="w-8 h-8 text-red-600" />
+                <h1 className="text-3xl font-bold text-gray-900">Check-Out</h1>
+              </div>
+              
+              <button
+                type="button"
+                onClick={() => navigate(ROUTES.FRONTDESK.BASE)}
+                className="absolute left-0 flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                title="Regresar al Dashboard"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                <span className="hidden sm:inline">Regresar</span>
+              </button>
             </div>
-            
+
             {error && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
                 {error}
@@ -323,7 +329,14 @@ const CheckOut = () => {
                       step="0.01"
                       min="0"
                       value={formData.totalAmount}
-                      onChange={(e) => setFormData(prev => ({ ...prev, totalAmount: parseFloat(e.target.value) || 0 }))}
+                      onChange={(e) => {
+                        const totalAmount = parseFloat(e.target.value) || 0;
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          totalAmount,
+                          finalAmount: totalAmount + prev.additionalCharges
+                        }));
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -337,7 +350,14 @@ const CheckOut = () => {
                       step="0.01"
                       min="0"
                       value={formData.additionalCharges}
-                      onChange={(e) => setFormData(prev => ({ ...prev, additionalCharges: parseFloat(e.target.value) || 0 }))}
+                      onChange={(e) => {
+                        const additionalCharges = parseFloat(e.target.value) || 0;
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          additionalCharges,
+                          finalAmount: prev.totalAmount + additionalCharges
+                        }));
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -377,7 +397,7 @@ const CheckOut = () => {
               <div className="flex justify-end space-x-4">
                 <button
                   type="button"
-                  onClick={() => navigate('/frontdesk')}
+                  onClick={() => navigate(ROUTES.FRONTDESK.BASE)}
                   className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   Cancelar

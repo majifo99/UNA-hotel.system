@@ -61,7 +61,7 @@ const BillingSection: React.FC<BillingSectionProps> = ({
     
     const newGrandTotal = newSubtotal + newTaxAmount - discountAmount;
     setGrandTotal(newGrandTotal);
-  }, [billingItems, taxRate, discountAmount, setSubtotal, setTaxAmount, setGrandTotal]);
+  }, [billingItems, taxRate, discountAmount]); // Removed setters from dependencies
 
   // Calculate bill splits when enabled
   useEffect(() => {
@@ -83,7 +83,7 @@ const BillingSection: React.FC<BillingSectionProps> = ({
     } else {
       setBillSplits([]);
     }
-  }, [splitBill, numberOfSplits, subtotal, taxAmount, billingItems, setBillSplits]);
+  }, [splitBill, numberOfSplits, subtotal, taxAmount, billingItems]); // Removed setBillSplits from dependencies
 
   const addBillingItem = () => {
     if (!newItem.description || newItem.unitPrice === undefined) return;
