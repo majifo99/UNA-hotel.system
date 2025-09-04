@@ -95,8 +95,9 @@ export const RoomSelection: React.FC<RoomSelectionProps> = ({
       const individualRooms = availableRooms.filter(room => room.capacity === 1);
       
       if (doubleRooms.length > 0 && individualRooms.length >= 2) {
-        const doublePrice = doubleRooms[0].pricePerNight;
-        const twoIndividualPrice = individualRooms.slice(0, 2).reduce((sum, room) => sum + room.pricePerNight, 0);
+        // Safe access to room prices with null checks
+        const doublePrice = doubleRooms[0]?.pricePerNight ?? 0;
+        const twoIndividualPrice = individualRooms.slice(0, 2).reduce((sum, room) => sum + (room?.pricePerNight ?? 0), 0);
         
         return {
           message: `� Opciones para 2 huéspedes: Habitación doble ₡${doublePrice.toLocaleString()} vs. 2 individuales ₡${twoIndividualPrice.toLocaleString()} (consultar preferencia del huésped)`,
@@ -114,10 +115,11 @@ export const RoomSelection: React.FC<RoomSelectionProps> = ({
       const individualRooms = availableRooms.filter(room => room.capacity === 1);
       
       if (doubleRooms.length >= 2) {
-        const totalDoublePrice = doubleRooms.slice(0, 2).reduce((sum, room) => sum + room.pricePerNight, 0);
-        const familyPrice = familyRooms.length > 0 ? familyRooms[0].pricePerNight : Infinity;
+        // Safe access to room prices with null checks
+        const totalDoublePrice = doubleRooms.slice(0, 2).reduce((sum, room) => sum + (room?.pricePerNight ?? 0), 0);
+        const familyPrice = familyRooms.length > 0 ? (familyRooms[0]?.pricePerNight ?? Infinity) : Infinity;
         const fourIndividualPrice = individualRooms.length >= 4 ? 
-          individualRooms.slice(0, 4).reduce((sum, room) => sum + room.pricePerNight, 0) : Infinity;
+          individualRooms.slice(0, 4).reduce((sum, room) => sum + (room?.pricePerNight ?? 0), 0) : Infinity;
         
         const options = [
           `2 dobles: ₡${totalDoublePrice.toLocaleString()}`,

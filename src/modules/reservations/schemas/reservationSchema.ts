@@ -1,10 +1,17 @@
 import { z } from 'zod';
+import { 
+  MIN_NAME_LENGTH, 
+  MAX_NAME_LENGTH,
+  MAX_GUESTS_PER_RESERVATION,
+  MAX_SPECIAL_REQUESTS_LENGTH,
+  validateAdvanceBooking
+} from '../constants/businessRules';
 
 // Guest Schema - using centralized guest type structure
 export const guestSchema = z.object({
   id: z.string().min(1, 'ID es requerido'),
-  firstName: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
-  lastName: z.string().min(2, 'El apellido debe tener al menos 2 caracteres'),
+  firstName: z.string().min(MIN_NAME_LENGTH, `El nombre debe tener al menos ${MIN_NAME_LENGTH} caracteres`).max(MAX_NAME_LENGTH, `El nombre no puede exceder ${MAX_NAME_LENGTH} caracteres`),
+  lastName: z.string().min(MIN_NAME_LENGTH, `El apellido debe tener al menos ${MIN_NAME_LENGTH} caracteres`).max(MAX_NAME_LENGTH, `El apellido no puede exceder ${MAX_NAME_LENGTH} caracteres`),
   email: z.string().email('Email inválido'),
   phone: z.string().min(8, 'El teléfono debe tener al menos 8 dígitos'),
   nationality: z.string().min(2, 'La nacionalidad es requerida'),
@@ -18,7 +25,7 @@ export const guestSchema = z.object({
 export const reservationDetailsSchema = z.object({
   checkInDate: z.string().min(1, 'La fecha de entrada es requerida'),
   checkOutDate: z.string().min(1, 'La fecha de salida es requerida'),
-  numberOfGuests: z.number().min(1, 'Debe haber al menos 1 huésped').max(10, 'Máximo 10 huéspedes'),
+  numberOfGuests: z.number().min(1, 'Debe haber al menos 1 huésped').max(MAX_GUESTS_PER_RESERVATION, `Máximo ${MAX_GUESTS_PER_RESERVATION} huéspedes`),
 });
 
 // Complete Reservation Schema
@@ -26,7 +33,7 @@ export const reservationSchema = z.object({
   guest: guestSchema,
   checkInDate: z.string().min(1, 'La fecha de entrada es requerida'),
   checkOutDate: z.string().min(1, 'La fecha de salida es requerida'),
-  numberOfGuests: z.number().min(1, 'Debe haber al menos 1 huésped').max(10, 'Máximo 10 huéspedes'),
+  numberOfGuests: z.number().min(1, 'Debe haber al menos 1 huésped').max(MAX_GUESTS_PER_RESERVATION, `Máximo ${MAX_GUESTS_PER_RESERVATION} huéspedes`),
   numberOfNights: z.number().min(1, 'Debe ser al menos 1 noche'),
   roomType: z.enum(['single', 'double', 'triple', 'suite', 'family']),
   roomId: z.string().optional(),
@@ -35,7 +42,7 @@ export const reservationSchema = z.object({
   servicesTotal: z.number(),
   taxes: z.number(),
   total: z.number(),
-  specialRequests: z.string().optional(),
+  specialRequests: z.string().max(MAX_SPECIAL_REQUESTS_LENGTH, `Las solicitudes especiales no pueden exceder ${MAX_SPECIAL_REQUESTS_LENGTH} caracteres`).optional(),
   paymentMethod: z.enum(['credit_card', 'debit_card', 'cash', 'transfer']).optional(),
   depositRequired: z.number(),
 }).refine((data) => {
@@ -70,7 +77,7 @@ export const simpleReservationSchema = z.object({
   servicesTotal: z.number().min(0, 'El total de servicios no puede ser negativo'),
   taxes: z.number().min(0, 'Los impuestos no pueden ser negativos'),
   total: z.number().min(0, 'El total no puede ser negativo'),
-  specialRequests: z.string().optional(),
+  specialRequests: z.string().max(MAX_SPECIAL_REQUESTS_LENGTH, `Las solicitudes especiales no pueden exceder ${MAX_SPECIAL_REQUESTS_LENGTH} caracteres`).optional(),
   paymentMethod: z.enum(['credit_card', 'debit_card', 'cash', 'transfer']).optional(),
   depositRequired: z.number().min(0, 'El depósito no puede ser negativo'),
 }).superRefine((data, ctx) => {
@@ -110,15 +117,23 @@ export const simpleReservationSchema = z.object({
     });
   }
 
-  // Validación de rango de fechas razonable (máximo 1 año de anticipación)
-  const maxDaysInAdvance = 365;
-  const daysInAdvance = Math.ceil((checkIn.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  if (daysInAdvance > maxDaysInAdvance) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: `No se pueden hacer reservas con más de ${maxDaysInAdvance} días de anticipación`,
-      path: ['checkInDate'],
-    });
+  // Validación de rango de fechas usando función utilitaria
+  const advanceBookingValidation = validateAdvanceBooking(checkIn, today);
+  if (!advanceBookingValidation.isValid) {
+    if (advanceBookingValidation.isInPast) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'La fecha de entrada no puede ser anterior a hoy',
+        path: ['checkInDate'],
+      });
+    }
+    if (advanceBookingValidation.isTooFarInFuture) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `No se pueden hacer reservas con más de ${advanceBookingValidation.maxDaysAllowed} días de anticipación`,
+        path: ['checkInDate'],
+      });
+    }
   }
 
   // Validación de estadía mínima

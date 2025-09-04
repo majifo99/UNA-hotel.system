@@ -7,6 +7,7 @@ import type { Room } from '../../../types/core';
 import type { AdditionalService } from '../../../types/core/domain';
 import { reservationService } from '../services/reservationService';
 import { roomService } from '../services/roomService';
+import { validateAdvanceBooking } from '../constants/businessRules';
 
 export const useCreateReservation = () => {
   const [formData, setFormData] = useState<SimpleReservationFormData>({
@@ -127,11 +128,12 @@ export const useCreateReservation = () => {
         newErrors.checkOutDate = 'La fecha de salida debe ser posterior a la fecha de entrada';
       }
 
-      // Validación de rango de fechas razonable
-      const maxDaysInAdvance = 365; // 1 año máximo
-      const daysInAdvance = Math.ceil((checkIn.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      if (daysInAdvance > maxDaysInAdvance) {
-        newErrors.checkInDate = `No se pueden hacer reservas con más de ${maxDaysInAdvance} días de anticipación`;
+      // Validación de rango de fechas usando función utilitaria
+      const advanceBookingValidation = validateAdvanceBooking(checkIn, today);
+      if (!advanceBookingValidation.isValid) {
+        if (advanceBookingValidation.isTooFarInFuture) {
+          newErrors.checkInDate = `No se pueden hacer reservas con más de ${advanceBookingValidation.maxDaysAllowed} días de anticipación`;
+        }
       }
 
       // Validación de estadía máxima
