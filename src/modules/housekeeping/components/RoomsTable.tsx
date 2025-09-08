@@ -2,14 +2,21 @@ import { useEffect, useState, type JSX } from "react";
 import { ArrowUpDown, MoreHorizontal, UserCheck, KeyRound } from "lucide-react";
 import type { Room } from "../types/typesRoom";
 
-type RoomsTableProps = {
+type RoomsTableProps = Readonly<{
   sortedAndFilteredRooms: Room[];
   selectedRooms?: string[];
   toggleRoomSelection?: (id: string) => void;
   toggleAllRooms?: () => void;
   handleSort?: (field: keyof Room) => void;
   getStatusBadge?: (status: string) => JSX.Element;
-  onRowEdit?: (room: Room, action: string) => void;
+  onRowEdit?: (room: Room, action: "status" | "reassign") => void;
+}>;
+
+// ✅ Mapa para los títulos de columnas (evita ternario anidado)
+const COLUMN_LABEL: Record<"number" | "type" | "floor", string> = {
+  number: "Número",
+  type: "Tipo",
+  floor: "Piso",
 };
 
 export default function RoomsTable({
@@ -34,13 +41,18 @@ export default function RoomsTable({
         prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
       ));
 
-  const onSort =
+  const onSortLocal =
     handleSort ??
     (() => {
-      console.log("Sorting not implemented externally");
+      /* noop */
     });
 
-  const handleToggleAll =
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRooms = sortedAndFilteredRooms.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(sortedAndFilteredRooms.length / itemsPerPage);
+
+  const handleToggleAllLocal =
     toggleAllRooms ??
     (() => {
       const pageIds = paginatedRooms.map((r) => r.id);
@@ -52,32 +64,6 @@ export default function RoomsTable({
       );
     });
 
-  const badge =
-    getStatusBadge ??
-    ((nomenclatura: string) => {
-      const map: Record<string, string> = {
-        DISP: "bg-emerald-50 border border-emerald-200 text-emerald-700",
-        PEND: "bg-red-50 border border-red-200 text-red-700",
-        LIM: "bg-blue-50 border border-blue-200 text-blue-700",
-        INS: "bg-yellow-50 border border-yellow-200 text-yellow-700",
-        NM: "bg-gray-100 border border-gray-300 text-gray-800",
-      };
-      return (
-        <span
-          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-            map[nomenclatura] || "bg-slate-50 border border-slate-200 text-slate-700"
-          }`}
-        >
-          {nomenclatura}
-        </span>
-      );
-    });
-
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedRooms = sortedAndFilteredRooms.slice(startIndex, endIndex);
-  const totalPages = Math.ceil(sortedAndFilteredRooms.length / itemsPerPage);
-
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
@@ -86,10 +72,8 @@ export default function RoomsTable({
   };
 
   useEffect(() => {
-    const totalPages = Math.ceil(sortedAndFilteredRooms.length / itemsPerPage);
-    if (currentPage > totalPages) {
-      setCurrentPage(1);
-    }
+    const totalPagesCalc = Math.ceil(sortedAndFilteredRooms.length / itemsPerPage);
+    if (currentPage > totalPagesCalc) setCurrentPage(1);
   }, [sortedAndFilteredRooms]);
 
   if (sortedAndFilteredRooms.length === 0) {
@@ -118,37 +102,39 @@ export default function RoomsTable({
                     paginatedRooms.length > 0 &&
                     paginatedRooms.every((r) => selected.includes(r.id))
                   }
-                  onChange={handleToggleAll}
+                  onChange={handleToggleAllLocal}
                   className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                 />
               </th>
+
               {(["number", "type", "floor"] as (keyof Room)[]).map((field) => (
                 <th
                   key={field}
                   className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider"
                 >
                   <button
-                    onClick={() => onSort(field)}
+                    type="button"
+                    onClick={() => onSortLocal(field)}
                     className="flex items-center gap-1 hover:text-slate-900 transition-colors"
                   >
-                    {field === "number" ? "Número" : field === "type" ? "Tipo" : "Piso"}
+                    {/* ✅ sin ternarios anidados */}
+                    {COLUMN_LABEL[field as "number" | "type" | "floor"]}
                     <ArrowUpDown className="w-3 h-3" />
                   </button>
                 </th>
               ))}
+
               <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Clave</th>
-              <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                Estado 
-              </th>
+              <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Estado</th>
               <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Responsable</th>
               <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Última limpieza</th>
               <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Acciones</th>
             </tr>
           </thead>
+
           <tbody className="bg-white divide-y divide-slate-100">
             {paginatedRooms.map((room) => {
               const isSelected = selected.includes(room.id);
-              const isPending = room.status === "Pendiente";
               return (
                 <tr
                   key={room.id}
@@ -159,13 +145,14 @@ export default function RoomsTable({
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => handleToggleOne(room.id)}
-                      disabled={!isPending}
                       className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                     />
                   </td>
+
                   <td className="px-6 py-4 text-sm text-slate-900 font-medium">{room.number}</td>
                   <td className="px-6 py-4 text-sm text-slate-600">{room.type}</td>
                   <td className="px-6 py-4 text-sm text-slate-600">{room.floor}</td>
+
                   <td className="px-6 py-4 text-sm text-slate-600">
                     {room.keyCode ? (
                       <div className="flex items-center gap-2">
@@ -176,7 +163,17 @@ export default function RoomsTable({
                       <span className="text-slate-400">—</span>
                     )}
                   </td>
-                  <td className="px-6 py-4">{badge(room.status)}</td>
+
+                  <td className="px-6 py-4">
+                    {getStatusBadge ? (
+                      getStatusBadge(room.status)
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-50 border border-slate-200 text-slate-700">
+                        {room.status}
+                      </span>
+                    )}
+                  </td>
+
                   <td className="px-6 py-4 text-sm text-slate-600">
                     {room.assignedTo ? (
                       <div className="flex items-center gap-2">
@@ -187,16 +184,24 @@ export default function RoomsTable({
                       <span className="text-slate-400">Sin asignar</span>
                     )}
                   </td>
+
                   <td className="px-6 py-4 text-sm text-slate-600">
                     {room.lastCleaned || <span className="text-slate-400">—</span>}
                   </td>
+
                   <td className="px-6 py-4 text-right">
                     <details className="relative">
                       <summary className="list-none cursor-pointer inline-flex items-center gap-1 text-slate-600 hover:text-slate-900 px-2 py-1 rounded-lg hover:bg-slate-100">
                         <MoreHorizontal className="h-4 w-4" />
                         <span className="text-xs">Opciones</span>
                       </summary>
-                      <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-10" role="menu" aria-label="Opciones de habitación">
+
+                      {/* ✅ rol interactivo en contenedor, no en <ul> */}
+                      <div
+                        className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-10"
+                        role="menu"
+                        aria-label="Opciones de habitación"
+                      >
                         <ul className="text-sm text-slate-700">
                           <li className="px-3 py-2">
                             <button
@@ -211,6 +216,7 @@ export default function RoomsTable({
                               Cambiar estado
                             </button>
                           </li>
+
                           <li className="px-3 py-2">
                             <button
                               type="button"
@@ -224,6 +230,7 @@ export default function RoomsTable({
                               Reasignar personal
                             </button>
                           </li>
+
                           <li className="px-3 py-2 text-slate-400">Ver historial</li>
                         </ul>
                       </div>
