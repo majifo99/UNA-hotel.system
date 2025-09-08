@@ -11,6 +11,12 @@ import {
   CalendarLegend,
   CalendarLoading
 } from './calendar';
+import {
+  generateMockGuestName,
+  generateMockCheckIn,
+  generateMockCheckOut,
+  generateMockCurrentGuest
+} from '../utils/mockDataGenerators';
 
 // Adaptador para convertir Room a FrontdeskRoom
 const adaptRoomToFrontdeskRoom = (room: Room): FrontdeskRoom => {
@@ -27,9 +33,10 @@ const adaptRoomToFrontdeskRoom = (room: Room): FrontdeskRoom => {
     status: room.status ? statusMap[room.status] : 'available',
     type: room.type === 'deluxe' ? 'Deluxe' : 'Standard',
     roomNumber: room.number,
-    guestName: undefined,
-    checkIn: undefined,
-    checkOut: undefined
+    guestName: generateMockGuestName(room),
+    checkIn: generateMockCheckIn(room),
+    checkOut: generateMockCheckOut(room),
+    currentGuest: generateMockCurrentGuest(room),
   };
 };
 
@@ -38,7 +45,15 @@ const CalendarView: React.FC = () => {
   
   const { data: rooms = [], isLoading } = useRooms();
   const { data: stats } = useDashboardStats();
-  const { calendarDays, navigateWeek, goToToday } = useCalendarNavigation();
+  const { 
+    calendarDays, 
+    viewMode, 
+    setViewMode,
+    navigateWeek, 
+    navigateMonth,
+    goToToday,
+    getCurrentMonthYear
+  } = useCalendarNavigation();
 
   // Adaptar habitaciones a FrontdeskRoom
   const frontdeskRooms = rooms.map(adaptRoomToFrontdeskRoom);
@@ -48,11 +63,15 @@ const CalendarView: React.FC = () => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       <CalendarHeader
         calendarDays={calendarDays}
+        viewMode={viewMode}
+        currentMonthYear={getCurrentMonthYear()}
         onNavigateWeek={navigateWeek}
+        onNavigateMonth={navigateMonth}
         onGoToToday={goToToday}
+        onViewModeChange={setViewMode}
         stats={stats}
       />
 
