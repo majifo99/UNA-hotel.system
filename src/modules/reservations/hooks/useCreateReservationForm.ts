@@ -7,6 +7,7 @@ import type { Room, AdditionalService } from '../../../types/core';
 import { reservationService } from '../services/reservationService';
 import { roomService } from '../services/roomService';
 import { useAlert } from '../../../components/ui/Alert';
+import { COSTA_RICA_IVA_RATE, DEFAULT_DEPOSIT_PERCENTAGE, calculatePricing as calculateBusinessPricing } from '../constants/businessRules';
 
 export const useCreateReservationForm = () => {
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
@@ -168,15 +169,14 @@ export const useCreateReservationForm = () => {
       .filter(service => selectedServices.includes(service.id))
       .reduce((total, service) => total + service.price, 0);
 
-    const taxes = (subtotal + servicesTotal) * 0.13; // 13% IVA en Costa Rica
-    const total = subtotal + servicesTotal + taxes;
-    const depositRequired = total * 0.5; // 50% deposit
+    // Use business rules constants for consistent pricing
+    const pricing = calculateBusinessPricing(subtotal, servicesTotal, COSTA_RICA_IVA_RATE, DEFAULT_DEPOSIT_PERCENTAGE);
 
-    setValue('subtotal', subtotal);
-    setValue('servicesTotal', servicesTotal);
-    setValue('taxes', taxes);
-    setValue('total', total);
-    setValue('depositRequired', depositRequired);
+    setValue('subtotal', pricing.subtotal);
+    setValue('servicesTotal', pricing.servicesTotal);
+    setValue('taxes', pricing.taxes);
+    setValue('total', pricing.total);
+    setValue('depositRequired', pricing.depositRequired);
   };
 
   const submitReservation = async (data: SimpleReservationFormData): Promise<boolean> => {
