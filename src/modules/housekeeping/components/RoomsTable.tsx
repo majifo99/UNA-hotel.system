@@ -9,6 +9,7 @@ type RoomsTableProps = {
   toggleAllRooms?: () => void;
   handleSort?: (field: keyof Room) => void;
   getStatusBadge?: (status: string) => JSX.Element;
+  onRowEdit?: (room: Room, action: string) => void;
 };
 
 export default function RoomsTable({
@@ -18,6 +19,7 @@ export default function RoomsTable({
   toggleAllRooms,
   handleSort,
   getStatusBadge,
+  onRowEdit,
 }: RoomsTableProps) {
   const [internalSelected, setInternalSelected] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -97,6 +99,11 @@ export default function RoomsTable({
       </div>
     );
   }
+
+  const closeDetails = (el: HTMLElement) => {
+    const detailsEl = el.closest("details");
+    if (detailsEl instanceof HTMLDetailsElement) detailsEl.open = false;
+  };
 
   return (
     <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-xl overflow-hidden">
@@ -189,37 +196,36 @@ export default function RoomsTable({
                         <MoreHorizontal className="h-4 w-4" />
                         <span className="text-xs">Opciones</span>
                       </summary>
-                      <div className="absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
-                        <div className="text-sm text-slate-700" role="menu">
-                          <button
-                            type="button"
-                            className="w-full text-left px-3 py-2 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
-                            role="menuitem"
-                          >
-                            Cambiar estado
-                          </button>
-                          <button
-                            type="button"
-                            className="w-full text-left px-3 py-2 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
-                            role="menuitem"
-                          >
-                            Asignar personal
-                          </button>
-                          <button
-                            type="button"
-                            className="w-full text-left px-3 py-2 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
-                            role="menuitem"
-                          >
-                            Ver historial
-                          </button>
-                          <button
-                            type="button"
-                            className="w-full text-left px-3 py-2 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
-                            role="menuitem"
-                          >
-                            Reportar problema
-                          </button>
-                        </div>
+                      <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-10" role="menu" aria-label="Opciones de habitación">
+                        <ul className="text-sm text-slate-700">
+                          <li className="px-3 py-2">
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="w-full text-left hover:bg-slate-50 rounded-md px-1 py-1"
+                              onClick={(e) => {
+                                onRowEdit?.(room, "status");
+                                closeDetails(e.currentTarget as HTMLElement);
+                              }}
+                            >
+                              Cambiar estado
+                            </button>
+                          </li>
+                          <li className="px-3 py-2">
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="w-full text-left hover:bg-slate-50 rounded-md px-1 py-1"
+                              onClick={(e) => {
+                                onRowEdit?.(room, "reassign");
+                                closeDetails(e.currentTarget as HTMLElement);
+                              }}
+                            >
+                              Reasignar personal
+                            </button>
+                          </li>
+                          <li className="px-3 py-2 text-slate-400">Ver historial</li>
+                        </ul>
                       </div>
                     </details>
                   </td>
