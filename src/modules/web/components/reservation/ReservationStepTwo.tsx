@@ -9,16 +9,16 @@ import type { Room } from '../../../../types/core';
 import { RoomCard } from '../RoomCard';
 
 interface ReservationStepTwoProps {
-  checkIn: string;
-  checkOut: string;
-  adults: number;
-  children: number;
-  availableRooms: Room[];
-  preSelectedRoomIds: string[];
-  onComplete: (data: { selectedRoomIds: string[] }) => void;
-  onBack: () => void;
-  capacityWarning: string;
-  showSpecialRequestsHint: boolean;
+  readonly checkIn: string;
+  readonly checkOut: string;
+  readonly adults: number;
+  readonly children: number;
+  readonly availableRooms: Room[];
+  readonly preSelectedRoomIds: string[];
+  readonly onComplete: (data: { selectedRoomIds: string[] }) => void;
+  readonly onBack: () => void;
+  readonly capacityWarning: string;
+  readonly showSpecialRequestsHint: boolean;
 }
 
 export function ReservationStepTwo({
@@ -195,8 +195,11 @@ export function ReservationStepTwo({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {recommendation.rooms.slice(0, showAllRooms || index < recommendations.length - 1 ? undefined : 6).map(room => (
                 <div key={room.id} className="relative">
-                  <div
-                    className={`border-2 rounded-lg transition-all cursor-pointer ${
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={selectedRoomIds.includes(room.id)}
+                    className={`border-2 rounded-lg transition-all cursor-pointer w-full text-left ${
                       selectedRoomIds.includes(room.id)
                         ? 'border-current shadow-lg'
                         : 'border-transparent hover:border-gray-300'
@@ -234,7 +237,7 @@ export function ReservationStepTwo({
                         {room.capacity} persona{room.capacity !== 1 ? 's' : ''}
                       </span>
                     </div>
-                  </div>
+                  </button>
                 </div>
               ))}
             </div>

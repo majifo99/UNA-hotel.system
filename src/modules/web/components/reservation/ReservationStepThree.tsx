@@ -336,9 +336,12 @@ export function ReservationStepThree({
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {amenityOptions.map(option => (
-            <div
+            <button
               key={option.id}
-              className={`border rounded-lg p-4 cursor-pointer transition-all ${
+              type="button"
+              role="checkbox"
+              aria-checked={additionalAmenities.includes(option.id)}
+              className={`border rounded-lg p-4 cursor-pointer transition-all text-left w-full ${
                 additionalAmenities.includes(option.id)
                   ? 'border-current bg-green-50'
                   : 'border-gray-200 hover:border-gray-300'
@@ -365,7 +368,7 @@ export function ReservationStepThree({
                   <p className="text-sm text-gray-600">{option.description}</p>
                 </div>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>

@@ -268,9 +268,18 @@ export function WebHeader() {
       {(isMenuOpen || isUserMenuOpen) && (
         <div 
           className="fixed inset-0 z-40" 
+          role="button"
+          tabIndex={0}
+          aria-label="Cerrar menú"
           onClick={() => {
             setIsMenuOpen(false);
             setIsUserMenuOpen(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+              setIsMenuOpen(false);
+              setIsUserMenuOpen(false);
+            }
           }}
         />
       )}
