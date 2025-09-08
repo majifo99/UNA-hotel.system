@@ -182,7 +182,7 @@ export function ReservationStepTwo({
       {/* Room Recommendations */}
       <div className="space-y-8">
         {recommendations.map((recommendation, index) => (
-          <div key={index}>
+          <div key={`recommendation-${recommendation.title.replace(/\s+/g, '-').toLowerCase()}-${index}`}>
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               {recommendation.title}
               {index === 0 && totalGuests <= 2 && (

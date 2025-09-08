@@ -108,7 +108,7 @@ export function RoomCard({
           <div className="flex flex-wrap gap-1">
             {room.amenities.slice(0, 3).map((amenity: string, index: number) => (
               <span
-                key={index}
+                key={`${room.id}-amenity-${amenity}-${index}`}
                 className="text-xs bg-una-bg-200 text-una-primary-900 px-2 py-1 rounded-full"
               >
                 {amenity}

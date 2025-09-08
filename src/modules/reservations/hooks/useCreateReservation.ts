@@ -95,91 +95,110 @@ export const useCreateReservation = () => {
     }));
   };
 
-  const validateForm = (): boolean => {
-    const newErrors: ReservationValidationErrors = {};
+  // =================== VALIDATION HELPERS ===================
 
-    // Guest validation
+  /**
+   * Validates guest selection
+   */
+  const validateGuest = (errors: ReservationValidationErrors): void => {
     if (!formData.guestId) {
-      newErrors.guestId = 'Debe seleccionar un huésped para continuar';
+      errors.guestId = 'Debe seleccionar un huésped para continuar';
     }
+  };
 
-    // Date validation
+  /**
+   * Validates basic date requirements
+   */
+  const validateBasicDates = (errors: ReservationValidationErrors): void => {
     if (!formData.checkInDate) {
-      newErrors.checkInDate = 'La fecha de entrada es requerida';
+      errors.checkInDate = 'La fecha de entrada es requerida';
     }
-
     if (!formData.checkOutDate) {
-      newErrors.checkOutDate = 'La fecha de salida es requerida';
+      errors.checkOutDate = 'La fecha de salida es requerida';
+    }
+  };
+
+  /**
+   * Validates date logic and constraints
+   */
+  const validateDateLogic = (errors: ReservationValidationErrors): void => {
+    if (!formData.checkInDate || !formData.checkOutDate) return;
+
+    const checkIn = new Date(formData.checkInDate);
+    const checkOut = new Date(formData.checkOutDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Basic date logic
+    if (checkIn < today) {
+      errors.checkInDate = 'La fecha de entrada no puede ser anterior a hoy';
+    }
+    if (checkOut <= checkIn) {
+      errors.checkOutDate = 'La fecha de salida debe ser posterior a la fecha de entrada';
     }
 
-    if (formData.checkInDate && formData.checkOutDate) {
-      const checkIn = new Date(formData.checkInDate);
-      const checkOut = new Date(formData.checkOutDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      // Validación de fecha de entrada
-      if (checkIn < today) {
-        newErrors.checkInDate = 'La fecha de entrada no puede ser anterior a hoy';
-      }
-
-      // Validación de fecha de salida
-      if (checkOut <= checkIn) {
-        newErrors.checkOutDate = 'La fecha de salida debe ser posterior a la fecha de entrada';
-      }
-
-      // Validación de rango de fechas usando función utilitaria
-      const advanceBookingValidation = validateAdvanceBooking(checkIn, today);
-      if (!advanceBookingValidation.isValid) {
-        if (advanceBookingValidation.isTooFarInFuture) {
-          newErrors.checkInDate = `No se pueden hacer reservas con más de ${advanceBookingValidation.maxDaysAllowed} días de anticipación`;
-        }
-      }
-
-      // Validación de estadía máxima
-      const maxStayDays = 30; // 30 días máximo
-      if (formData.numberOfNights > maxStayDays) {
-        newErrors.checkOutDate = `La estadía máxima permitida es de ${maxStayDays} noches`;
-      }
-
-      // Validación de estadía mínima
-      if (formData.numberOfNights < 1) {
-        newErrors.checkOutDate = 'La reserva debe ser de al menos 1 noche';
-      }
+    // Advanced validations
+    const advanceBookingValidation = validateAdvanceBooking(checkIn, today);
+    if (!advanceBookingValidation.isValid && advanceBookingValidation.isTooFarInFuture) {
+      errors.checkInDate = `No se pueden hacer reservas con más de ${advanceBookingValidation.maxDaysAllowed} días de anticipación`;
     }
 
-    // Guest number validation
+    // Stay duration limits
+    const maxStayDays = 30;
+    if (formData.numberOfNights > maxStayDays) {
+      errors.checkOutDate = `La estadía máxima permitida es de ${maxStayDays} noches`;
+    }
+    if (formData.numberOfNights < 1) {
+      errors.checkOutDate = 'La reserva debe ser de al menos 1 noche';
+    }
+  };
+
+  /**
+   * Validates guest count and capacity
+   */
+  const validateGuestCapacity = (errors: ReservationValidationErrors): void => {
     if (formData.numberOfGuests < 1) {
-      newErrors.numberOfGuests = 'Debe especificar al menos 1 huésped';
+      errors.numberOfGuests = 'Debe especificar al menos 1 huésped';
     }
-
     if (formData.numberOfGuests > 10) {
-      newErrors.numberOfGuests = 'El número máximo de huéspedes por reserva es 10';
+      errors.numberOfGuests = 'El número máximo de huéspedes por reserva es 10';
     }
 
-    // Room capacity validation
     const selectedRoom = availableRooms.find(room => room.type === formData.roomType);
     if (selectedRoom && formData.numberOfGuests > selectedRoom.capacity) {
-      newErrors.numberOfGuests = `La habitación ${selectedRoom.name} tiene capacidad máxima de ${selectedRoom.capacity} huésped${selectedRoom.capacity > 1 ? 'es' : ''}. Seleccione otra habitación o reduzca el número de huéspedes.`;
+      errors.numberOfGuests = `La habitación ${selectedRoom.name} tiene capacidad máxima de ${selectedRoom.capacity} huésped${selectedRoom.capacity > 1 ? 'es' : ''}. Seleccione otra habitación o reduzca el número de huéspedes.`;
     }
+  };
 
-    // Room selection validation
+  /**
+   * Validates room selection and availability
+   */
+  const validateRoomAvailability = (errors: ReservationValidationErrors): void => {
     if (!formData.roomType && availableRooms.length > 0) {
-      newErrors.roomType = 'Debe seleccionar un tipo de habitación';
+      errors.roomType = 'Debe seleccionar un tipo de habitación';
     }
 
-    // Room availability validation
     if (availableRooms.length === 0 && formData.checkInDate && formData.checkOutDate) {
-      newErrors.roomType = 'No hay habitaciones disponibles para las fechas seleccionadas. Por favor, seleccione otras fechas.';
+      errors.roomType = 'No hay habitaciones disponibles para las fechas seleccionadas. Por favor, seleccione otras fechas.';
     }
 
-    // Additional validation for room availability based on guest count
     if (availableRooms.length > 0 && formData.numberOfGuests > 0) {
       const suitableRooms = availableRooms.filter(room => room.capacity >= formData.numberOfGuests);
       if (suitableRooms.length === 0) {
-        newErrors.numberOfGuests = `No hay habitaciones disponibles con capacidad para ${formData.numberOfGuests} huésped${formData.numberOfGuests > 1 ? 'es' : ''} en las fechas seleccionadas`;
+        errors.numberOfGuests = `No hay habitaciones disponibles con capacidad para ${formData.numberOfGuests} huésped${formData.numberOfGuests > 1 ? 'es' : ''} en las fechas seleccionadas`;
       }
     }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: ReservationValidationErrors = {};
+
+    // Run validation helpers
+    validateGuest(newErrors);
+    validateBasicDates(newErrors);
+    validateDateLogic(newErrors);
+    validateGuestCapacity(newErrors);
+    validateRoomAvailability(newErrors);
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;

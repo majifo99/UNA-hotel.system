@@ -5,7 +5,7 @@
  * Manages user sessions, login/logout, and authentication status.
  */
 
-import { createContext, useContext, useReducer, useEffect } from 'react';
+import { createContext, useContext, useReducer, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { 
   AuthContextType, 
@@ -195,7 +195,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // =================== CONTEXT VALUE ===================
 
-  const contextValue: AuthContextType = {
+  const contextValue: AuthContextType = useMemo(() => ({
     // State
     ...state,
     
@@ -206,7 +206,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     clearError,
     refreshUser,
     resetPassword,
-  };
+  }), [state, login, register, logout, clearError, refreshUser, resetPassword]);
 
   return (
     <AuthContext.Provider value={contextValue}>
