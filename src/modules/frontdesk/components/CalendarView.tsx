@@ -12,6 +12,78 @@ import {
   CalendarLoading
 } from './calendar';
 
+// Helper functions to generate mock data for demo purposes
+const generateMockGuestName = (room: Room): string | undefined => {
+  const mockGuests = [
+    'María González', 'Carlos Rodríguez', 'Ana Martínez', 'Luis Pérez',
+    'Sofia López', 'Diego Hernández', 'Carmen Jiménez', 'Roberto Silva',
+    'Elena Torres', 'Fernando Ruiz', 'Patricia Morales', 'Andrés Castro'
+  ];
+  
+  // Generate predictable but varied guest names based on room
+  const roomIndex = parseInt(room.id.slice(-1)) || 0;
+  
+  if (room.status === 'occupied') {
+    return mockGuests[roomIndex % mockGuests.length];
+  }
+  
+  // Some available rooms might have upcoming reservations
+  if (room.status === 'available' && roomIndex % 3 === 0) {
+    return `Reserva: ${mockGuests[(roomIndex + 3) % mockGuests.length]}`;
+  }
+  
+  return undefined;
+};
+
+const generateMockCheckIn = (room: Room): string | undefined => {
+  if (room.status === 'occupied') {
+    const today = new Date();
+    const daysAgo = Math.floor(Math.random() * 3); // 0-2 days ago
+    const checkInDate = new Date(today);
+    checkInDate.setDate(today.getDate() - daysAgo);
+    return checkInDate.toISOString().split('T')[0];
+  }
+  
+  // For available rooms with reservations
+  const roomIndex = parseInt(room.id.slice(-1)) || 0;
+  if (room.status === 'available' && roomIndex % 3 === 0) {
+    const today = new Date();
+    const futureDate = new Date(today);
+    futureDate.setDate(today.getDate() + (roomIndex % 7 + 1)); // 1-7 days from now
+    return futureDate.toISOString().split('T')[0];
+  }
+  
+  return undefined;
+};
+
+const generateMockCheckOut = (room: Room): string | undefined => {
+  const checkIn = generateMockCheckIn(room);
+  if (checkIn) {
+    const checkInDate = new Date(checkIn);
+    const stayDuration = Math.floor(Math.random() * 5) + 1; // 1-5 days
+    const checkOutDate = new Date(checkInDate);
+    checkOutDate.setDate(checkInDate.getDate() + stayDuration);
+    return checkOutDate.toISOString().split('T')[0];
+  }
+  return undefined;
+};
+
+const generateMockCurrentGuest = (room: Room) => {
+  const guestName = generateMockGuestName(room);
+  const checkIn = generateMockCheckIn(room);
+  const checkOut = generateMockCheckOut(room);
+  
+  if (guestName && checkIn && checkOut && room.status === 'occupied') {
+    return {
+      name: guestName,
+      checkIn,
+      checkOut
+    };
+  }
+  
+  return undefined;
+};
+
 // Adaptador para convertir Room a FrontdeskRoom
 const adaptRoomToFrontdeskRoom = (room: Room): FrontdeskRoom => {
   // Mapear status de Room a FrontdeskRoomStatus
@@ -27,9 +99,10 @@ const adaptRoomToFrontdeskRoom = (room: Room): FrontdeskRoom => {
     status: room.status ? statusMap[room.status] : 'available',
     type: room.type === 'deluxe' ? 'Deluxe' : 'Standard',
     roomNumber: room.number,
-    guestName: undefined,
-    checkIn: undefined,
-    checkOut: undefined
+    guestName: generateMockGuestName(room),
+    checkIn: generateMockCheckIn(room),
+    checkOut: generateMockCheckOut(room),
+    currentGuest: generateMockCurrentGuest(room),
   };
 };
 
@@ -38,7 +111,15 @@ const CalendarView: React.FC = () => {
   
   const { data: rooms = [], isLoading } = useRooms();
   const { data: stats } = useDashboardStats();
-  const { calendarDays, navigateWeek, goToToday } = useCalendarNavigation();
+  const { 
+    calendarDays, 
+    viewMode, 
+    setViewMode,
+    navigateWeek, 
+    navigateMonth,
+    goToToday,
+    getCurrentMonthYear
+  } = useCalendarNavigation();
 
   // Adaptar habitaciones a FrontdeskRoom
   const frontdeskRooms = rooms.map(adaptRoomToFrontdeskRoom);
@@ -48,11 +129,15 @@ const CalendarView: React.FC = () => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       <CalendarHeader
         calendarDays={calendarDays}
+        viewMode={viewMode}
+        currentMonthYear={getCurrentMonthYear()}
         onNavigateWeek={navigateWeek}
+        onNavigateMonth={navigateMonth}
         onGoToToday={goToToday}
+        onViewModeChange={setViewMode}
         stats={stats}
       />
 

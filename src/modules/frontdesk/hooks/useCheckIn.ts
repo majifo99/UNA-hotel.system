@@ -47,15 +47,38 @@ export const useCheckIn = () => {
 
   const validateAndSubmit = async (data: CheckInData) => {
     try {
-      // Validación básica sin Zod
-      if (!data.reservationId || !data.roomNumber) {
-        throw new Error('Reservation ID and Room Number are required');
+      // Validación mejorada para walk-ins y reservas
+      if (!data.roomNumber) {
+        throw new Error('El número de habitación es requerido');
+      }
+      
+      if (!data.guestName || data.guestName.trim() === '') {
+        throw new Error('El nombre del huésped es requerido');
+      }
+      
+      if (!data.identificationNumber) {
+        throw new Error('El número de identificación es requerido');
+      }
+      
+      // Validación específica para reservas existentes
+      if (!data.isWalkIn && (!data.reservationId || data.reservationId === '')) {
+        throw new Error('El ID de reserva es requerido para reservas existentes');
+      }
+      
+      // Validación específica para walk-ins
+      if (data.isWalkIn) {
+        if (!data.guestEmail) {
+          throw new Error('El email es requerido para walk-ins');
+        }
+        if (!data.guestPhone) {
+          throw new Error('El teléfono es requerido para walk-ins');
+        }
       }
       
       await createMutation.mutateAsync(data);
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unexpected error');
+      setError(err instanceof Error ? err.message : 'Error inesperado');
       return false;
     }
   };
