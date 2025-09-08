@@ -5,14 +5,22 @@ import type { CheckoutData, CheckoutFormData, BillingItem, BillSplit } from '../
 // Mock data para desarrollo
 const mockCheckouts: CheckoutData[] = [];
 
-// Generate unique receipt number
-const generateReceiptNumber = () => {
+// Generate unique receipt number with cryptographically secure random
+const generateReceiptNumber = (): string => {
   const date = new Date();
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  return `RCP-${year}${month}${day}-${random}`;
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  
+  // Use crypto.getRandomValues for secure random number
+  const randomArray = new Uint32Array(1);
+  crypto.getRandomValues(randomArray);
+  const random = (randomArray[0] % 10000).toString().padStart(4, '0');
+  
+  return `RCP-${year}${month}${day}-${hours}${minutes}${seconds}-${random}`;
 };
 
 // Calculate bill splits
