@@ -38,7 +38,9 @@ const generateMockGuestName = (room: Room): string | undefined => {
 const generateMockCheckIn = (room: Room): string | undefined => {
   if (room.status === 'occupied') {
     const today = new Date();
-    const daysAgo = Math.floor(Math.random() * 3); // 0-2 days ago
+    // Use room ID to generate predictable but varied check-in dates for demo
+    const roomIndex = parseInt(room.id.slice(-1)) || 0;
+    const daysAgo = roomIndex % 3; // 0-2 days ago, deterministic based on room
     const checkInDate = new Date(today);
     checkInDate.setDate(today.getDate() - daysAgo);
     return checkInDate.toISOString().split('T')[0];
@@ -60,7 +62,9 @@ const generateMockCheckOut = (room: Room): string | undefined => {
   const checkIn = generateMockCheckIn(room);
   if (checkIn) {
     const checkInDate = new Date(checkIn);
-    const stayDuration = Math.floor(Math.random() * 5) + 1; // 1-5 days
+    // Use room ID to generate predictable stay duration for demo
+    const roomIndex = parseInt(room.id.slice(-1)) || 0;
+    const stayDuration = (roomIndex % 5) + 1; // 1-5 days, deterministic
     const checkOutDate = new Date(checkInDate);
     checkOutDate.setDate(checkInDate.getDate() + stayDuration);
     return checkOutDate.toISOString().split('T')[0];

@@ -156,7 +156,7 @@ export const CreateGuestPage: React.FC = () => {
       case 'lastName':
         return !value || value.trim() === '' ? 'Este campo es obligatorio' : '';
       case 'email': {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         if (!value) return 'El email es obligatorio';
         return !emailRegex.test(value) ? 'Formato de email inválido' : '';
       }
