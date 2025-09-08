@@ -43,6 +43,20 @@ const ROOM_STATUS_LABELS: Record<FrontdeskRoomStatus, string> = {
 };
 
 const RoomRow: React.FC<RoomRowProps> = ({ room, calendarDays, onRoomClick }) => {
+  // Helper function to get room status styling
+  const getRoomStatusStyling = (status: FrontdeskRoomStatus): string => {
+    switch (status) {
+      case 'checked-in':
+        return 'bg-red-100 text-red-600';
+      case 'available':
+        return 'bg-green-100 text-green-600';
+      case 'maintenance':
+        return 'bg-yellow-100 text-yellow-600';
+      default:
+        return 'bg-gray-100 text-gray-600';
+    }
+  };
+
   const reservations = useMemo(() => {
     const result: RoomReservation[] = [];
     
@@ -124,12 +138,7 @@ const RoomRow: React.FC<RoomRowProps> = ({ room, calendarDays, onRoomClick }) =>
         aria-label={`Seleccionar habitación ${room.roomNumber || room.number}, tipo ${room.type}, estado ${ROOM_STATUS_LABELS[room.status]}`}
         type="button"
       >
-        <div className={`p-2 rounded-lg mr-3 ${
-          room.status === 'checked-in' ? 'bg-red-100 text-red-600' :
-          room.status === 'available' ? 'bg-green-100 text-green-600' :
-          room.status === 'maintenance' ? 'bg-yellow-100 text-yellow-600' :
-          'bg-gray-100 text-gray-600'
-        }`}>
+        <div className={`p-2 rounded-lg mr-3 ${getRoomStatusStyling(room.status)}`}>
           <Bed className="w-4 h-4" />
         </div>
         <div className="text-left">

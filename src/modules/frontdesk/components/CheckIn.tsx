@@ -81,6 +81,23 @@ const CheckIn = () => {
     }
   };
 
+  // Helper functions to extract nested ternary operations
+  const getSubmitButtonStyles = (): string => {
+    return checkInType === 'walk-in' 
+      ? 'bg-green-600 hover:bg-green-700' 
+      : 'bg-blue-600 hover:bg-blue-700';
+  };
+
+  const getSubmitButtonText = (): string => {
+    if (isSubmitting) {
+      return 'Procesando...';
+    }
+    
+    return checkInType === 'walk-in' 
+      ? 'Registrar Walk-In' 
+      : 'Realizar Check-In';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
@@ -372,17 +389,10 @@ const CheckIn = () => {
                 type="submit"
                 disabled={isSubmitting}
                 className={`px-6 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 ${
-                  checkInType === 'walk-in' 
-                    ? 'bg-green-600 hover:bg-green-700' 
-                    : 'bg-blue-600 hover:bg-blue-700'
+                  getSubmitButtonStyles()
                 }`}
               >
-                {isSubmitting 
-                  ? 'Procesando...' 
-                  : checkInType === 'walk-in' 
-                    ? 'Registrar Walk-In' 
-                    : 'Realizar Check-In'
-                }
+                {getSubmitButtonText()}
               </button>
             </div>
           </form>
