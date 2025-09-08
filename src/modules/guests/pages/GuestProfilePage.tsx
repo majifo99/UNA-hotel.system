@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, User, Heart, Phone, Star, Edit3, Save, X, 
@@ -51,11 +51,11 @@ export const GuestProfilePage: React.FC = () => {
     fetchGuest();
   }, [id]);
 
-  const handleEdit = (fieldName: string) => {
+  const handleEdit = useCallback((fieldName: string) => {
     setEditingField(fieldName);
-  };
+  }, []);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setEditingField(null);
     // Reset edit values to current guest data
     if (guest) {
@@ -83,9 +83,9 @@ export const GuestProfilePage: React.FC = () => {
         loyaltyProgram: guest.loyaltyProgram
       });
     }
-  };
+  }, [guest]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (guest && editValues.id) {
       try {
         const updateData: UpdateGuestData = {
@@ -99,16 +99,16 @@ export const GuestProfilePage: React.FC = () => {
         console.error('Error updating guest:', error);
       }
     }
-  };
+  }, [guest, editValues, updateGuest]);
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = useCallback((field: string, value: any) => {
     setEditValues(prev => ({
       ...prev,
       [field]: value
     }));
-  };
+  }, []);
 
-  const handleNestedInputChange = (parentField: string, field: string, value: any) => {
+  const handleNestedInputChange = useCallback((parentField: string, field: string, value: any) => {
     setEditValues(prev => ({
       ...prev,
       [parentField]: {
@@ -116,15 +116,15 @@ export const GuestProfilePage: React.FC = () => {
         [field]: value
       }
     }));
-  };
+  }, []);
 
-  const handleArrayInputChange = (field: string, value: string) => {
+  const handleArrayInputChange = useCallback((field: string, value: string) => {
     const arrayValue = value.split(',').map(item => item.trim()).filter(item => item.length > 0);
     setEditValues(prev => ({
       ...prev,
       [field]: arrayValue
     }));
-  };
+  }, []);
 
   if (!guest) {
     return (
@@ -222,6 +222,7 @@ export const GuestProfilePage: React.FC = () => {
                 onClick={() => handleEdit(field)}
                 className="opacity-60 hover:opacity-100 group-hover:opacity-100 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200"
                 title="Editar"
+                aria-label="Editar campo"
               >
                 <Edit3 size={16} />
               </button>
@@ -357,7 +358,7 @@ export const GuestProfilePage: React.FC = () => {
             <div className="flex items-start gap-2 w-full">
               <div className="flex-1">
                 <ul className="list-disc pl-5 text-gray-800">
-                  {list.length > 0 ? list.map((item, index) => <li key={index}>{item}</li>) : <li>—</li>}
+                  {list.length > 0 ? list.map((item, index) => <li key={`${field}-${item}-${index}`}>{item}</li>) : <li>—</li>}
                 </ul>
               </div>
               <button

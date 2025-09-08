@@ -2,9 +2,10 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Save, X } from 'lucide-react';
 import { ServicesSelection } from '../components';
+import type { SimpleReservationFormData } from '../types';
 
 interface LocationState {
-  reservationData?: any;
+  reservationData?: SimpleReservationFormData;
   selectedServices?: string[];
 }
 

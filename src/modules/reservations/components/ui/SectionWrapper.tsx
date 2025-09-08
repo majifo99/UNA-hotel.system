@@ -3,7 +3,7 @@ import React from 'react';
 interface SectionWrapperProps {
   title: string;
   description: string;
-  children: React.ReactNode;
+  readonly children: React.ReactNode;
 }
 
 export const SectionWrapper: React.FC<SectionWrapperProps> = ({
