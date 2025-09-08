@@ -89,10 +89,15 @@ const clearStoredAuthData = (): void => {
 // =================== API SIMULATION UTILITIES ===================
 
 /**
- * Simulate API delay
+ * Simulate API delay with cryptographically secure randomness
  */
 const simulateApiDelay = (): Promise<void> => {
-  return new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 400));
+  // Use crypto.getRandomValues for secure random delay
+  const randomBytes = new Uint8Array(1);
+  crypto.getRandomValues(randomBytes);
+  const randomDelay = 800 + (randomBytes[0] / 255) * 400; // 800-1200ms range
+  
+  return new Promise(resolve => setTimeout(resolve, randomDelay));
 };
 
 /**

@@ -7,6 +7,33 @@
 import { useState } from 'react';
 import type { Room } from '../../../../types/core';
 
+/**
+ * Secure email validation function that avoids ReDoS vulnerabilities
+ */
+function isValidEmail(email: string): boolean {
+  // Basic structure check without vulnerable regex
+  const parts = email.split('@');
+  if (parts.length !== 2) return false;
+  
+  const [localPart, domain] = parts;
+  
+  // Check local part (before @)
+  if (!localPart || localPart.length > 64) return false;
+  if (localPart.startsWith('.') || localPart.endsWith('.')) return false;
+  if (localPart.includes('..')) return false;
+  
+  // Check domain part (after @)
+  if (!domain || domain.length > 253) return false;
+  if (domain.startsWith('.') || domain.endsWith('.')) return false;
+  if (!domain.includes('.')) return false;
+  
+  // Simple character validation using safe regex
+  const validLocalChars = /^[a-zA-Z0-9._%+-]+$/.test(localPart);
+  const validDomainChars = /^[a-zA-Z0-9.-]+$/.test(domain);
+  
+  return validLocalChars && validDomainChars;
+}
+
 interface GuestInfo {
   firstName: string;
   lastName: string;
@@ -108,7 +135,7 @@ export function ReservationStepThree({
 
     if (!guestInfo.email.trim()) {
       newErrors.email = 'El email es requerido';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestInfo.email)) {
+    } else if (!isValidEmail(guestInfo.email)) {
       newErrors.email = 'Ingrese un email válido';
     }
 
