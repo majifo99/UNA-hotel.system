@@ -82,10 +82,18 @@ export const GuestSearchModal: React.FC<GuestSearchModalProps> = ({
             </h3>
             <div className="max-h-96 overflow-y-auto space-y-2">
               {guests.map((guest) => (
-                <div
+                <button
                   key={guest.id}
                   onClick={() => handleGuestSelect(guest)}
-                  className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleGuestSelect(guest);
+                    }
+                  }}
+                  className="w-full p-4 border border-gray-200 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-left"
+                  aria-label={`Seleccionar huésped ${guest.firstName} ${guest.lastName}, correo ${guest.email}`}
+                  type="button"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -115,11 +123,11 @@ export const GuestSearchModal: React.FC<GuestSearchModalProps> = ({
                       </div>
                     </div>
                     
-                    <button className="ml-4 px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 transition-colors">
+                    <span className="ml-4 px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm">
                       Seleccionar
-                    </button>
+                    </span>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>

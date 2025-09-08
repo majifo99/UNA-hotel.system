@@ -26,8 +26,12 @@ export interface RoomRowProps {
 
 export interface CalendarHeaderProps {
   calendarDays: CalendarDay[];
+  viewMode: 'week' | 'month';
+  currentMonthYear: string;
   onNavigateWeek: (direction: 'prev' | 'next') => void;
+  onNavigateMonth: (direction: 'prev' | 'next') => void;
   onGoToToday: () => void;
+  onViewModeChange: (mode: 'week' | 'month') => void;
   stats?: {
     availableRooms: number;
     occupiedRooms: number;

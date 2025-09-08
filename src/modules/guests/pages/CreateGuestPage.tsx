@@ -1,17 +1,105 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, User, Heart, Phone, Star } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  User, 
+  Heart, 
+  Star, 
+  Shield,
+  Bed,
+  Users
+} from 'lucide-react';
+import 'react-phone-input-2/lib/style.css';
 import type { Guest } from '../types';
+import { ProgressIndicator } from '../components/ProgressIndicator';
+import { StepNavigation } from '../components/StepNavigation';
+import {
+  PersonalInfoStep,
+  AdditionalInfoStep,
+  RoomPreferencesStep,
+  TravelProfileStep,
+  MedicalInfoStep,
+  EmergencyContactStep
+} from '../components/CreateGuestSteps';
+
+interface ValidationErrors {
+  [key: string]: string | undefined;
+}
+
+interface StepConfig {
+  id: number;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  fields: string[];
+}
 
 export const CreateGuestPage: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState<Partial<Guest>>({
+  const [currentStep, setCurrentStep] = useState(1);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  const [showMedicalSection, setShowMedicalSection] = useState(false);
+
+  const steps: StepConfig[] = [
+    {
+      id: 1,
+      title: 'Datos Personales',
+      description: 'Información básica del huésped',
+      icon: <User size={20} />,
+      fields: ['firstName', 'lastName', 'email', 'phone', 'nationality', 'documentType', 'documentNumber']
+    },
+    {
+      id: 2,
+      title: 'Información Extra',
+      description: 'Detalles adicionales y preferencias',
+      icon: <Star size={20} />,
+      fields: ['dateOfBirth', 'gender', 'notes', 'vipStatus']
+    },
+    {
+      id: 3,
+      title: 'Habitación',
+      description: 'Preferencias de hospedaje',
+      icon: <Bed size={20} />,
+      fields: ['roomPreferences.floor', 'roomPreferences.view', 'roomPreferences.bedType', 'roomPreferences.smokingAllowed']
+    },
+    {
+      id: 4,
+      title: 'Perfil de Viaje',
+      description: 'Información general de viaje',
+      icon: <Users size={20} />,
+      fields: ['companions.typicalTravelGroup', 'companions.hasChildren', 'companions.preferredOccupancy']
+    },
+    {
+      id: 5,
+      title: 'Salud',
+      description: 'Alergias y restricciones (opcional)',
+      icon: <Heart size={20} />,
+      fields: ['allergies', 'dietaryRestrictions', 'medicalNotes']
+    },
+    {
+      id: 6,
+      title: 'Emergencia',
+      description: 'Contacto de emergencia',
+      icon: <Shield size={20} />,
+      fields: ['emergencyContact.name', 'emergencyContact.phone', 'emergencyContact.relationship']
+    }
+  ];
+
+  const [formData, setFormData] = useState<Partial<Guest> & { 
+    companions?: { 
+      typicalTravelGroup?: 'solo' | 'couple' | 'family' | 'business_group' | 'friends';
+      hasChildren?: boolean;
+      childrenAgeRanges?: ('0-2' | '3-7' | '8-12' | '13-17')[];
+      preferredOccupancy?: number;
+      needsConnectedRooms?: boolean;
+    } 
+  }>({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
-    nationality: '',
+    nationality: 'CR',
     documentType: 'id_card',
     documentNumber: '',
     dateOfBirth: '',
@@ -39,6 +127,13 @@ export const CreateGuestPage: React.FC = () => {
       bedType: undefined,
       smokingAllowed: false,
     },
+    companions: {
+      typicalTravelGroup: undefined,
+      hasChildren: false,
+      childrenAgeRanges: [],
+      preferredOccupancy: 1,
+      needsConnectedRooms: false,
+    },
     emergencyContact: {
       name: '',
       relationship: '',
@@ -54,8 +149,89 @@ export const CreateGuestPage: React.FC = () => {
     },
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Funciones de validación en tiempo real
+  const validateField = (fieldName: string, value: any): string => {
+    switch (fieldName) {
+      case 'firstName':
+      case 'lastName':
+        return !value || value.trim() === '' ? 'Este campo es obligatorio' : '';
+      case 'email': {
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!value) return 'El email es obligatorio';
+        return !emailRegex.test(value) ? 'Formato de email inválido' : '';
+      }
+      case 'phone':
+        return !value || value.length < 8 ? 'Número de teléfono inválido' : '';
+      case 'documentNumber':
+        return !value || value.trim() === '' ? 'Número de documento es obligatorio' : '';
+      case 'nationality':
+        return !value ? 'La nacionalidad es obligatoria' : '';
+      case 'companions.preferredOccupancy':
+        return !value || value < 1 ? 'Debe indicar al menos 1 persona' : '';
+      case 'companions.typicalTravelGroup':
+        return ''; // Campo opcional
+      case 'companions.hasChildren':
+        return ''; // Campo opcional
+      default:
+        return '';
+    }
+  };
+
+  const validateCurrentStep = (): boolean => {
+    const currentStepConfig = steps.find(step => step.id === currentStep);
+    if (!currentStepConfig) return true;
+
+    let hasErrors = false;
+    const newErrors: ValidationErrors = { ...validationErrors };
+
+    currentStepConfig.fields.forEach(fieldName => {
+      const fieldValue = getFieldValue(fieldName);
+      const error = validateField(fieldName, fieldValue);
+      
+      if (error) {
+        newErrors[fieldName] = error;
+        hasErrors = true;
+      } else {
+        delete newErrors[fieldName];
+      }
+    });
+
+    setValidationErrors(newErrors);
+    return !hasErrors;
+  };
+
+  const getFieldValue = (fieldName: string): any => {
+    if (fieldName.includes('.')) {
+      const [parent, child] = fieldName.split('.');
+      return (formData as any)[parent]?.[child];
+    }
+    return (formData as any)[fieldName];
+  };
+
+  // Navegación entre steps
+  const nextStep = () => {
+    if (validateCurrentStep() && currentStep < steps.length) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const goToStep = (stepNumber: number) => {
+    if (stepNumber <= currentStep || validateCurrentStep()) {
+      setCurrentStep(stepNumber);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!validateCurrentStep()) {
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
@@ -79,6 +255,13 @@ export const CreateGuestPage: React.FC = () => {
       ...prev,
       [field]: value
     }));
+    
+    // Validación en tiempo real
+    const error = validateField(field, value);
+    setValidationErrors(prev => ({
+      ...prev,
+      [field]: error || undefined
+    }));
   };
 
   const updateNestedField = (parent: string, field: string, value: any) => {
@@ -88,6 +271,14 @@ export const CreateGuestPage: React.FC = () => {
         ...prev[parent as keyof typeof prev] as any,
         [field]: value
       }
+    }));
+    
+    // Validación en tiempo real para campos anidados
+    const fieldName = `${parent}.${field}`;
+    const error = validateField(fieldName, value);
+    setValidationErrors(prev => ({
+      ...prev,
+      [fieldName]: error || undefined
     }));
   };
 
@@ -101,8 +292,61 @@ export const CreateGuestPage: React.FC = () => {
     });
   };
 
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <PersonalInfoStep
+            formData={formData}
+            validationErrors={validationErrors}
+            updateField={updateField}
+          />
+        );
+      case 2:
+        return (
+          <AdditionalInfoStep
+            formData={formData}
+            updateField={updateField}
+          />
+        );
+      case 3:
+        return (
+          <RoomPreferencesStep
+            formData={formData}
+            updateNestedField={updateNestedField}
+          />
+        );
+      case 4:
+        return (
+          <TravelProfileStep
+            formData={formData}
+            updateNestedField={updateNestedField}
+          />
+        );
+      case 5:
+        return (
+          <MedicalInfoStep
+            formData={formData}
+            showMedicalSection={showMedicalSection}
+            setShowMedicalSection={setShowMedicalSection}
+            updateField={updateField}
+            toggleArrayField={toggleArrayField}
+          />
+        );
+      case 6:
+        return (
+          <EmergencyContactStep
+            formData={formData}
+            updateNestedField={updateNestedField}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="max-w-5xl mx-auto p-8 bg-white min-h-screen">
+    <div className="max-w-6xl mx-auto p-8 bg-gray-50 min-h-screen">
       {/* Header con breadcrumb */}
       <div className="mb-8">
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
@@ -121,340 +365,32 @@ export const CreateGuestPage: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Crear Nuevo Huésped</h1>
             <p className="text-gray-600 mt-2">
-              Complete la información del huésped. Los campos marcados con * son obligatorios.
+              Complete la información del huésped paso a paso. Los campos marcados con * son obligatorios.
             </p>
           </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Información Básica */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-blue-50 rounded-lg">
-              <User className="text-blue-600" size={24} />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900">Información Básica</h2>
-          </div>
+      {/* Indicador de Progreso */}
+      <ProgressIndicator
+        steps={steps}
+        currentStep={currentStep}
+        goToStep={goToStep}
+      />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nombre *
-              </label>
-              <input
-                type="text"
-                value={formData.firstName || ''}
-                onChange={(e) => updateField('firstName', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-            </div>
+      {/* Render Current Step */}
+      {renderCurrentStep()}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Apellidos *
-              </label>
-              <input
-                type="text"
-                value={formData.lastName || ''}
-                onChange={(e) => updateField('lastName', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email *
-              </label>
-              <input
-                type="email"
-                value={formData.email || ''}
-                onChange={(e) => updateField('email', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Teléfono *
-              </label>
-              <input
-                type="tel"
-                value={formData.phone || ''}
-                onChange={(e) => updateField('phone', e.target.value)}
-                placeholder="+506 8888-8888"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fecha de Nacimiento
-              </label>
-              <input
-                type="date"
-                value={formData.dateOfBirth || ''}
-                onChange={(e) => updateField('dateOfBirth', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Género
-              </label>
-              <select
-                value={formData.gender || ''}
-                onChange={(e) => updateField('gender', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Seleccionar</option>
-                <option value="male">Masculino</option>
-                <option value="female">Femenino</option>
-                <option value="other">Otro</option>
-                <option value="prefer_not_to_say">Prefiero no decir</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nacionalidad *
-              </label>
-              <input
-                type="text"
-                value={formData.nationality || ''}
-                onChange={(e) => updateField('nationality', e.target.value)}
-                placeholder="Costa Rica"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tipo de Documento *
-              </label>
-              <select
-                value={formData.documentType || 'id'}
-                onChange={(e) => updateField('documentType', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              >
-                <option value="id">Cédula</option>
-                <option value="passport">Pasaporte</option>
-                <option value="license">Licencia</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Número de Documento *
-              </label>
-              <input
-                type="text"
-                value={formData.documentNumber || ''}
-                onChange={(e) => updateField('documentNumber', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Información Médica */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-red-50 rounded-lg">
-              <Heart className="text-red-600" size={24} />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900">Información Médica y Alergias</h2>
-          </div>
-
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Alergias Comunes
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {['Nueces', 'Mariscos', 'Lácteos', 'Gluten', 'Huevos', 'Soja', 'Pescado', 'Abejas'].map((allergy) => (
-                  <label key={allergy} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={(formData.allergies || []).includes(allergy)}
-                      onChange={() => toggleArrayField('allergies', allergy)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">{allergy}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Restricciones Dietéticas
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {['Vegetariano', 'Vegano', 'Sin Gluten', 'Kosher', 'Halal', 'Sin Azúcar'].map((diet) => (
-                  <label key={diet} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={(formData.dietaryRestrictions || []).includes(diet)}
-                      onChange={() => toggleArrayField('dietaryRestrictions', diet)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">{diet}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Notas Médicas Adicionales
-              </label>
-              <textarea
-                value={formData.medicalNotes || ''}
-                onChange={(e) => updateField('medicalNotes', e.target.value)}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Cualquier condición médica, medicamentos, o información relevante..."
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Contacto de Emergencia */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-orange-50 rounded-lg">
-              <Phone className="text-orange-600" size={24} />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900">Contacto de Emergencia</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nombre del Contacto
-              </label>
-              <input
-                type="text"
-                value={formData.emergencyContact?.name || ''}
-                onChange={(e) => updateNestedField('emergencyContact', 'name', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Relación
-              </label>
-              <input
-                type="text"
-                value={formData.emergencyContact?.relationship || ''}
-                onChange={(e) => updateNestedField('emergencyContact', 'relationship', e.target.value)}
-                placeholder="Ej: Esposo/a, Padre/Madre, Hermano/a"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Teléfono de Emergencia
-              </label>
-              <input
-                type="tel"
-                value={formData.emergencyContact?.phone || ''}
-                onChange={(e) => updateNestedField('emergencyContact', 'phone', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email de Emergencia
-              </label>
-              <input
-                type="email"
-                value={formData.emergencyContact?.email || ''}
-                onChange={(e) => updateNestedField('emergencyContact', 'email', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Notas Adicionales */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-yellow-50 rounded-lg">
-              <Star className="text-yellow-600" size={24} />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900">Información Adicional</h2>
-          </div>
-
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Notas del Personal
-              </label>
-              <textarea
-                value={formData.notes || ''}
-                onChange={(e) => updateField('notes', e.target.value)}
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Preferencias especiales, comportamiento, solicitudes frecuentes, etc."
-              />
-            </div>
-
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="vipStatus"
-                checked={formData.vipStatus || false}
-                onChange={(e) => updateField('vipStatus', e.target.checked)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <label htmlFor="vipStatus" className="text-sm font-medium text-gray-700">
-                Cliente VIP
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {/* Botones de acción */}
-        <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
-          <button
-            type="button"
-            onClick={() => navigate('/guests')}
-            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Guardando...
-              </>
-            ) : (
-              <>
-                <Save size={16} />
-                Crear Huésped
-              </>
-            )}
-          </button>
-        </div>
-      </form>
+      {/* Navegación entre pasos */}
+      <StepNavigation
+        currentStep={currentStep}
+        totalSteps={steps.length}
+        isLoading={isLoading}
+        onPrevStep={prevStep}
+        onNextStep={nextStep}
+        onCancel={() => navigate('/guests')}
+        onSubmit={handleSubmit}
+      />
     </div>
   );
 };

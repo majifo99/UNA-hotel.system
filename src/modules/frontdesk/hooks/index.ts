@@ -18,3 +18,7 @@ export {
 
 // Calendar navigation
 export { useCalendarNavigation } from './useCalendarNavigation';
+
+// Check-in and Check-out
+export { useCheckIn } from './useCheckIn';
+export { useCheckout } from './useCheckout';
