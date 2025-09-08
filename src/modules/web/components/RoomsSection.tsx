@@ -10,12 +10,12 @@ import { roomsData } from '../../reservations/data/roomsData';
 import type { Room } from '../../../types/core';
 
 interface RoomsSectionProps {
-  title?: string;
-  subtitle?: string;
-  maxRooms?: number;
-  showViewAllButton?: boolean;
-  roomTypes?: string[]; // Filter by room types
-  className?: string;
+  readonly title?: string;
+  readonly subtitle?: string;
+  readonly maxRooms?: number;
+  readonly showViewAllButton?: boolean;
+  readonly roomTypes?: string[]; // Filter by room types
+  readonly className?: string;
 }
 
 export function RoomsSection({

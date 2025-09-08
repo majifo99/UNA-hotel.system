@@ -43,21 +43,21 @@ interface GuestInfo {
 }
 
 interface ReservationStepThreeProps {
-  reservationData: {
-    checkIn: string;
-    checkOut: string;
-    adults: number;
-    children: number;
-    selectedRoomIds: string[];
+  readonly reservationData: {
+    readonly checkIn: string;
+    readonly checkOut: string;
+    readonly adults: number;
+    readonly children: number;
+    readonly selectedRoomIds: string[];
   };
-  selectedRooms: Room[];
-  onComplete: (data: { 
+  readonly selectedRooms: Room[];
+  readonly onComplete: (data: { 
     guestInfo: GuestInfo; 
     specialRequests: string; 
     additionalAmenities: string[];
   }) => void;
-  onBack: () => void;
-  capacityWarning: string;
+  readonly onBack: () => void;
+  readonly capacityWarning: string;
 }
 
 interface FormErrors {
@@ -162,7 +162,7 @@ export function ReservationStepThree({
 
     setIsSubmitting(true);
     try {
-      await onComplete({
+      onComplete({
         guestInfo,
         specialRequests,
         additionalAmenities

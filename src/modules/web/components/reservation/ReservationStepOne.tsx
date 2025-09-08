@@ -14,8 +14,8 @@ interface StepOneData {
 }
 
 interface ReservationStepOneProps {
-  initialData: StepOneData;
-  onComplete: (data: StepOneData) => void;
+  readonly initialData: StepOneData;
+  readonly onComplete: (data: StepOneData) => void;
 }
 
 interface FormErrors {

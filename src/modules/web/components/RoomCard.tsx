@@ -8,9 +8,9 @@ import { Link } from 'react-router-dom';
 import type { Room } from '../../../types/core';
 
 interface RoomCardProps {
-  room: Room;
-  showReserveButton?: boolean;
-  className?: string;
+  readonly room: Room;
+  readonly showReserveButton?: boolean;
+  readonly className?: string;
 }
 
 export function RoomCard({ 

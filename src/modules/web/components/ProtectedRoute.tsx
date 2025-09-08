@@ -12,8 +12,8 @@ import { useAuth } from '../hooks/useAuth.tsx';
 // =================== TYPES ===================
 
 interface ProtectedRouteProps {
-  children: ReactNode;
-  redirectTo?: string;
+  readonly children: ReactNode;
+  readonly redirectTo?: string;
 }
 
 // =================== COMPONENT ===================
