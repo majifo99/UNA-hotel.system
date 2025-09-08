@@ -190,12 +190,36 @@ export default function RoomsTable({
                         <span className="text-xs">Opciones</span>
                       </summary>
                       <div className="absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
-                        <ul className="text-sm text-slate-700">
-                          <li className="px-3 py-2 hover:bg-slate-50 cursor-pointer">Cambiar estado</li>
-                          <li className="px-3 py-2 hover:bg-slate-50 cursor-pointer">Asignar personal</li>
-                          <li className="px-3 py-2 hover:bg-slate-50 cursor-pointer">Ver historial</li>
-                          <li className="px-3 py-2 hover:bg-slate-50 cursor-pointer">Reportar problema</li>
-                        </ul>
+                        <div className="text-sm text-slate-700" role="menu">
+                          <button
+                            type="button"
+                            className="w-full text-left px-3 py-2 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
+                            role="menuitem"
+                          >
+                            Cambiar estado
+                          </button>
+                          <button
+                            type="button"
+                            className="w-full text-left px-3 py-2 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
+                            role="menuitem"
+                          >
+                            Asignar personal
+                          </button>
+                          <button
+                            type="button"
+                            className="w-full text-left px-3 py-2 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
+                            role="menuitem"
+                          >
+                            Ver historial
+                          </button>
+                          <button
+                            type="button"
+                            className="w-full text-left px-3 py-2 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
+                            role="menuitem"
+                          >
+                            Reportar problema
+                          </button>
+                        </div>
                       </div>
                     </details>
                   </td>

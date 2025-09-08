@@ -78,7 +78,7 @@ const RoomRow: React.FC<RoomRowProps> = ({ room, calendarDays, onRoomClick }) =>
       <div className="flex flex-1 relative">
         {calendarDays.map((day, index) => (
           <div
-            key={index}
+            key={`${day.date.toISOString()}-${index}`}
             className={`border-r border-gray-100 flex-shrink-0 ${
               day.isToday ? 'bg-blue-50' : 'bg-white'
             }`}

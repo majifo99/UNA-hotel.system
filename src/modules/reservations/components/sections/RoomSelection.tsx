@@ -86,64 +86,84 @@ export const RoomSelection: React.FC<RoomSelectionProps> = ({
   // Permitir selección múltiple para 2+ huéspedes para dar máxima flexibilidad
   const needsMultipleRooms = numberOfGuests >= 2;
 
+  // =================== HELPER FUNCTIONS ===================
+
+  /**
+   * Handles recommendations for 2 guests
+   */
+  const getTwoGuestRecommendations = () => {
+    const doubleRooms = availableRooms.filter(room => room.capacity === 2);
+    const individualRooms = availableRooms.filter(room => room.capacity === 1);
+    
+    if (doubleRooms.length > 0 && individualRooms.length >= 2) {
+      const doublePrice = doubleRooms[0]?.pricePerNight ?? 0;
+      const twoIndividualPrice = individualRooms.slice(0, 2).reduce((sum, room) => sum + (room?.pricePerNight ?? 0), 0);
+      
+      return {
+        message: `🛏️ Opciones para 2 huéspedes: Habitación doble ₡${doublePrice.toLocaleString()} vs. 2 individuales ₡${twoIndividualPrice.toLocaleString()} (consultar preferencia del huésped)`,
+        rooms: [...doubleRooms.slice(0, 1), ...individualRooms.slice(0, 2)],
+        highlight: true,
+        showOptions: true
+      };
+    }
+    return null;
+  };
+
+  /**
+   * Handles recommendations for 4 guests
+   */
+  const getFourGuestRecommendations = () => {
+    const doubleRooms = availableRooms.filter(room => room.capacity === 2);
+    const familyRooms = availableRooms.filter(room => room.capacity >= 4);
+    const individualRooms = availableRooms.filter(room => room.capacity === 1);
+    
+    if (doubleRooms.length >= 2) {
+      const totalDoublePrice = doubleRooms.slice(0, 2).reduce((sum, room) => sum + (room?.pricePerNight ?? 0), 0);
+      const familyPrice = familyRooms.length > 0 ? (familyRooms[0]?.pricePerNight ?? Infinity) : Infinity;
+      const fourIndividualPrice = individualRooms.length >= 4 ? 
+        individualRooms.slice(0, 4).reduce((sum, room) => sum + (room?.pricePerNight ?? 0), 0) : Infinity;
+      
+      const options = [
+        `2 dobles: ₡${totalDoublePrice.toLocaleString()}`,
+        familyPrice !== Infinity ? `1 familiar: ₡${familyPrice.toLocaleString()}` : null,
+        fourIndividualPrice !== Infinity ? `4 individuales: ₡${fourIndividualPrice.toLocaleString()}` : null
+      ].filter(Boolean).join(' | ');
+      
+      return {
+        message: `🏨 Configuraciones disponibles para 4 huéspedes: ${options}`,
+        rooms: [],
+        highlight: true,
+        showOptions: true
+      };
+    }
+    return null;
+  };
+
+  /**
+   * Handles recommendations for large groups (6+ guests)
+   */
+  const getLargeGroupRecommendations = () => {
+    return {
+      message: `💼 Grupo grande (${numberOfGuests} huéspedes): Considerar activar modo de reserva grupal para gestionar fechas diferentes por habitación`,
+      rooms: [],
+      highlight: false,
+      showGroupToggle: true
+    };
+  };
+
   // Función para obtener recomendaciones específicas de habitaciones
   // Implementa lógica inteligente para sugerir habitaciones óptimas según el número de huéspedes
   const getSpecificRoomRecommendations = () => {
-    // Caso especial para 2 huéspedes: ofrecer múltiples opciones
     if (numberOfGuests === 2) {
-      const doubleRooms = availableRooms.filter(room => room.capacity === 2);
-      const individualRooms = availableRooms.filter(room => room.capacity === 1);
-      
-      if (doubleRooms.length > 0 && individualRooms.length >= 2) {
-        // Safe access to room prices with null checks
-        const doublePrice = doubleRooms[0]?.pricePerNight ?? 0;
-        const twoIndividualPrice = individualRooms.slice(0, 2).reduce((sum, room) => sum + (room?.pricePerNight ?? 0), 0);
-        
-        return {
-          message: `� Opciones para 2 huéspedes: Habitación doble ₡${doublePrice.toLocaleString()} vs. 2 individuales ₡${twoIndividualPrice.toLocaleString()} (consultar preferencia del huésped)`,
-          rooms: [...doubleRooms.slice(0, 1), ...individualRooms.slice(0, 2)],
-          highlight: true,
-          showOptions: true
-        };
-      }
+      return getTwoGuestRecommendations();
     }
     
-    // Caso especial para 4 huéspedes: múltiples configuraciones
     if (numberOfGuests === 4) {
-      const doubleRooms = availableRooms.filter(room => room.capacity === 2);
-      const familyRooms = availableRooms.filter(room => room.capacity >= 4);
-      const individualRooms = availableRooms.filter(room => room.capacity === 1);
-      
-      if (doubleRooms.length >= 2) {
-        // Safe access to room prices with null checks
-        const totalDoublePrice = doubleRooms.slice(0, 2).reduce((sum, room) => sum + (room?.pricePerNight ?? 0), 0);
-        const familyPrice = familyRooms.length > 0 ? (familyRooms[0]?.pricePerNight ?? Infinity) : Infinity;
-        const fourIndividualPrice = individualRooms.length >= 4 ? 
-          individualRooms.slice(0, 4).reduce((sum, room) => sum + (room?.pricePerNight ?? 0), 0) : Infinity;
-        
-        const options = [
-          `2 dobles: ₡${totalDoublePrice.toLocaleString()}`,
-          familyPrice !== Infinity ? `1 familiar: ₡${familyPrice.toLocaleString()}` : null,
-          fourIndividualPrice !== Infinity ? `4 individuales: ₡${fourIndividualPrice.toLocaleString()}` : null
-        ].filter(Boolean).join(' | ');
-        
-        return {
-          message: `� Configuraciones disponibles para 4 huéspedes: ${options}`,
-          rooms: [], // No sugerir habitaciones específicas, dejar que el recepcionista decida
-          highlight: true,
-          showOptions: true
-        };
-      }
+      return getFourGuestRecommendations();
     }
     
-    // Para grupos grandes (6+ huéspedes), sugerir modo grupal
     if (numberOfGuests >= 6) {
-      return {
-        message: `💼 Grupo grande (${numberOfGuests} huéspedes): Considerar activar modo de reserva grupal para gestionar fechas diferentes por habitación`,
-        rooms: [],
-        highlight: false,
-        showGroupToggle: true
-      };
+      return getLargeGroupRecommendations();
     }
     
     return null;
@@ -346,7 +366,7 @@ export const RoomSelection: React.FC<RoomSelectionProps> = ({
                 <p className="text-xs text-gray-500 mb-1">Servicios incluidos:</p>
                 <div className="flex flex-wrap gap-1">
                   {room.amenities.slice(0, 3).map((amenity, index) => (
-                    <span key={index} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                    <span key={`${room.id}-${amenity}-${index}`} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
                       {amenity}
                     </span>
                   ))}

@@ -95,7 +95,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // =================== PROVIDER ===================
 
 interface AuthProviderProps {
-  children: ReactNode;
+  readonly children: ReactNode;
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {

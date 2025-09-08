@@ -5,7 +5,7 @@ import Sidebar from '../components/Sidebar';
  * Props interface for MainLayout component
  */
 interface MainLayoutProps {
-  children: React.ReactNode;
+  readonly children: React.ReactNode;
 }
 
 /**

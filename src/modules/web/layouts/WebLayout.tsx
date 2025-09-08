@@ -13,7 +13,7 @@ import { WebFooter } from '../components/WebFooter';
 // =================== TYPES ===================
 
 interface WebLayoutProps {
-  children: ReactNode;
+  readonly children: ReactNode;
 }
 
 // =================== COMPONENT ===================
