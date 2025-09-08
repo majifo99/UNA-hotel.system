@@ -16,25 +16,36 @@ import type {
 
 /**
  * Mock users database (in-memory storage for demo)
+ * NOTE: In production, passwords should be hashed and stored securely
+ * These are temporary demo credentials that will be replaced with real authentication
  */
 const mockUsers: (AuthUser & { password: string })[] = [
   {
     id: '1',
-    email: 'user@example.com',
-    firstName: 'John',
-    lastName: 'Doe',
-    password: 'password123',
+    email: 'demo@unahotel.com',
+    firstName: 'Usuario',
+    lastName: 'Demo',
+    password: hashPassword('DemoPass2024!'), // In production: use bcrypt or similar
     isActive: true,
   },
   {
     id: '2',
-    email: 'jane@example.com',
-    firstName: 'Jane',
-    lastName: 'Smith',
-    password: 'password123',
+    email: 'admin@unahotel.com',
+    firstName: 'Admin',
+    lastName: 'Sistema',
+    password: hashPassword('AdminDemo2024!'), // In production: use bcrypt or similar
     isActive: true,
   }
 ];
+
+/**
+ * Simple hash function for demo purposes
+ * WARNING: This is NOT secure for production! Use bcrypt, argon2, or similar
+ */
+function hashPassword(password: string): string {
+  // This is just for demo - in production use proper password hashing
+  return btoa(password + 'una_hotel_salt_2024').replace(/[+/=]/g, '');
+}
 
 // =================== STORAGE UTILITIES ===================
 
@@ -85,10 +96,19 @@ const simulateApiDelay = (): Promise<void> => {
 };
 
 /**
- * Generate mock JWT token
+ * Generate mock JWT token with better randomness
+ * WARNING: This is NOT secure for production! Use proper JWT libraries
  */
 const generateMockToken = (userId: string): string => {
-  return `mock_token_${userId}_${Date.now()}`;
+  // Generate more secure random component
+  const randomBytes = new Uint8Array(16);
+  crypto.getRandomValues(randomBytes);
+  const randomHex = Array.from(randomBytes, byte => byte.toString(16).padStart(2, '0')).join('');
+  
+  const timestamp = Date.now();
+  const payload = btoa(JSON.stringify({ userId, timestamp, random: randomHex }));
+  
+  return `mock_token_${payload}`;
 };
 
 // =================== AUTH SERVICE ===================
@@ -109,7 +129,9 @@ export class AuthService {
       throw new Error('Usuario no encontrado');
     }
     
-    if (user.password !== password) {
+    // Verify password using the same hash function
+    const hashedInputPassword = hashPassword(password);
+    if (user.password !== hashedInputPassword) {
       throw new Error('Contraseña incorrecta');
     }
     
@@ -159,7 +181,7 @@ export class AuthService {
       email: email.toLowerCase(),
       firstName,
       lastName,
-      password,
+      password: hashPassword(password), // Hash the password
       isActive: true,
     };
 

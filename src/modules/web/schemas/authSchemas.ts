@@ -49,8 +49,15 @@ export const registerSchema = z
       .string()
       .min(1, 'La contraseña es requerida')
       .min(8, 'La contraseña debe tener al menos 8 caracteres')
-      .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 
-        'La contraseña debe contener al menos una minúscula, una mayúscula y un número'),
+      .refine((password) => {
+        // More secure validation without vulnerable regex
+        const hasLowercase = /[a-z]/.test(password);
+        const hasUppercase = /[A-Z]/.test(password);
+        const hasNumber = /\d/.test(password);
+        return hasLowercase && hasUppercase && hasNumber;
+      }, {
+        message: 'La contraseña debe contener al menos una minúscula, una mayúscula y un número'
+      }),
     
     confirmPassword: z
       .string()
@@ -105,8 +112,15 @@ export const passwordChangeSchema = z
       .string()
       .min(1, 'La nueva contraseña es requerida')
       .min(8, 'La contraseña debe tener al menos 8 caracteres')
-      .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 
-        'La contraseña debe contener al menos una minúscula, una mayúscula y un número'),
+      .refine((password) => {
+        // More secure validation without vulnerable regex
+        const hasLowercase = /[a-z]/.test(password);
+        const hasUppercase = /[A-Z]/.test(password);
+        const hasNumber = /\d/.test(password);
+        return hasLowercase && hasUppercase && hasNumber;
+      }, {
+        message: 'La contraseña debe contener al menos una minúscula, una mayúscula y un número'
+      }),
     
     confirmNewPassword: z
       .string()
