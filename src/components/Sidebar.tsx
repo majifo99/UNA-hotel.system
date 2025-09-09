@@ -1,5 +1,8 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+
+
+
 import { 
   Home, 
   Calendar, 
@@ -11,7 +14,8 @@ import {
   FileText,
   Settings,
   ChevronRight,
- Brush,
+   BrushCleaning, // icono de housekeeping
+ Wrench,
 } from 'lucide-react';
 import { ROUTES } from '../router/routes';
 
@@ -69,11 +73,18 @@ const navigationItems: NavigationItem[] = [
     description: 'Gestión de pagos y facturación',
     category: 'management'
   },
-  {
+ {
   path: '/housekeeping',
   label: 'Housekeeping',
-  icon: Brush,
+  icon: BrushCleaning,  // ✅ así se usa en lucide-react
   description: 'Limpieza y mantenimiento de habitaciones',
+  category: 'management'
+},
+{
+  path: '/mantenimiento',
+  label: 'Mantenimiento',
+  icon: Wrench,
+  description: 'Gestión y control de mantenimientos',
   category: 'management'
 },
 

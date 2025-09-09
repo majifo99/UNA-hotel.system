@@ -12,6 +12,7 @@ import FrontDesk from '../modules/frontdesk/components/FrontDesk';
 import { default as CheckInPage } from '../modules/frontdesk/pages/CheckInPage';
 import { default as CheckOutPage } from '../modules/frontdesk/pages/CheckOutPage';
 import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
+import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
 
 /**
  * TanStack Query Client Configuration
@@ -140,6 +141,11 @@ const router = createBrowserRouter([
       {
   path: 'housekeeping',
   element: <HousekeepingDashboard />,
+},
+
+{
+  path: 'Mantenimiento',
+  element: <Mantenimiento/>,
 },
 
       // Add more top-level routes here:

@@ -104,6 +104,10 @@ export const ROUTES = {
   BASE: '/housekeeping',
 },
 
+ MANTENIMIENTO: {
+  BASE: '/Mantenimiento',
+},
+
 } as const;
 
 
