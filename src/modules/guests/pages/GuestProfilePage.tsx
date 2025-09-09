@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Heart, Phone, Star, Edit3, Save, X } from 'lucide-react';
+import { 
+  ArrowLeft, User, Heart, Phone, Star, Edit3, Save, X, 
+  Mail, MapPin, Shield, FileText, Globe,
+  CreditCard, Bed, Settings, AlertTriangle
+} from 'lucide-react';
 import ReactFlagsSelect from 'react-flags-select';
 import type { Guest, UpdateGuestData } from '../types';
 import { useGuests } from '../hooks';
@@ -47,11 +51,11 @@ export const GuestProfilePage: React.FC = () => {
     fetchGuest();
   }, [id]);
 
-  const handleEdit = (fieldName: string) => {
+  const handleEdit = useCallback((fieldName: string) => {
     setEditingField(fieldName);
-  };
+  }, []);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setEditingField(null);
     // Reset edit values to current guest data
     if (guest) {
@@ -79,9 +83,9 @@ export const GuestProfilePage: React.FC = () => {
         loyaltyProgram: guest.loyaltyProgram
       });
     }
-  };
+  }, [guest]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (guest && editValues.id) {
       try {
         const updateData: UpdateGuestData = {
@@ -95,16 +99,16 @@ export const GuestProfilePage: React.FC = () => {
         console.error('Error updating guest:', error);
       }
     }
-  };
+  }, [guest, editValues, updateGuest]);
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = useCallback((field: string, value: any) => {
     setEditValues(prev => ({
       ...prev,
       [field]: value
     }));
-  };
+  }, []);
 
-  const handleNestedInputChange = (parentField: string, field: string, value: any) => {
+  const handleNestedInputChange = useCallback((parentField: string, field: string, value: any) => {
     setEditValues(prev => ({
       ...prev,
       [parentField]: {
@@ -112,15 +116,15 @@ export const GuestProfilePage: React.FC = () => {
         [field]: value
       }
     }));
-  };
+  }, []);
 
-  const handleArrayInputChange = (field: string, value: string) => {
+  const handleArrayInputChange = useCallback((field: string, value: string) => {
     const arrayValue = value.split(',').map(item => item.trim()).filter(item => item.length > 0);
     setEditValues(prev => ({
       ...prev,
       [field]: arrayValue
     }));
-  };
+  }, []);
 
   if (!guest) {
     return (
@@ -216,10 +220,11 @@ export const GuestProfilePage: React.FC = () => {
               </p>
               <button
                 onClick={() => handleEdit(field)}
-                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-blue-600 transition-all"
+                className="opacity-60 hover:opacity-100 group-hover:opacity-100 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200"
                 title="Editar"
+                aria-label="Editar campo"
               >
-                <Edit3 size={14} />
+                <Edit3 size={16} />
               </button>
             </div>
           )}
@@ -298,10 +303,10 @@ export const GuestProfilePage: React.FC = () => {
               </p>
               <button
                 onClick={() => handleEdit(fieldKey)}
-                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-blue-600 transition-all"
+                className="opacity-60 hover:opacity-100 group-hover:opacity-100 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200"
                 title="Editar"
               >
-                <Edit3 size={14} />
+                <Edit3 size={16} />
               </button>
             </div>
           )}
@@ -353,15 +358,15 @@ export const GuestProfilePage: React.FC = () => {
             <div className="flex items-start gap-2 w-full">
               <div className="flex-1">
                 <ul className="list-disc pl-5 text-gray-800">
-                  {list.length > 0 ? list.map((item, index) => <li key={index}>{item}</li>) : <li>—</li>}
+                  {list.length > 0 ? list.map((item, index) => <li key={`${field}-${item}-${index}`}>{item}</li>) : <li>—</li>}
                 </ul>
               </div>
               <button
                 onClick={() => handleEdit(field)}
-                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-blue-600 transition-all"
+                className="opacity-60 hover:opacity-100 group-hover:opacity-100 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200"
                 title="Editar"
               >
-                <Edit3 size={14} />
+                <Edit3 size={16} />
               </button>
             </div>
           )}
@@ -434,10 +439,10 @@ export const GuestProfilePage: React.FC = () => {
               </div>
               <button
                 onClick={() => handleEdit(field)}
-                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-blue-600 transition-all"
+                className="opacity-60 hover:opacity-100 group-hover:opacity-100 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200"
                 title="Editar"
               >
-                <Edit3 size={14} />
+                <Edit3 size={16} />
               </button>
             </div>
           )}
@@ -518,10 +523,10 @@ export const GuestProfilePage: React.FC = () => {
               </div>
               <button
                 onClick={() => handleEdit(fieldKey)}
-                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-blue-600 transition-all"
+                className="opacity-60 hover:opacity-100 group-hover:opacity-100 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200"
                 title="Editar"
               >
-                <Edit3 size={14} />
+                <Edit3 size={16} />
               </button>
             </div>
           )}
@@ -531,148 +536,315 @@ export const GuestProfilePage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-8 bg-white min-h-screen">
-      {/* Breadcrumb */}
-      <div className="mb-8">
-        <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-          <button
-            onClick={() => navigate('/guests')}
-            className="flex items-center gap-1 hover:text-blue-600 transition-colors"
-          >
-            <ArrowLeft size={16} />
-            Volver
-          </button>
-          <span>/</span>
-          <span className="text-gray-900 font-medium">Perfil</span>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => navigate('/guests')}
+                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <ArrowLeft size={20} />
+                <span className="font-medium">Volver a Huéspedes</span>
+              </button>
+            </div>
+          </div>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900">Perfil de Huésped</h1>
       </div>
 
-      <div className="space-y-10">
-        {/* Información Básica */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-50 rounded-lg">
-                <User className="text-blue-600" size={24} />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Profile Header */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="h-16 w-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                <User className="h-8 w-8 text-white" />
               </div>
-              <h2 className="text-xl font-semibold text-gray-900">Información Básica</h2>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {guest.firstName} {guest.lastName}
+                </h1>
+                <div className="flex items-center space-x-4 mt-1">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    ID: {guest.id}
+                  </span>
+                  {guest.vipStatus && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                      <Star className="h-3 w-3 mr-1" />
+                      VIP
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center space-x-6 mt-3 text-sm text-gray-600">
+                  <div className="flex items-center space-x-1">
+                    <Mail className="h-4 w-4" />
+                    <span>{guest.email}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <Phone className="h-4 w-4" />
+                    <span>{guest.phone}</span>
+                  </div>
+                  {guest.nationality && (
+                    <div className="flex items-center space-x-1">
+                      <Globe className="h-4 w-4" />
+                      <ReactFlagsSelect
+                        selected={guest.nationality}
+                        onSelect={() => {}}
+                        showSelectedLabel={true}
+                        disabled={true}
+                        className="pointer-events-none"
+                        selectButtonClassName="border-none bg-transparent p-0 cursor-default text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
             {editingField && (
-              <div className="flex items-center gap-2 text-sm text-blue-600">
-                <Edit3 size={16} />
-                <span>Editando...</span>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-lg">
+                <Edit3 size={16} className="text-blue-600" />
+                <span className="text-sm font-medium text-blue-700">Editando...</span>
               </div>
             )}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {renderEditableField('Nombre', 'firstName', guest.firstName)}
-            {renderEditableField('Apellido', 'lastName', guest.lastName)}
-            {renderEditableField('Email', 'email', guest.email, 'email')}
-            {renderEditableField('Teléfono', 'phone', guest.phone, 'tel')}
-            {renderEditableField('Fecha de Nacimiento', 'dateOfBirth', guest.dateOfBirth)}
-            {renderEditableField('Género', 'gender', guest.gender, 'select', [
-              { value: 'male', label: 'Masculino' },
-              { value: 'female', label: 'Femenino' },
-              { value: 'other', label: 'Otro' },
-              { value: 'prefer_not_to_say', label: 'Prefiero no decir' }
-            ])}
-            {renderCountryField('Nacionalidad', 'nationality', guest.nationality)}
-            {renderEditableField('Tipo de Documento', 'documentType', guest.documentType, 'select', [
-              { value: 'passport', label: 'Pasaporte' },
-              { value: 'license', label: 'Licencia de Conducir' },
-              { value: 'id_card', label: 'Cédula de Identidad' }
-            ])}
-            {renderEditableField('Número de Documento', 'documentNumber', guest.documentNumber)}
-          </div>
-        </section>
+        </div>
 
-        {/* Dirección */}
-        <section>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Dirección</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {renderEditableNestedField('Calle', 'address', 'street', guest.address?.street)}
-            {renderEditableNestedField('Ciudad', 'address', 'city', guest.address?.city)}
-            {renderEditableNestedField('Provincia/Estado', 'address', 'state', guest.address?.state)}
-            {renderEditableNestedCountryField('País', 'address', 'country', guest.address?.country)}
-            {renderEditableNestedField('Código Postal', 'address', 'postalCode', guest.address?.postalCode)}
-          </div>
-        </section>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Personal Information */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-blue-50 rounded-lg">
+                    <User className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">Información Personal</h2>
+                </div>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {renderEditableField('Nombre', 'firstName', guest.firstName)}
+                  {renderEditableField('Apellido', 'lastName', guest.lastName)}
+                  {renderEditableField('Email', 'email', guest.email, 'email')}
+                  {renderEditableField('Teléfono', 'phone', guest.phone, 'tel')}
+                  {renderEditableField('Fecha de Nacimiento', 'dateOfBirth', guest.dateOfBirth)}
+                  {renderEditableField('Género', 'gender', guest.gender, 'select', [
+                    { value: 'male', label: 'Masculino' },
+                    { value: 'female', label: 'Femenino' },
+                    { value: 'other', label: 'Otro' },
+                    { value: 'prefer_not_to_say', label: 'Prefiero no decir' }
+                  ])}
+                  {renderCountryField('Nacionalidad', 'nationality', guest.nationality)}
+                  {renderEditableField('Idioma Preferido', 'preferredLanguage', guest.preferredLanguage)}
+                </div>
+              </div>
+            </div>
 
-        {/* Médica */}
-        <section>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-red-50 rounded-lg">
-              <Heart className="text-red-600" size={24} />
+            {/* Documents */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-green-50 rounded-lg">
+                    <FileText className="h-5 w-5 text-green-600" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">Documentación</h2>
+                </div>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {renderEditableField('Tipo de Documento', 'documentType', guest.documentType, 'select', [
+                    { value: 'passport', label: 'Pasaporte' },
+                    { value: 'license', label: 'Licencia de Conducir' },
+                    { value: 'id_card', label: 'Cédula de Identidad' }
+                  ])}
+                  {renderEditableField('Número de Documento', 'documentNumber', guest.documentNumber)}
+                </div>
+              </div>
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">Información Médica</h2>
-          </div>
-          <div className="space-y-4">
-            {renderEditableArrayField('Alergias', 'allergies', guest.allergies)}
-            {renderEditableArrayField('Restricciones Dietéticas', 'dietaryRestrictions', guest.dietaryRestrictions)}
-            {renderEditableField('Notas Médicas', 'medicalNotes', guest.medicalNotes, 'textarea')}
-          </div>
-        </section>
 
-        {/* Emergencia */}
-        <section>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-orange-50 rounded-lg">
-              <Phone className="text-orange-600" size={24} />
+            {/* Address */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-purple-50 rounded-lg">
+                    <MapPin className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">Dirección</h2>
+                </div>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {renderEditableNestedField('Calle', 'address', 'street', guest.address?.street)}
+                  {renderEditableNestedField('Ciudad', 'address', 'city', guest.address?.city)}
+                  {renderEditableNestedField('Provincia/Estado', 'address', 'state', guest.address?.state)}
+                  {renderEditableNestedCountryField('País', 'address', 'country', guest.address?.country)}
+                  {renderEditableNestedField('Código Postal', 'address', 'postalCode', guest.address?.postalCode)}
+                </div>
+              </div>
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">Contacto de Emergencia</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {renderEditableNestedField('Nombre', 'emergencyContact', 'name', guest.emergencyContact?.name)}
-            {renderEditableNestedField('Relación', 'emergencyContact', 'relationship', guest.emergencyContact?.relationship)}
-            {renderEditableNestedField('Teléfono', 'emergencyContact', 'phone', guest.emergencyContact?.phone, 'tel')}
-            {renderEditableNestedField('Email', 'emergencyContact', 'email', guest.emergencyContact?.email, 'email')}
-          </div>
-        </section>
 
-        {/* Preferencias */}
-        <section>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-yellow-50 rounded-lg">
-              <Star className="text-yellow-600" size={24} />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900">Notas y Preferencias</h2>
-          </div>
-          <div className="space-y-4">
-            {renderEditableField('Notas del Personal', 'notes', guest.notes, 'textarea')}
-            {renderEditableField('Cliente VIP', 'vipStatus', guest.vipStatus, 'checkbox')}
-            {renderEditableField('Idioma Preferido', 'preferredLanguage', guest.preferredLanguage)}
-            <div>
-              <p className="text-sm text-gray-600">Preferencias de Comunicación:</p>
-              <ul className="list-disc pl-5 text-gray-800">
-                {Object.entries(guest.communicationPreferences || {}).filter(([, v]) => v).map(([k]) => (
-                  <li key={k}>{k.toUpperCase()}</li>
-                ))}
-                {Object.values(guest.communicationPreferences || {}).every(v => !v) && <li>—</li>}
-              </ul>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Preferencias de Habitación:</p>
-              <ul className="list-disc pl-5 text-gray-800">
-                {guest.roomPreferences?.floor && <li>Piso: {guest.roomPreferences.floor}</li>}
-                {guest.roomPreferences?.view && <li>Vista: {guest.roomPreferences.view}</li>}
-                {guest.roomPreferences?.bedType && <li>Tipo de Cama: {guest.roomPreferences.bedType}</li>}
-                {guest.roomPreferences?.smokingAllowed !== undefined && (
-                  <li>Permite Fumar: {guest.roomPreferences.smokingAllowed ? 'Sí' : 'No'}</li>
-                )}
-                {!(guest.roomPreferences?.floor || guest.roomPreferences?.view || guest.roomPreferences?.bedType) && <li>—</li>}
-              </ul>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Programa de Lealtad:</p>
-              <ul className="list-disc pl-5 text-gray-800">
-                <li>ID: {guest.loyaltyProgram?.memberId || '—'}</li>
-                <li>Nivel: {guest.loyaltyProgram?.tier || '—'}</li>
-                <li>Puntos: {guest.loyaltyProgram?.points ?? '—'}</li>
-              </ul>
+            {/* Medical Information */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-red-50 rounded-lg">
+                    <Heart className="h-5 w-5 text-red-600" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">Información Médica</h2>
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                </div>
+              </div>
+              <div className="p-6 space-y-6">
+                {renderEditableArrayField('Alergias', 'allergies', guest.allergies)}
+                {renderEditableArrayField('Restricciones Dietéticas', 'dietaryRestrictions', guest.dietaryRestrictions)}
+                {renderEditableField('Notas Médicas', 'medicalNotes', guest.medicalNotes, 'textarea')}
+              </div>
             </div>
           </div>
-        </section>
+
+          {/* Sidebar */}
+          <div className="space-y-8">
+            {/* Emergency Contact */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-orange-50 rounded-lg">
+                    <Shield className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">Contacto de Emergencia</h2>
+                </div>
+              </div>
+              <div className="p-6 space-y-4">
+                {renderEditableNestedField('Nombre', 'emergencyContact', 'name', guest.emergencyContact?.name)}
+                {renderEditableNestedField('Relación', 'emergencyContact', 'relationship', guest.emergencyContact?.relationship)}
+                {renderEditableNestedField('Teléfono', 'emergencyContact', 'phone', guest.emergencyContact?.phone, 'tel')}
+                {renderEditableNestedField('Email', 'emergencyContact', 'email', guest.emergencyContact?.email, 'email')}
+              </div>
+            </div>
+
+            {/* Room Preferences */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-indigo-50 rounded-lg">
+                    <Bed className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">Preferencias de Habitación</h2>
+                </div>
+              </div>
+              <div className="p-6">
+                <div className="space-y-3">
+                  {guest.roomPreferences?.floor && (
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                      <span className="text-sm text-gray-600">Piso</span>
+                      <span className="text-sm font-medium text-gray-900">{guest.roomPreferences.floor}</span>
+                    </div>
+                  )}
+                  {guest.roomPreferences?.view && (
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                      <span className="text-sm text-gray-600">Vista</span>
+                      <span className="text-sm font-medium text-gray-900">{guest.roomPreferences.view}</span>
+                    </div>
+                  )}
+                  {guest.roomPreferences?.bedType && (
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                      <span className="text-sm text-gray-600">Tipo de Cama</span>
+                      <span className="text-sm font-medium text-gray-900">{guest.roomPreferences.bedType}</span>
+                    </div>
+                  )}
+                  {guest.roomPreferences?.smokingAllowed !== undefined && (
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                      <span className="text-sm text-gray-600">Permite Fumar</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {guest.roomPreferences.smokingAllowed ? 'Sí' : 'No'}
+                      </span>
+                    </div>
+                  )}
+                  {!(guest.roomPreferences?.floor || guest.roomPreferences?.view || guest.roomPreferences?.bedType) && (
+                    <p className="text-sm text-gray-500 italic">Sin preferencias especificadas</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Loyalty Program */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-yellow-50 rounded-lg">
+                    <CreditCard className="h-5 w-5 text-yellow-600" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">Programa de Lealtad</h2>
+                </div>
+              </div>
+              <div className="p-6">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">ID de Membresía</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {guest.loyaltyProgram?.memberId || '—'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Nivel</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {guest.loyaltyProgram?.tier || '—'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm text-gray-600">Puntos</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {guest.loyaltyProgram?.points ?? '—'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Communication Preferences */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-teal-50 rounded-lg">
+                    <Settings className="h-5 w-5 text-teal-600" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">Preferencias de Comunicación</h2>
+                </div>
+              </div>
+              <div className="p-6">
+                <div className="space-y-2">
+                  {Object.entries(guest.communicationPreferences || {}).filter(([, v]) => v).map(([key]) => (
+                    <div key={key} className="flex items-center space-x-2">
+                      <div className="h-2 w-2 bg-green-400 rounded-full"></div>
+                      <span className="text-sm text-gray-700 capitalize">{key}</span>
+                    </div>
+                  ))}
+                  {Object.values(guest.communicationPreferences || {}).every(v => !v) && (
+                    <p className="text-sm text-gray-500 italic">Sin preferencias especificadas</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-gray-50 rounded-lg">
+                    <FileText className="h-5 w-5 text-gray-600" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">Notas del Personal</h2>
+                </div>
+              </div>
+              <div className="p-6">
+                {renderEditableField('Notas', 'notes', guest.notes, 'textarea')}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
