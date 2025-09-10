@@ -35,7 +35,16 @@ npm run dev
 # http://localhost:5173
 ```
 
-## 🔐 **IMPORTANTE: Acceso al Sistema Administrativo**
+## � Documentación
+
+Para guías detalladas y documentación técnica, consulta la carpeta [`/docs`](./docs/):
+
+- **[Guía de Atajos](./docs/GUIA-ATAJOS.md)** - Referencia rápida de navegación con teclado
+- **[Sistema de Navegación](./docs/NAVEGACION-README.md)** - Documentación completa del sistema de navegación
+- **[Guía de Desarrollo](./docs/GUIA-DESARROLLO.md)** - Estándares y mejores prácticas para desarrolladores
+- **[Setup del Equipo](./docs/SETUP-EQUIPO.md)** - Configuración del entorno de desarrollo
+
+## �🔐 **IMPORTANTE: Acceso al Sistema Administrativo**
 
 El proyecto tiene **DOS interfaces separadas**:
 
