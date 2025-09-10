@@ -95,13 +95,10 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   
   // Group items by category for better organization
   const groupedItems = React.useMemo(() => {
-    const groups: Record<NavigationCategory, NavigationItem[]> = {
-      dashboard: [],
-      operations: [],
-      management: [],
-      reports: [],
-      system: [],
-    };
+    const groups: Record<NavigationCategory, NavigationItem[]> = {};
+    NAVIGATION_CATEGORIES.forEach(category => {
+      groups[category] = [];
+    });
     
     allItems.forEach(item => {
       groups[item.category].push(item);
