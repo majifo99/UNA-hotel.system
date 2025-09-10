@@ -249,7 +249,7 @@ function Sidebar() {
         {/* Child items */}
         {hasChildren && isExpanded && !isCollapsed && (
           <div className="space-y-1">
-            {item.children!.map((child) => {
+            {item.children.map((child) => {
               const childActive = isActiveRoute(child.path);
               return (
                 <SidebarNavigationItem
