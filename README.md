@@ -35,6 +35,57 @@ npm run dev
 # http://localhost:5173
 ```
 
+## � Documentación
+
+Para guías detalladas y documentación técnica, consulta la carpeta [`/docs`](./docs/):
+
+- **[Guía de Atajos](./docs/GUIA-ATAJOS.md)** - Referencia rápida de navegación con teclado
+- **[Sistema de Navegación](./docs/NAVEGACION-README.md)** - Documentación completa del sistema de navegación
+- **[Guía de Desarrollo](./docs/GUIA-DESARROLLO.md)** - Estándares y mejores prácticas para desarrolladores
+- **[Setup del Equipo](./docs/SETUP-EQUIPO.md)** - Configuración del entorno de desarrollo
+
+## �🔐 **IMPORTANTE: Acceso al Sistema Administrativo**
+
+El proyecto tiene **DOS interfaces separadas**:
+
+### 🌐 **Sitio Web Público** (por defecto)
+- **URL**: `http://localhost:5173/`
+- **Descripción**: Página web pública del hotel para huéspedes
+- **Funciones**: Reservas online, información del hotel, etc.
+
+### 🏢 **Sistema Administrativo** (para empleados)
+- **Descripción**: Dashboard completo para gestión hotelera
+- **Funciones**: Check-in/out, gestión de habitaciones, reportes, etc.
+
+#### **Formas de acceder al Sistema Administrativo:**
+
+**📋 Opción 1: Variable de entorno (RECOMENDADO para desarrollo)**
+```bash
+# Crear archivo .env en la raíz del proyecto
+echo "VITE_MODE=admin" > .env
+npm run dev
+# Luego ir a: http://localhost:5173/
+```
+
+**📋 Opción 2: URL con parámetro**
+```
+http://localhost:5173/?admin=true
+```
+
+**📋 Opción 3: URL con prefijo admin**
+```
+http://localhost:5173/admin
+```
+
+### 🎯 **URLs del Sistema Administrativo:**
+- **Dashboard Principal**: `http://localhost:5173/`
+- **Front Desk**: `http://localhost:5173/frontdesk`
+- **Check-in**: `http://localhost:5173/frontdesk/checkin`
+- **Check-out**: `http://localhost:5173/frontdesk/checkout`
+- **Housekeeping**: `http://localhost:5173/housekeeping`
+- **Reservas**: `http://localhost:5173/reservations/create`
+- **Huéspedes**: `http://localhost:5173/guests`
+
 ### Scripts Disponibles
 
 ```bash
