@@ -50,6 +50,7 @@ interface NavigationItemProps {
   readonly expandedItems: Set<string>;
   readonly onItemExpansion: (itemPath: string, shouldExpand: boolean) => void;
   readonly shortcutsAvailable: boolean;
+  readonly isActiveRoute: (path: string) => boolean;
 }
 
 /**
@@ -62,7 +63,8 @@ function SidebarNavigationItem({
   level, 
   expandedItems, 
   onItemExpansion,
-  shortcutsAvailable 
+  shortcutsAvailable,
+  isActiveRoute
 }: NavigationItemProps) {
   const location = useLocation();
   const shortcutDisplay = useShortcutDisplay(item.shortcut || []);
@@ -140,16 +142,6 @@ function SidebarNavigationItem({
   };
 
   /**
-   * Check if route is active
-   */
-  const isActiveRoute = (path: string): boolean => {
-    if (path === '/') {
-      return location.pathname === path;
-    }
-    return location.pathname.startsWith(path);
-  };
-  
-  /**
    * Get accessibility label for the item
    */
   const getAriaLabel = (): string => {
@@ -178,31 +170,29 @@ function SidebarNavigationItem({
         
         {/* Label and content */}
         {!isCollapsed && (
-          <>
-            <div className="flex-1 min-w-0 flex items-center justify-between">
-              <span className="font-medium text-sm truncate">
-                {item.label}
+          <div className="flex-1 min-w-0 flex items-center justify-between">
+            <span className="font-medium text-sm truncate">
+              {item.label}
+            </span>
+            
+            {/* Enhanced shortcut hint for hierarchy */}
+            {shouldShowShortcut && (
+              <span className={`nav-shortcut-hint ml-2 ${
+                isSubmenu ? 'text-xs bg-white/5' : ''
+              }`}>
+                {getShortcutDisplay()}
               </span>
-              
-              {/* Enhanced shortcut hint for hierarchy */}
-              {shouldShowShortcut && (
-                <span className={`nav-shortcut-hint ml-2 ${
-                  isSubmenu ? 'text-xs bg-white/5' : ''
-                }`}>
-                  {getShortcutDisplay()}
-                </span>
-              )}
-              
-              {/* Expand/collapse indicator for parent items */}
-              {hasChildren && (
-                <ChevronRight 
-                  className={`w-4 h-4 ml-2 transition-transform duration-200 ${
-                    isExpanded ? 'rotate-90' : ''
-                  }`}
-                />
-              )}
-            </div>
-          </>
+            )}
+            
+            {/* Expand/collapse indicator for parent items */}
+            {hasChildren && (
+              <ChevronRight 
+                className={`w-4 h-4 ml-2 transition-transform duration-200 ${
+                  isExpanded ? 'rotate-90' : ''
+                }`}
+              />
+            )}
+          </div>
         )}
         
         {/* Tooltip for collapsed state or submenu shortcuts */}
@@ -229,6 +219,7 @@ function SidebarNavigationItem({
                 expandedItems={expandedItems}
                 onItemExpansion={onItemExpansion}
                 shortcutsAvailable={shortcutsAvailable}
+                isActiveRoute={isActiveRoute}
               />
             );
           })}
@@ -304,10 +295,9 @@ function Sidebar() {
   return (
     <>
       {/* Main Sidebar */}
-      <aside 
+      <nav 
         className={`${isCollapsed ? 'w-20' : 'w-72'} h-screen fixed left-0 top-0 z-10 transition-all duration-300 flex flex-col`}
         style={{ backgroundColor: 'var(--color-darkGreen2)' }}
-        role="navigation"
         aria-label="Navegación principal del sistema"
       >
         {/* Header UNA Hotel (preserved design) */}
@@ -384,7 +374,7 @@ function Sidebar() {
         {/* Scrollable Navigation Container */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden sidebar-scroll">
           {/* Navigation by categories (enhanced from original) */}
-          <nav className="py-6 space-y-6" role="list">
+          <ul className="py-6 space-y-6 list-none">
             {Object.entries(NAVIGATION_CATEGORIES)
               .sort(([, a], [, b]) => a.order - b.order)
               .map(([category, categoryConfig]) => {
@@ -392,7 +382,7 @@ function Sidebar() {
                 if (items.length === 0) return null;
                 
                 return (
-                  <div key={category} role="group" aria-labelledby={`category-${category}`}>
+                  <li key={category} aria-labelledby={`category-${category}`}>
                     {/* Category label */}
                     {!isCollapsed && (
                       <div className="mb-3 px-4">
@@ -406,24 +396,26 @@ function Sidebar() {
                     )}
                     
                     {/* Category items */}
-                    <div className="space-y-1" role="list">
+                    <ul className="space-y-1 list-none">
                       {items.map((item) => (
-                        <SidebarNavigationItem
-                          key={item.id}
-                          item={item}
-                          isActive={isActiveRoute(item.path)}
-                          isCollapsed={isCollapsed}
-                          level={0}
-                          expandedItems={expandedItems}
-                          onItemExpansion={handleItemExpansion}
-                          shortcutsAvailable={shortcutsAvailable}
-                        />
+                        <li key={item.id}>
+                          <SidebarNavigationItem
+                            item={item}
+                            isActive={isActiveRoute(item.path)}
+                            isCollapsed={isCollapsed}
+                            level={0}
+                            expandedItems={expandedItems}
+                            onItemExpansion={handleItemExpansion}
+                            shortcutsAvailable={shortcutsAvailable}
+                            isActiveRoute={isActiveRoute}
+                          />
+                        </li>
                       ))}
-                    </div>
-                  </div>
+                    </ul>
+                  </li>
                 );
               })}
-          </nav>
+          </ul>
         </div>
         
         {/* Footer (preserved from original) */}
@@ -449,7 +441,7 @@ function Sidebar() {
             )}
           </div>
         )}
-      </aside>
+      </nav>
       
       {/* Command Palette */}
       {commandPalette.isEnabled && (

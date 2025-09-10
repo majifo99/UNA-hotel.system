@@ -239,10 +239,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       
       {/* Command palette container */}
       <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4">
-        <div 
+        <dialog 
           className="command-palette-content border rounded-lg overflow-hidden relative w-full max-w-lg shadow-2xl"
-          role="dialog"
-          aria-modal="true"
+          open={open}
           aria-labelledby="command-palette-title"
         >
           {/* Header */}
@@ -345,7 +344,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
               </div>
             )}
           </div>
-        </div>
+        </dialog>
       </div>
     </>
   );

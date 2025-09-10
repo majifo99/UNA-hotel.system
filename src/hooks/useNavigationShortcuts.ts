@@ -116,6 +116,40 @@ export function useNavigationShortcuts(config: Partial<ShortcutConfig> = {}) {
   }, [sequenceTimer]);
   
   /**
+   * Helper function to handle successful navigation match
+   */
+  const handleNavigationMatch = useCallback((match: NavigationItem) => {
+    navigate(match.path);
+    clearSequence();
+    return {
+      currentSequence: [],
+      isInSequence: false,
+      lastMatch: match,
+      availableShortcuts: []
+    };
+  }, [navigate, clearSequence]);
+
+  /**
+   * Helper function to check for potential sequence matches
+   */
+  const checkPotentialMatches = useCallback((newSequence: number[], availableShortcuts: Array<{ item: NavigationItem; sequence: number[] }>) => {
+    return availableShortcuts.filter(({ sequence }) =>
+      sequence.length > newSequence.length &&
+      sequence.slice(0, newSequence.length).every((num, i) => num === newSequence[i])
+    );
+  }, []);
+
+  /**
+   * Helper function to handle sequence timeout
+   */
+  const handleSequenceTimeout = useCallback(() => {
+    const newTimer = setTimeout(() => {
+      clearSequence();
+    }, finalConfig.sequenceTimeout);
+    setSequenceTimer(newTimer);
+  }, [clearSequence, finalConfig.sequenceTimeout]);
+
+  /**
    * Handle numeric key press in sequence
    */
   const handleSequenceKey = useCallback((digit: number) => {
@@ -131,28 +165,18 @@ export function useNavigationShortcuts(config: Partial<ShortcutConfig> = {}) {
       }
       
       // Set new timer for sequence timeout
-      const newTimer = setTimeout(() => {
-        clearSequence();
-      }, finalConfig.sequenceTimeout);
-      setSequenceTimer(newTimer);
+      handleSequenceTimeout();
       
       // If we found a match, navigate immediately
       if (match) {
-        navigate(match.path);
-        clearSequence();
         return {
           ...prev,
-          currentSequence: [],
-          isInSequence: false,
-          lastMatch: match,
+          ...handleNavigationMatch(match)
         };
       }
       
       // Check if this could be the start of a longer sequence
-      const potentialMatches = prev.availableShortcuts.filter(({ sequence }) =>
-        sequence.length > newSequence.length &&
-        sequence.slice(0, newSequence.length).every((num, i) => num === newSequence[i])
-      );
+      const potentialMatches = checkPotentialMatches(newSequence, prev.availableShortcuts);
       
       if (potentialMatches.length === 0) {
         // No potential matches, clear sequence
@@ -167,7 +191,7 @@ export function useNavigationShortcuts(config: Partial<ShortcutConfig> = {}) {
         lastMatch: null,
       };
     });
-  }, [isEnabled, navigate, clearSequence, sequenceTimer, finalConfig.sequenceTimeout]);
+  }, [isEnabled, handleNavigationMatch, checkPotentialMatches, handleSequenceTimeout, sequenceTimer, clearSequence]);
   
   /**
    * Register hotkeys for numeric shortcuts
