@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 interface ShortcutGuideProps {
-  className?: string;
+  readonly className?: string;
 }
 
 /**

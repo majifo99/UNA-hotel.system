@@ -43,10 +43,199 @@ import { ShortcutGuide } from './ShortcutGuide';
  * Props for NavigationItem component
  */
 interface NavigationItemProps {
-  item: NavigationItem;
-  isActive: boolean;
-  isCollapsed: boolean;
-  level: number;
+  readonly item: NavigationItem;
+  readonly isActive: boolean;
+  readonly isCollapsed: boolean;
+  readonly level: number;
+  readonly expandedItems: Set<string>;
+  readonly onItemExpansion: (itemPath: string, shouldExpand: boolean) => void;
+  readonly shortcutsAvailable: boolean;
+}
+
+/**
+ * Enhanced SidebarNavigationItem with controlled expansion
+ */
+function SidebarNavigationItem({ 
+  item, 
+  isActive, 
+  isCollapsed, 
+  level, 
+  expandedItems, 
+  onItemExpansion,
+  shortcutsAvailable 
+}: NavigationItemProps) {
+  const location = useLocation();
+  const shortcutDisplay = useShortcutDisplay(item.shortcut || []);
+  
+  const [showTooltip, setShowTooltip] = useState(false);
+  const IconComponent = item.icon;
+  
+  const hasChildren = item.children && item.children.length > 0;
+  const isTopLevel = level === 0;
+  const isSubmenu = level > 0;
+  
+  // Check if any child is currently active
+  const hasActiveChild = hasChildren && item.children?.some(child => 
+    location.pathname === child.path || 
+    location.pathname.startsWith(child.path + '/')
+  );
+  
+  // This item is expanded if it has an active child or is in expandedItems
+  const isExpanded = hasActiveChild || expandedItems.has(item.path);
+  
+  // Only show active state for direct matches, not parents with active children
+  const isCurrentlyActive = isActive && !hasActiveChild;
+  
+  /**
+   * Enhanced click handling for expandable items
+   */
+  const handleToggleChildren = (e: React.MouseEvent) => {
+    if (hasChildren) {
+      e.preventDefault();
+      onItemExpansion(item.path, !isExpanded);
+    }
+  };
+  
+  /**
+   * Enhanced item classes with cleaner hierarchy
+   */
+  const getItemClasses = (): string => {
+    let classes = 'nav-item-base group';
+    
+    if (isSubmenu) {
+      classes += ' nav-item-submenu';
+    } else if (hasChildren) {
+      classes += ' nav-item-parent';
+    }
+    
+    if (isCurrentlyActive) {
+      classes += ' nav-item-active';
+    } else {
+      classes += ' nav-item-normal';
+    }
+    
+    return classes;
+  };
+
+  /**
+   * Improved shortcut display for hierarchical structure
+   */
+  const shouldShowShortcut = shortcutsAvailable && 
+    shortcutDisplay && 
+    !isCollapsed && 
+    (isTopLevel || (isSubmenu && item.shortcut && item.shortcut.length > 1));
+
+  /**
+   * Get contextual shortcut display
+   */
+  const getShortcutDisplay = (): string => {
+    if (!shortcutDisplay) return '';
+    
+    if (isSubmenu && item.shortcut && item.shortcut.length > 1) {
+      // For sub-items, show just the second number
+      return item.shortcut[item.shortcut.length - 1].toString();
+    }
+    
+    return shortcutDisplay;
+  };
+
+  /**
+   * Check if route is active
+   */
+  const isActiveRoute = (path: string): boolean => {
+    if (path === '/') {
+      return location.pathname === path;
+    }
+    return location.pathname.startsWith(path);
+  };
+  
+  /**
+   * Get accessibility label for the item
+   */
+  const getAriaLabel = (): string => {
+    if (shouldShowShortcut) {
+      return `${item.label} - Atajo: ${getShortcutDisplay()}`;
+    }
+    return item.label;
+  };
+  
+  return (
+    <>
+      <Link
+        to={item.path}
+        className={getItemClasses()}
+        onClick={handleToggleChildren}
+        aria-current={isCurrentlyActive ? 'page' : undefined}
+        aria-label={getAriaLabel()}
+        title={item.description}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+      >
+        {/* Icon */}
+        <div className="nav-icon flex items-center justify-center">
+          <IconComponent className="w-full h-full" />
+        </div>
+        
+        {/* Label and content */}
+        {!isCollapsed && (
+          <>
+            <div className="flex-1 min-w-0 flex items-center justify-between">
+              <span className="font-medium text-sm truncate">
+                {item.label}
+              </span>
+              
+              {/* Enhanced shortcut hint for hierarchy */}
+              {shouldShowShortcut && (
+                <span className={`nav-shortcut-hint ml-2 ${
+                  isSubmenu ? 'text-xs bg-white/5' : ''
+                }`}>
+                  {getShortcutDisplay()}
+                </span>
+              )}
+              
+              {/* Expand/collapse indicator for parent items */}
+              {hasChildren && (
+                <ChevronRight 
+                  className={`w-4 h-4 ml-2 transition-transform duration-200 ${
+                    isExpanded ? 'rotate-90' : ''
+                  }`}
+                />
+              )}
+            </div>
+          </>
+        )}
+        
+        {/* Tooltip for collapsed state or submenu shortcuts */}
+        {(isCollapsed || (isSubmenu && shortcutDisplay && showTooltip)) && (
+          <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+            {item.label}
+            {shortcutDisplay && ` (${shortcutDisplay})`}
+          </div>
+        )}
+      </Link>
+      
+      {/* Child items */}
+      {hasChildren && isExpanded && !isCollapsed && (
+        <div className="space-y-1">
+          {item.children!.map((child) => {
+            const childActive = isActiveRoute(child.path);
+            return (
+              <SidebarNavigationItem
+                key={child.id}
+                item={child}
+                isActive={childActive}
+                isCollapsed={isCollapsed}
+                level={level + 1}
+                expandedItems={expandedItems}
+                onItemExpansion={onItemExpansion}
+                shortcutsAvailable={shortcutsAvailable}
+              />
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
 }
 
 /**
@@ -111,161 +300,6 @@ function Sidebar() {
       return newSet;
     });
   };
-
-  /**
-   * Enhanced SidebarNavigationItem with controlled expansion
-   */
-  function SidebarNavigationItem({ item, isActive, isCollapsed, level }: NavigationItemProps) {
-    const location = useLocation();
-    const shortcutDisplay = useShortcutDisplay(item.shortcut || []);
-    
-    const [showTooltip, setShowTooltip] = useState(false);
-    const IconComponent = item.icon;
-    
-    const hasChildren = item.children && item.children.length > 0;
-    const isTopLevel = level === 0;
-    const isSubmenu = level > 0;
-    
-    // Check if any child is currently active
-    const hasActiveChild = hasChildren && item.children?.some(child => 
-      location.pathname === child.path || 
-      location.pathname.startsWith(child.path + '/')
-    );
-    
-    // This item is expanded if it has an active child or is in expandedItems
-    const isExpanded = hasActiveChild || expandedItems.has(item.path);
-    
-    // Only show active state for direct matches, not parents with active children
-    const isCurrentlyActive = isActive && !hasActiveChild;
-    
-    /**
-     * Enhanced click handling for expandable items
-     */
-    const handleToggleChildren = (e: React.MouseEvent) => {
-      if (hasChildren) {
-        e.preventDefault();
-        handleItemExpansion(item.path, !isExpanded);
-      }
-    };
-    
-    /**
-     * Enhanced item classes with cleaner hierarchy
-     */
-    const getItemClasses = (): string => {
-      let classes = 'nav-item-base group';
-      
-      if (isSubmenu) {
-        classes += ' nav-item-submenu';
-      } else if (hasChildren) {
-        classes += ' nav-item-parent';
-      }
-      
-      if (isCurrentlyActive) {
-        classes += ' nav-item-active';
-      } else {
-        classes += ' nav-item-normal';
-      }
-      
-      return classes;
-    };
-
-    /**
-     * Improved shortcut display for hierarchical structure
-     */
-    const shouldShowShortcut = shortcutsAvailable && 
-      shortcutDisplay && 
-      !isCollapsed && 
-      (isTopLevel || (isSubmenu && item.shortcut && item.shortcut.length > 1));
-
-    /**
-     * Get contextual shortcut display
-     */
-    const getShortcutDisplay = (): string => {
-      if (!shortcutDisplay) return '';
-      
-      if (isSubmenu && item.shortcut && item.shortcut.length > 1) {
-        // For sub-items, show just the second number
-        return item.shortcut[item.shortcut.length - 1].toString();
-      }
-      
-      return shortcutDisplay;
-    };
-    
-    return (
-      <>
-        <Link
-          to={item.path}
-          className={getItemClasses()}
-          onClick={handleToggleChildren}
-          aria-current={isCurrentlyActive ? 'page' : undefined}
-          aria-label={`${item.label}${shouldShowShortcut ? ` - Atajo: ${getShortcutDisplay()}` : ''}`}
-          title={item.description}
-          onMouseEnter={() => setShowTooltip(true)}
-          onMouseLeave={() => setShowTooltip(false)}
-        >
-          {/* Icon */}
-          <div className="nav-icon flex items-center justify-center">
-            <IconComponent className="w-full h-full" />
-          </div>
-          
-          {/* Label and content */}
-          {!isCollapsed && (
-            <>
-              <div className="flex-1 min-w-0 flex items-center justify-between">
-                <span className="font-medium text-sm truncate">
-                  {item.label}
-                </span>
-                
-                {/* Enhanced shortcut hint for hierarchy */}
-                {shouldShowShortcut && (
-                  <span className={`nav-shortcut-hint ml-2 ${
-                    isSubmenu ? 'text-xs bg-white/5' : ''
-                  }`}>
-                    {getShortcutDisplay()}
-                  </span>
-                )}
-                
-                {/* Expand/collapse indicator for parent items */}
-                {hasChildren && (
-                  <ChevronRight 
-                    className={`w-4 h-4 ml-2 transition-transform duration-200 ${
-                      isExpanded ? 'rotate-90' : ''
-                    }`}
-                  />
-                )}
-              </div>
-            </>
-          )}
-          
-          {/* Tooltip for collapsed state or submenu shortcuts */}
-          {(isCollapsed || (isSubmenu && shortcutDisplay && showTooltip)) && (
-            <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
-              {item.label}
-              {shortcutDisplay && ` (${shortcutDisplay})`}
-            </div>
-          )}
-        </Link>
-        
-        {/* Child items */}
-        {hasChildren && isExpanded && !isCollapsed && (
-          <div className="space-y-1">
-            {item.children!.map((child) => {
-              const childActive = isActiveRoute(child.path);
-              return (
-                <SidebarNavigationItem
-                  key={child.id}
-                  item={child}
-                  isActive={childActive}
-                  isCollapsed={isCollapsed}
-                  level={level + 1}
-                />
-              );
-            })}
-          </div>
-        )}
-      </>
-    );
-  }
 
   return (
     <>
@@ -380,6 +414,9 @@ function Sidebar() {
                           isActive={isActiveRoute(item.path)}
                           isCollapsed={isCollapsed}
                           level={0}
+                          expandedItems={expandedItems}
+                          onItemExpansion={handleItemExpansion}
+                          shortcutsAvailable={shortcutsAvailable}
                         />
                       ))}
                     </div>

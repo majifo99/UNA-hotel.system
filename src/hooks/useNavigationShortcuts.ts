@@ -172,15 +172,11 @@ export function useNavigationShortcuts(config: Partial<ShortcutConfig> = {}) {
   /**
    * Register hotkeys for numeric shortcuts
    */
-  // Register hotkeys for ALT+1 through ALT+9
-  Array.from({ length: 9 }, (_, i) => i + 1).forEach(digit => {
-    useHotkeys(
-      `alt+${digit}`,
-      () => handleSequenceKey(digit),
-      { enabled: isEnabled, preventDefault: true },
-      [handleSequenceKey]
-    );
-  });
+  // Register hotkeys for ALT+1 through ALT+9 (individual hooks to avoid nesting)
+  useHotkeys('alt+1', () => handleSequenceKey(1), { enabled: isEnabled, preventDefault: true }, [handleSequenceKey]);
+  useHotkeys('alt+2', () => handleSequenceKey(2), { enabled: isEnabled, preventDefault: true }, [handleSequenceKey]);
+  useHotkeys('alt+3', () => handleSequenceKey(3), { enabled: isEnabled, preventDefault: true }, [handleSequenceKey]);
+  useHotkeys('alt+4', () => handleSequenceKey(4), { enabled: isEnabled, preventDefault: true }, [handleSequenceKey]);
   useHotkeys(
     'alt+5',
     () => handleSequenceKey(5),

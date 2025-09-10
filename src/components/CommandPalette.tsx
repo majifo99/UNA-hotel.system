@@ -30,18 +30,18 @@ import { useShortcutDisplay } from '../hooks/useNavigationShortcuts';
  */
 interface CommandPaletteProps {
   /** Whether the command palette is open */
-  open: boolean;
+  readonly open: boolean;
   /** Callback when the command palette should close */
-  onClose: () => void;
+  readonly onClose: () => void;
 }
 
 /**
  * Props for individual command items
  */
 interface CommandItemProps {
-  item: NavigationItem;
-  onSelect: () => void;
-  isSelected?: boolean;
+  readonly item: NavigationItem;
+  readonly onSelect: () => void;
+  readonly isSelected?: boolean;
 }
 
 /**
@@ -118,7 +118,58 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     onClose();
     setQuery(''); // Clear search after navigation
   };
+
+  // Helper function to get max items per category
+  const getMaxItemsPerCategory = () => query ? 8 : 6;
+
+  // Helper function to determine if category header should be shown
+  const shouldShowCategoryHeader = () => query !== '' || totalFilteredItems > 6;
+
+  // Helper function to calculate global index for keyboard navigation
+  const calculateGlobalIndex = (category: string, localIndex: number) => {
+    const categoriesBeforeCurrent = Object.entries(groupedItems)
+      .slice(0, Object.keys(groupedItems).indexOf(category));
+    
+    return categoriesBeforeCurrent.reduce((acc, [, catItems]) => {
+      const filtered = catItems.filter(catItem => 
+        query === '' || 
+        catItem.label.toLowerCase().includes(query.toLowerCase()) ||
+        catItem.description.toLowerCase().includes(query.toLowerCase())
+      );
+      const maxItems = getMaxItemsPerCategory();
+      return acc + Math.min(filtered.length, maxItems);
+    }, 0) + localIndex;
+  };
   
+  // Helper function to get filtered items
+  const getFilteredItems = () => {
+    return Object.values(groupedItems).flat().filter(item => 
+      query === '' || 
+      item.label.toLowerCase().includes(query.toLowerCase()) ||
+      item.description.toLowerCase().includes(query.toLowerCase())
+    );
+  };
+
+  // Handle keyboard navigation
+  const handleArrowDown = (e: KeyboardEvent) => {
+    e.preventDefault();
+    const allVisible = getFilteredItems();
+    setSelectedIndex(prev => Math.min(prev + 1, allVisible.length - 1));
+  };
+
+  const handleArrowUp = (e: KeyboardEvent) => {
+    e.preventDefault();
+    setSelectedIndex(prev => Math.max(prev - 1, 0));
+  };
+
+  const handleEnterKey = (e: KeyboardEvent) => {
+    e.preventDefault();
+    const allVisible = getFilteredItems();
+    if (allVisible[selectedIndex]) {
+      handleSelect(allVisible[selectedIndex]);
+    }
+  };
+
   /**
    * Handle escape key and click outside
    */
@@ -131,30 +182,13 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
           onClose();
           break;
         case 'ArrowDown':
-          e.preventDefault();
-          setSelectedIndex(prev => {
-            const allVisible = Object.values(groupedItems).flat().filter(item => 
-              query === '' || 
-              item.label.toLowerCase().includes(query.toLowerCase()) ||
-              item.description.toLowerCase().includes(query.toLowerCase())
-            );
-            return Math.min(prev + 1, allVisible.length - 1);
-          });
+          handleArrowDown(e);
           break;
         case 'ArrowUp':
-          e.preventDefault();
-          setSelectedIndex(prev => Math.max(prev - 1, 0));
+          handleArrowUp(e);
           break;
         case 'Enter':
-          e.preventDefault();
-          const allVisible = Object.values(groupedItems).flat().filter(item => 
-            query === '' || 
-            item.label.toLowerCase().includes(query.toLowerCase()) ||
-            item.description.toLowerCase().includes(query.toLowerCase())
-          );
-          if (allVisible[selectedIndex]) {
-            handleSelect(allVisible[selectedIndex]);
-          }
+          handleEnterKey(e);
           break;
       }
     };
@@ -163,7 +197,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       document.addEventListener('keydown', handleKeyDown);
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
-  }, [open, onClose, selectedIndex, query, groupedItems]);
+  }, [open, onClose, selectedIndex, query, groupedItems, handleArrowDown, handleEnterKey]);
 
   /**
    * Reset selected index when query changes
@@ -196,17 +230,20 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   return (
     <>
       {/* Backdrop overlay */}
-      <div 
-        className="fixed inset-0 z-50 command-palette-overlay"
+      <button 
+        type="button"
+        className="fixed inset-0 z-50 command-palette-overlay cursor-default"
         onClick={onClose}
-        aria-hidden="true"
+        aria-label="Cerrar paleta de comandos"
       />
       
       {/* Command palette container */}
       <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4">
         <div 
           className="command-palette-content border rounded-lg overflow-hidden relative w-full max-w-lg shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="command-palette-title"
         >
           {/* Header */}
           <div className="flex items-center gap-3 px-3 py-2.5 border-b border-white/10">
@@ -258,24 +295,14 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
               return (
                 <div key={category} className="py-1">
                   {/* Only show category headers when there's a search or when there are multiple categories with results */}
-                  {(query !== '' || totalFilteredItems > 6) && (
+                  {shouldShowCategoryHeader() && (
                     <div className="text-xs text-white/40 uppercase tracking-wide font-medium mb-1 px-3 pt-2">
                       {categoryConfig.label}
                     </div>
                   )}
                   
-                  {filteredItems.slice(0, query ? 8 : 6).map((item, index) => {
-                    // Calculate global index for keyboard navigation
-                    const globalIndex = Object.entries(groupedItems)
-                      .slice(0, Object.keys(groupedItems).indexOf(category))
-                      .reduce((acc, [, catItems]) => {
-                        const filtered = catItems.filter(catItem => 
-                          query === '' || 
-                          catItem.label.toLowerCase().includes(query.toLowerCase()) ||
-                          catItem.description.toLowerCase().includes(query.toLowerCase())
-                        );
-                        return acc + Math.min(filtered.length, query ? 8 : 6);
-                      }, 0) + index;
+                  {filteredItems.slice(0, getMaxItemsPerCategory()).map((item, index) => {
+                    const globalIndex = calculateGlobalIndex(category, index);
 
                     return (
                       <NavigationCommandItem
@@ -288,9 +315,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                   })}
                   
                   {/* Show "more results" hint if there are many results */}
-                  {filteredItems.length > (query ? 8 : 6) && (
+                  {filteredItems.length > getMaxItemsPerCategory() && (
                     <div className="text-xs text-white/30 px-3 py-1">
-                      +{filteredItems.length - (query ? 8 : 6)} más resultados...
+                      +{filteredItems.length - getMaxItemsPerCategory()} más resultados...
                     </div>
                   )}
                 </div>
