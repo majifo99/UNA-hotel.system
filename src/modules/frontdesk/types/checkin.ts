@@ -6,6 +6,10 @@ export interface CheckInData {
   numberOfGuests: number;
   identificationNumber: string;
   paymentStatus: 'pending' | 'completed';
+  isWalkIn?: boolean;
+  guestEmail?: string;
+  guestPhone?: string;
+  guestNationality?: string;
 }
 
 export interface CheckInResponse {

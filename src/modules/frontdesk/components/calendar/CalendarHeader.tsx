@@ -1,11 +1,15 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Grid, RotateCcw } from 'lucide-react';
 import type { CalendarHeaderProps } from '../../types/calendar';
 
 const CalendarHeader: React.FC<CalendarHeaderProps> = ({
   calendarDays,
+  viewMode,
+  currentMonthYear,
   onNavigateWeek,
+  onNavigateMonth,
   onGoToToday,
+  onViewModeChange,
   stats
 }) => {
   return (
@@ -18,7 +22,7 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
         
         {/* Stats Summary */}
         {stats && (
-          <div className="flex gap-6 text-sm">
+          <div className="flex gap-4 text-sm">
             <div className="text-center bg-white/20 rounded-lg p-3 backdrop-blur-sm">
               <div className="text-2xl font-bold text-white">{stats.availableRooms}</div>
               <div className="text-white/90 font-medium">Disponibles</div>
@@ -35,37 +39,71 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
         )}
       </div>
 
-      {/* Calendar Navigation */}
+      {/* View Mode Toggle and Navigation */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => onNavigateWeek('prev')}
-            className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-            aria-label="Semana anterior"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          
-          <div className="text-lg font-semibold">
-            {calendarDays[0]?.date.toLocaleDateString('es-ES', { 
-              month: 'long', 
-              year: 'numeric' 
-            })}
+          {/* View Mode Toggle */}
+          <div className="flex bg-white/20 rounded-lg p-1">
+            <button
+              onClick={() => onViewModeChange('week')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${
+                viewMode === 'week'
+                  ? 'bg-white text-gray-800 font-medium shadow-sm'
+                  : 'text-white/90 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <Grid className="w-4 h-4" />
+              Semana
+            </button>
+            <button
+              onClick={() => onViewModeChange('month')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${
+                viewMode === 'month'
+                  ? 'bg-white text-gray-800 font-medium shadow-sm'
+                  : 'text-white/90 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              Mes
+            </button>
           </div>
-          
-          <button
-            onClick={() => onNavigateWeek('next')}
-            className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-            aria-label="Semana siguiente"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
+
+          {/* Navigation Controls */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => viewMode === 'month' ? onNavigateMonth('prev') : onNavigateWeek('prev')}
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              aria-label={viewMode === 'month' ? 'Mes anterior' : 'Semana anterior'}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            
+            <div className="text-lg font-semibold min-w-[200px] text-center">
+              {viewMode === 'month' ? (
+                <span className="capitalize">{currentMonthYear}</span>
+              ) : (
+                calendarDays[0]?.date.toLocaleDateString('es-ES', { 
+                  month: 'long', 
+                  year: 'numeric' 
+                })
+              )}
+            </div>
+            
+            <button
+              onClick={() => viewMode === 'month' ? onNavigateMonth('next') : onNavigateWeek('next')}
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              aria-label={viewMode === 'month' ? 'Mes siguiente' : 'Semana siguiente'}
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <button
           onClick={onGoToToday}
-          className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors font-medium"
         >
+          <RotateCcw className="w-4 h-4" />
           Hoy
         </button>
       </div>

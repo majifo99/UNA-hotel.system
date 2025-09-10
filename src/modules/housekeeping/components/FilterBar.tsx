@@ -8,11 +8,11 @@ export type RoomFilters = {
   floor: string;
 };
 
-type FilterBarProps = {
+type FilterBarProps = Readonly<{
   filters: RoomFilters;
   setFilters: (filters: RoomFilters) => void;
   totalRooms: number;
-};
+}>;
 
 export default function FilterBar({ filters, setFilters, totalRooms }: FilterBarProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -23,8 +23,10 @@ export default function FilterBar({ filters, setFilters, totalRooms }: FilterBar
         <div className="flex items-center gap-3">
           {/* Buscar */}
           <div className="relative">
+            <label htmlFor="search-input" className="sr-only">Buscar habitación por número</label>
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
+              id="search-input"
               value={filters.search}
               onChange={(e) => setFilters({ ...filters, search: e.target.value })}
               placeholder="Buscar habitación por número..."
@@ -50,7 +52,6 @@ export default function FilterBar({ filters, setFilters, totalRooms }: FilterBar
           </button>
         </div>
 
-        {/* Contador visual dinámico */}
         <div className="text-xs text-slate-500">{totalRooms} habitaciones</div>
       </div>
 
@@ -66,51 +67,63 @@ export default function FilterBar({ filters, setFilters, totalRooms }: FilterBar
             <span className="text-sm text-slate-600">Filtros:</span>
 
             {/* Estado */}
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="h-9 rounded-lg border border-slate-300 bg-white/80 px-3 text-sm text-slate-700 hover:bg-white focus:outline-none"
-            >
-              <option value="">Todos los estados</option>
-              <option value="Disponible">Disponible</option>
-              <option value="Ocupada">Ocupada</option>
-              <option value="Pendiente">Pendiente</option>
-              <option value="En limpieza">En limpieza</option>
-              <option value="Inspección">Inspección</option>
-              <option value="Fuera de servicio">Fuera de servicio</option>
-            </select>
+            <div className="flex items-center gap-2">
+              <label htmlFor="status-select" className="text-sm text-slate-600">Estado</label>
+              <select
+                id="status-select"
+                value={filters.status}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                className="h-9 rounded-lg border border-slate-300 bg-white/80 px-3 text-sm text-slate-700 hover:bg-white focus:outline-none"
+              >
+                <option value="">Todos los estados</option>
+                <option value="Disponible">Disponible</option>
+                <option value="Ocupada">Ocupada</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="En limpieza">En limpieza</option>
+                <option value="Inspección">Inspección</option>
+                <option value="Fuera de servicio">Fuera de servicio</option>
+                <option value="Mantenimiento">Mantenimiento</option>
+              </select>
+            </div>
 
             {/* Tipo */}
-            <select
-              value={filters.type}
-              onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-              className="h-9 rounded-lg border border-slate-300 bg-white/80 px-3 text-sm text-slate-700 hover:bg-white focus:outline-none"
-            >
-              <option value="">Todos los tipos</option>
-              <option value="Sencilla">Sencilla</option>
-              <option value="Doble">Doble</option>
-              <option value="Suite">Suite</option>
-              <option value="King">King</option>
-            </select>
+            <div className="flex items-center gap-2">
+              <label htmlFor="type-select" className="text-sm text-slate-600">Tipo</label>
+              <select
+                id="type-select"
+                value={filters.type}
+                onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+                className="h-9 rounded-lg border border-slate-300 bg-white/80 px-3 text-sm text-slate-700 hover:bg-white focus:outline-none"
+              >
+                <option value="">Todos los tipos</option>
+                <option value="Sencilla">Sencilla</option>
+                <option value="Doble">Doble</option>
+                <option value="Suite">Suite</option>
+                <option value="King">King</option>
+              </select>
+            </div>
 
             {/* Piso */}
-            <select
-              value={filters.floor}
-              onChange={(e) => setFilters({ ...filters, floor: e.target.value })}
-              className="h-9 rounded-lg border border-slate-300 bg-white/80 px-3 text-sm text-slate-700 hover:bg-white focus:outline-none"
-            >
-              <option value="">Todos los pisos</option>
-              <option value="1">Piso 1</option>
-              <option value="2">Piso 2</option>
-              <option value="3">Piso 3</option>
-              <option value="4">Piso 4</option>
-            </select>
+            <div className="flex items-center gap-2">
+              <label htmlFor="floor-select" className="text-sm text-slate-600">Piso</label>
+              <select
+                id="floor-select"
+                value={filters.floor}
+                onChange={(e) => setFilters({ ...filters, floor: e.target.value })}
+                className="h-9 rounded-lg border border-slate-300 bg-white/80 px-3 text-sm text-slate-700 hover:bg-white focus:outline-none"
+              >
+                <option value="">Todos los pisos</option>
+                <option value="1">Piso 1</option>
+                <option value="2">Piso 2</option>
+                <option value="3">Piso 3</option>
+                <option value="4">Piso 4</option>
+              </select>
+            </div>
 
             {/* Limpiar */}
             <button
-              onClick={() =>
-                setFilters({ search: "", status: "", type: "", floor: "" })
-              }
+              type="button"
+              onClick={() => setFilters({ search: "", status: "", type: "", floor: "" })}
               className="h-9 inline-flex items-center rounded-lg border border-slate-300 bg-white/80 px-3 text-sm text-slate-700 hover:bg-white"
             >
               Limpiar

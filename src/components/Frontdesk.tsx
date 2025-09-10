@@ -200,25 +200,75 @@ export default function Frontdesk() {
           <div className="flex flex-wrap gap-2">
             {r.status === 'available' && (
               <>
-                <button className="inline-flex items-center rounded-md bg-indigo-600 text-white px-3 py-2 text-sm hover:bg-indigo-700" onClick={() => openReservationFor(r)}>
+                <button 
+                  className="inline-flex items-center rounded-md bg-indigo-600 text-white px-3 py-2 text-sm hover:bg-indigo-700" 
+                  onClick={() => openReservationFor(r)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      openReservationFor(r);
+                    }
+                  }}
+                  aria-label={`Reservar habitación ${r.roomNumber}`}
+                >
                   Reservar
                 </button>
-                <button className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50" onClick={() => doCheckIn(r.id)}>
+                <button 
+                  className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50" 
+                  onClick={() => doCheckIn(r.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      doCheckIn(r.id);
+                    }
+                  }}
+                  aria-label={`Hacer check-in en habitación ${r.roomNumber}`}
+                >
                   Check‑in
                 </button>
               </>
             )}
             {r.status === 'reserved' && (
-              <button className="inline-flex items-center rounded-md bg-indigo-600 text-white px-3 py-2 text-sm hover:bg-indigo-700" onClick={() => doCheckIn(r.id)}>
+              <button 
+                className="inline-flex items-center rounded-md bg-indigo-600 text-white px-3 py-2 text-sm hover:bg-indigo-700" 
+                onClick={() => doCheckIn(r.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    doCheckIn(r.id);
+                  }
+                }}
+                aria-label={`Confirmar check-in para ${r.guestName} en habitación ${r.roomNumber}`}
+              >
                 Confirmar Check‑in
               </button>
             )}
             {r.status === 'checked-in' && (
-              <button className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50" onClick={() => doCheckOut(r.id)}>
+              <button 
+                className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50" 
+                onClick={() => doCheckOut(r.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    doCheckOut(r.id);
+                  }
+                }}
+                aria-label={`Hacer check-out de ${r.guestName} en habitación ${r.roomNumber}`}
+              >
                 Check‑out
               </button>
             )}
-            <button className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50" onClick={() => toggleMaint(r.id)}>
+            <button 
+              className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50" 
+              onClick={() => toggleMaint(r.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  toggleMaint(r.id);
+                }
+              }}
+              aria-label={`${r.status === 'maintenance' ? 'Volver a servicio' : 'Poner en mantenimiento'} habitación ${r.roomNumber}`}
+            >
               {r.status === 'maintenance' ? 'Volver a servicio' : 'Mantenimiento'}
             </button>
           </div>
@@ -261,8 +311,9 @@ export default function Frontdesk() {
           <h3 className="text-lg font-semibold mb-3">Filtros</h3>
           <div className="flex items-end gap-3">
             <div className="w-44 shrink-0">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Filtrar por</label>
+              <label htmlFor="filter-field" className="block text-sm font-medium text-gray-700 mb-1">Filtrar por</label>
               <select
+                id="filter-field"
                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                 value={filterField}
                 onChange={(e) => onFieldChange(e.target.value as FilterField)}
@@ -277,9 +328,10 @@ export default function Frontdesk() {
             </div>
 
             <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Valor</label>
+              <label htmlFor={`filter-value-${filterField}`} className="block text-sm font-medium text-gray-700 mb-1">Valor</label>
               {filterField === 'status' ? (
                 <select
+                  id={`filter-value-${filterField}`}
                   className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                   value={filterValue}
                   onChange={(e) => onValueChange(e.target.value)}
@@ -293,6 +345,7 @@ export default function Frontdesk() {
                 </select>
               ) : filterField === 'type' ? (
                 <select
+                  id={`filter-value-${filterField}`}
                   className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                   value={filterValue}
                   onChange={(e) => onValueChange(e.target.value)}
@@ -304,6 +357,7 @@ export default function Frontdesk() {
                 </select>
               ) : (
                 <input
+                  id={`filter-value-${filterField}`}
                   className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Buscar…"
                   value={filterValue}
@@ -315,6 +369,13 @@ export default function Frontdesk() {
             <button
               className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 px-3 text-sm text-slate-700 hover:bg-slate-50"
               onClick={onClear}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onClear();
+                }
+              }}
+              aria-label="Limpiar filtros"
             >
               Limpiar
             </button>
@@ -322,20 +383,59 @@ export default function Frontdesk() {
 
           {/* Acciones rápidas */}
           <div className="mt-4 flex flex-wrap gap-2">
-            <button className="inline-flex items-center rounded-md bg-indigo-600 text-white px-3 py-2 text-sm hover:bg-indigo-700"
-              onClick={() => { openReservationFor(); }}>
+            <button 
+              className="inline-flex items-center rounded-md bg-indigo-600 text-white px-3 py-2 text-sm hover:bg-indigo-700"
+              onClick={() => { openReservationFor(); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  openReservationFor();
+                }
+              }}
+              aria-label="Crear nueva reserva"
+            >
               Nueva reserva
             </button>
-            <button className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
-              onClick={() => { setFilterField('status'); applyFilter('status','available'); }}>
+            <button 
+              className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
+              onClick={() => { setFilterField('status'); applyFilter('status','available'); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setFilterField('status');
+                  applyFilter('status','available');
+                }
+              }}
+              aria-label="Filtrar por habitaciones disponibles"
+            >
               Ver disponibles
             </button>
-            <button className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
-              onClick={() => { setFilterField('status'); applyFilter('status','checked-in'); }}>
+            <button 
+              className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
+              onClick={() => { setFilterField('status'); applyFilter('status','checked-in'); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setFilterField('status');
+                  applyFilter('status','checked-in');
+                }
+              }}
+              aria-label="Filtrar por habitaciones ocupadas"
+            >
               Ver ocupadas
             </button>
-            <button className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
-              onClick={() => { setFilterField('status'); applyFilter('status','maintenance'); }}>
+            <button 
+              className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
+              onClick={() => { setFilterField('status'); applyFilter('status','maintenance'); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setFilterField('status');
+                  applyFilter('status','maintenance');
+                }
+              }}
+              aria-label="Filtrar por habitaciones en mantenimiento"
+            >
               Ver mantenimiento
             </button>
           </div>
@@ -396,15 +496,30 @@ export default function Frontdesk() {
       </div>
 
       {/* Modal Reserva */}
-      <div className={`${modalOpen ? '' : 'hidden'} fixed inset-0 z-50`}>
-        <div className="absolute inset-0 bg-black/40" onClick={() => setModalOpen(false)} />
+      <dialog 
+        open={modalOpen}
+        className="fixed inset-0 z-50 bg-transparent p-0 m-0 w-full h-full max-w-none max-h-none"
+        aria-labelledby="modal-title"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            setModalOpen(false);
+          }
+        }}
+      >
+        <button 
+          className="absolute inset-0 bg-black/40 border-0 p-0 cursor-default" 
+          onClick={() => setModalOpen(false)}
+          aria-label="Cerrar modal"
+        />
         <div className="absolute inset-0 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow p-4 w-full max-w-lg">
-            <h3 className="text-lg font-semibold mb-4">Nueva reserva</h3>
+            <h3 id="modal-title" className="text-lg font-semibold mb-4">Nueva reserva</h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Habitación</label>
+                <label htmlFor="modal-room-number" className="block text-sm font-medium text-gray-700 mb-1">Habitación</label>
                 <input
+                  id="modal-room-number"
                   className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="301"
                   value={modalForm.roomNumber}
@@ -412,8 +527,9 @@ export default function Frontdesk() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                <label htmlFor="modal-room-type" className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
                 <select
+                  id="modal-room-type"
                   className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                   value={modalForm.type}
                   onChange={(e) => setModalForm((f) => ({ ...f, type: e.target.value as RoomType }))}
@@ -424,8 +540,9 @@ export default function Frontdesk() {
                 </select>
               </div>
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Huésped</label>
+                <label htmlFor="modal-guest-name" className="block text-sm font-medium text-gray-700 mb-1">Huésped</label>
                 <input
+                  id="modal-guest-name"
                   className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Nombre del huésped"
                   value={modalForm.guestName}
@@ -433,8 +550,9 @@ export default function Frontdesk() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Check‑in</label>
+                <label htmlFor="modal-check-in" className="block text-sm font-medium text-gray-700 mb-1">Check‑in</label>
                 <input
+                  id="modal-check-in"
                   type="date"
                   className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                   value={modalForm.checkIn}
@@ -442,8 +560,9 @@ export default function Frontdesk() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Check‑out</label>
+                <label htmlFor="modal-check-out" className="block text-sm font-medium text-gray-700 mb-1">Check‑out</label>
                 <input
+                  id="modal-check-out"
                   type="date"
                   className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                   value={modalForm.checkOut}
@@ -453,18 +572,36 @@ export default function Frontdesk() {
             </div>
 
             <div className="mt-4 flex justify-end gap-2">
-              <button className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
-                onClick={() => setModalOpen(false)}>
+              <button 
+                className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
+                onClick={() => setModalOpen(false)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setModalOpen(false);
+                  }
+                }}
+                aria-label="Cancelar y cerrar modal"
+              >
                 Cancelar
               </button>
-              <button className="inline-flex items-center rounded-md bg-indigo-600 text-white px-3 py-2 text-sm hover:bg-indigo-700"
-                onClick={saveReservation}>
+              <button 
+                className="inline-flex items-center rounded-md bg-indigo-600 text-white px-3 py-2 text-sm hover:bg-indigo-700"
+                onClick={saveReservation}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    saveReservation();
+                  }
+                }}
+                aria-label="Guardar reserva"
+              >
                 Guardar reserva
               </button>
             </div>
           </div>
         </div>
-      </div>
+      </dialog>
 
       {/* Toast */}
       {toast && (

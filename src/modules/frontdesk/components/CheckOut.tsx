@@ -68,9 +68,23 @@ const CheckOut = () => {
 
     const success = await validateAndSubmit(formData);
     if (success) {
-      // Generate receipt data
+      // Generate receipt data with secure receipt number
+      const generateReceiptNumber = (): string => {
+        const now = new Date();
+        const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+        const timePart = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+        const millisPart = String(now.getMilliseconds()).padStart(3, '0');
+        
+        // Use crypto.getRandomValues for secure random number
+        const randomArray = new Uint32Array(1);
+        crypto.getRandomValues(randomArray);
+        const randomPart = (randomArray[0] % 10000).toString().padStart(4, '0');
+        
+        return `RCP-${datePart}-${timePart}${millisPart}-${randomPart}`;
+      };
+
       const receipt: ReceiptData = {
-        receiptNumber: `RCP-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
+        receiptNumber: generateReceiptNumber(),
         hotelName: 'UNA Hotel',
         hotelAddress: '123 Main Street, San José, Costa Rica',
         guestName: formData.guestName,
