@@ -28,7 +28,8 @@ import {
   Bed,
   Users,
   CreditCard,
-  Brush,
+  BrushCleaning,
+  Wrench,
   BarChart3,
   FileText,
   Settings,
@@ -118,13 +119,13 @@ export const NAVIGATION_CATEGORIES: Record<NavigationCategory, {
  * 
  * ALT+1: Dashboard Principal
  * ALT+2: Front Desk → 1:Check-in, 2:Check-out, 3:Calendar, 4:Reportes
- * ALT+3: Reservaciones → 1:Nueva, 2:Buscar, 3:Calendar, 4:Reportes  
+ * ALT+3: Reservaciones → 1:Nueva, 2:Buscar, 3:Reportes  
  * ALT+4: Habitaciones → 1:Estado, 2:Disponibilidad, 3:Mantenimiento, 4:Reportes
  * ALT+5: Huéspedes → 1:Buscar, 2:Nuevo, 3:Perfiles, 4:Reportes
  * ALT+6: Facturación → 1:Pagos, 2:Facturas, 3:Balance, 4:Reportes
- * ALT+7: Housekeeping → 1:Tareas, 2:Estado, 3:Programar, 4:Reportes
- * ALT+8: Reportes Generales
- * ALT+9: Configuración
+ * ALT+7: Housekeeping → 1:Dashboard, 2:Tareas, 3:Reportes
+ * ALT+8: Mantenimiento → 1:Solicitudes, 2:Preventivo, 3:Reportes
+ * ALT+9: Reportes Generales → 1:Ocupación, 2:Ingresos, 3:Operacional, 4:Personalizados
  */
 export const NAVIGATION_CONFIG: NavigationItem[] = [
   // ===== DASHBOARD =====
@@ -353,7 +354,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
     id: 'housekeeping',
     label: 'Housekeeping',
     path: ROUTES.HOUSEKEEPING.BASE,
-    icon: Brush,
+    icon: BrushCleaning,
     description: 'Limpieza y mantenimiento',
     category: 'management',
     shortcut: [7], // ALT+7
@@ -387,6 +388,44 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
       },
     ],
   },
+  {
+    id: 'maintenance',
+    label: 'Mantenimiento',
+    path: '/mantenimiento',
+    icon: Wrench,
+    description: 'Gestión y control de mantenimientos',
+    category: 'management',
+    shortcut: [8], // ALT+8 (ajustando para mantener orden)
+    children: [
+      {
+        id: 'maintenance-requests',
+        label: 'Solicitudes',
+        path: '/mantenimiento/solicitudes',
+        icon: ClipboardList,
+        description: 'Solicitudes de mantenimiento',
+        category: 'management',
+        shortcut: [8, 1], // ALT+8, luego 1
+      },
+      {
+        id: 'maintenance-preventive',
+        label: 'Preventivo',
+        path: '/mantenimiento/preventivo',
+        icon: Clock,
+        description: 'Mantenimiento preventivo programado',
+        category: 'management',
+        shortcut: [8, 2], // ALT+8, luego 2
+      },
+      {
+        id: 'maintenance-reports',
+        label: 'Reportes Mantenimiento',
+        path: '/mantenimiento/reportes',
+        icon: BarChart3,
+        description: 'Reportes de mantenimiento',
+        category: 'management',
+        shortcut: [8, 3], // ALT+8, luego 3
+      },
+    ],
+  },
 
   // ===== REPORTES GENERALES =====
   {
@@ -396,7 +435,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
     icon: BarChart3,
     description: 'Centro de reportes y analytics',
     category: 'reports',
-    shortcut: [8], // ALT+8
+    shortcut: [9], // ALT+9 (ajustado)
     children: [
       {
         id: 'reports-occupancy',
@@ -405,7 +444,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
         icon: TrendingUp,
         description: 'Reportes de ocupación',
         category: 'reports',
-        shortcut: [8, 1], // ALT+8, luego 1
+        shortcut: [9, 1], // ALT+9, luego 1
       },
       {
         id: 'reports-revenue',
@@ -414,7 +453,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
         icon: DollarSign,
         description: 'Reportes de ingresos',
         category: 'reports',
-        shortcut: [8, 2], // ALT+8, luego 2
+        shortcut: [9, 2], // ALT+9, luego 2
       },
       {
         id: 'reports-operational',
@@ -423,7 +462,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
         icon: ClipboardList,
         description: 'Reportes operacionales',
         category: 'reports',
-        shortcut: [8, 3], // ALT+8, luego 3
+        shortcut: [9, 3], // ALT+9, luego 3
       },
       {
         id: 'reports-custom',
@@ -432,7 +471,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
         icon: FileText,
         description: 'Crear reportes personalizados',
         category: 'reports',
-        shortcut: [8, 4], // ALT+8, luego 4
+        shortcut: [9, 4], // ALT+9, luego 4
       },
     ],
   },
@@ -445,7 +484,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
     icon: Settings,
     description: 'Configuración del sistema',
     category: 'system',
-    shortcut: [9], // ALT+9
+    // Sin shortcut para evitar conflictos
     children: [
       {
         id: 'settings-hotel',
@@ -454,7 +493,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
         icon: Building2,
         description: 'Configuración general del hotel',
         category: 'system',
-        shortcut: [9, 1], // ALT+9, luego 1
+        // Sin shortcut
       },
       {
         id: 'settings-users',
@@ -463,7 +502,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
         icon: Users,
         description: 'Gestión de usuarios del sistema',
         category: 'system',
-        shortcut: [9, 2], // ALT+9, luego 2
+        // Sin shortcut
       },
       {
         id: 'settings-backup',
@@ -472,7 +511,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
         icon: Archive,
         description: 'Gestión de respaldos',
         category: 'system',
-        shortcut: [9, 3], // ALT+9, luego 3
+        // Sin shortcut
       },
       {
         id: 'settings-integrations',
@@ -481,7 +520,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
         icon: Phone,
         description: 'Configurar integraciones externas',
         category: 'system',
-        shortcut: [9, 4], // ALT+9, luego 4
+        // Sin shortcut
       },
     ],
   },
