@@ -116,13 +116,7 @@ export const ROUTES = {
     REPORTS: '/mantenimiento/reports',
   },
 
- MANTENIMIENTO: {
-  BASE: '/Mantenimiento',
-},
-
 } as const;
-
-
 
 
 
