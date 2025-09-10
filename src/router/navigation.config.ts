@@ -362,7 +362,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
       {
         id: 'housekeeping-dashboard',
         label: 'Dashboard',
-        path: ROUTES.HOUSEKEEPING.BASE,
+        path: ROUTES.HOUSEKEEPING.DASHBOARD,
         icon: ClipboardList,
         description: 'Panel de control de limpieza',
         category: 'management',
@@ -371,7 +371,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
       {
         id: 'housekeeping-tasks',
         label: 'Tareas Diarias',
-        path: `${ROUTES.HOUSEKEEPING.BASE}/tasks`,
+        path: ROUTES.HOUSEKEEPING.TASKS,
         icon: CheckSquare,
         description: 'Tareas de limpieza del día',
         category: 'management',
@@ -380,7 +380,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
       {
         id: 'housekeeping-reports',
         label: 'Reportes Housekeeping',
-        path: `${ROUTES.HOUSEKEEPING.BASE}/reports`,
+        path: ROUTES.HOUSEKEEPING.REPORTS,
         icon: BarChart3,
         description: 'Reportes de limpieza y mantenimiento',
         category: 'management',
@@ -391,7 +391,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
   {
     id: 'maintenance',
     label: 'Mantenimiento',
-    path: '/mantenimiento',
+    path: ROUTES.MANTENIMIENTO.BASE,
     icon: Wrench,
     description: 'Gestión y control de mantenimientos',
     category: 'management',
@@ -400,7 +400,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
       {
         id: 'maintenance-requests',
         label: 'Solicitudes',
-        path: '/mantenimiento/solicitudes',
+        path: ROUTES.MANTENIMIENTO.SOLICITUDES,
         icon: ClipboardList,
         description: 'Solicitudes de mantenimiento',
         category: 'management',
@@ -409,7 +409,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
       {
         id: 'maintenance-preventive',
         label: 'Preventivo',
-        path: '/mantenimiento/preventivo',
+        path: ROUTES.MANTENIMIENTO.PREVENTIVO,
         icon: Clock,
         description: 'Mantenimiento preventivo programado',
         category: 'management',
@@ -418,7 +418,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
       {
         id: 'maintenance-reports',
         label: 'Reportes Mantenimiento',
-        path: '/mantenimiento/reportes',
+        path: ROUTES.MANTENIMIENTO.REPORTS,
         icon: BarChart3,
         description: 'Reportes de mantenimiento',
         category: 'management',
