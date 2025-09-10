@@ -102,7 +102,7 @@ export const ROUTES = {
   // Housekeeping Module
   HOUSEKEEPING: {
     BASE: '/housekeeping',
-    DASHBOARD: '/housekeeping/dashboard',
+    DASHBOARD: '/housekeeping',
     TASKS: '/housekeeping/tasks',
     REPORTS: '/housekeeping/reports',
   },
