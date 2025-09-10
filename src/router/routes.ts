@@ -99,18 +99,24 @@ export const ROUTES = {
     INTEGRATIONS: '/settings/integrations',
   },
 
- // Agrega esta sección sin modificar lo anterior
+  // Housekeeping Module
   HOUSEKEEPING: {
-  BASE: '/housekeeping',
-},
+    BASE: '/housekeeping',
+    DASHBOARD: '/housekeeping/dashboard',
+    TASKS: '/housekeeping/tasks',
+    REPORTS: '/housekeeping/reports',
+  },
 
- MANTENIMIENTO: {
-  BASE: '/Mantenimiento',
-},
+  // Maintenance Module
+  MANTENIMIENTO: {
+    BASE: '/mantenimiento',
+    DASHBOARD: '/mantenimiento/dashboard',
+    SOLICITUDES: '/mantenimiento/solicitudes',
+    PREVENTIVO: '/mantenimiento/preventivo',
+    REPORTS: '/mantenimiento/reports',
+  },
 
 } as const;
-
-
 
 
 
@@ -169,5 +175,5 @@ export const navigation = {
   toGuests: () => ROUTES.GUESTS.BASE,
   toSettings: () => ROUTES.SETTINGS.BASE,
   toHousekeeping: () => ROUTES.HOUSEKEEPING.BASE,
-
+  toMantenimiento: () => ROUTES.MANTENIMIENTO.BASE,
 } as const;
