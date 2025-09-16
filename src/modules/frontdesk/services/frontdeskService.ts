@@ -17,7 +17,7 @@ import {
  * Servicio de Frontdesk - Manejo de habitaciones y operaciones
  */
 export class FrontdeskService {
-  private static baseURL = '/api/frontdesk';
+  private static baseURL = '/frontdesk';
   private static isDevelopment = import.meta.env.DEV;
 
   // =================== ROOMS ===================
