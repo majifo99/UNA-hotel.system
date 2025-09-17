@@ -1,25 +1,22 @@
-// Tipos base del módulo de Mantenimiento
+export type MaintenanceStatus = "Pendiente" | "En Proceso" | "Completado";
+export type MaintenancePriority = "Baja" | "Media" | "Alta" | "Urgente";
 
-export type MaintenanceStatus = 'Pendiente' | 'En Proceso' | 'Completado';
-export type MaintenancePriority = 'Baja' | 'Media' | 'Alta' | 'Urgente';
-export type MaintenanceKind = 'Correctivo' | 'Preventivo';
-
-export interface Assignee {
+export type MaintenanceItem = {
   id: string;
-  name: string;
-  title?: string;
-  eta?: string; // ej. "2-3 horas"
-}
-
-export interface MaintenanceItem {
-  id: string;           // UUID interno
-  code: string;         // MNT-001
-  roomNumber: number;   // 201
-  kind: MaintenanceKind;// Correctivo / Preventivo
-  area: string;         // Plomería, Eléctrica, Carpintería...
+  code: string;
+  roomNumber: number;
+  kind: "Correctivo" | "Preventivo";   // o string si lo tienes así
+  area: string;                        // Plomería, Eléctrica, etc.
   status: MaintenanceStatus;
-  assignee?: Assignee;
-  scheduledAt?: string; // ISO o dd/mm/yyyy
+  assignee?: { id: string; name: string; eta?: string };
+  scheduledAt?: string;
   priority: MaintenancePriority;
-  createdAt: string;    // ISO
-}
+  createdAt?: string;
+
+  /** NUEVO: para mostrar como en tu captura */
+  name?: string;       // "Reparación de aire acondicionado"
+  summary?: string;    // "El aire acondicionado no enfría correctamente"
+
+
+   sourceNotificationId?: string | number;
+};
