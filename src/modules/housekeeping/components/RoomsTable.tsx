@@ -1,240 +1,242 @@
-import { useEffect, useState, type JSX } from "react";
-import { ArrowUpDown, MoreHorizontal, UserCheck, KeyRound } from "lucide-react";
-import type { Room } from "../types/typesRoom";
+import { useMemo } from "react";
+import { ArrowUpDown, CheckCircle2, XCircle, UserCheck, Pencil } from "lucide-react";
+import type { Prioridad, LimpiezaItem } from "../types/limpieza";
+import { useLimpiezasTable } from "../hooks/useLimpiezasTable";
+import type { ColumnKey, SortKey } from "../types/table";
 
-type RoomsTableProps = Readonly<{
-  sortedAndFilteredRooms: Room[];
-  selectedRooms?: string[];
-  toggleRoomSelection?: (id: string) => void;
-  toggleAllRooms?: () => void;
-  handleSort?: (field: keyof Room) => void;
-  getStatusBadge?: (status: string) => JSX.Element;
-  onRowEdit?: (room: Room, action: "status" | "reassign") => void;
-}>;
+const cn = (...xs: Array<string | false | null | undefined>) =>
+  xs.filter(Boolean).join(" ");
 
-// ✅ Mapa para los títulos de columnas (evita ternario anidado)
-const COLUMN_LABEL: Record<"number" | "type" | "floor", string> = {
-  number: "Número",
-  type: "Tipo",
-  floor: "Piso",
+function Pill({
+  children,
+  tone = "slate",
+}: Readonly<{ children: React.ReactNode; tone?: "slate" | "blue" | "orange" | "rose" | "teal" }>) {
+  const map = {
+    slate: "bg-slate-50 border-slate-200 text-slate-700",
+    blue: "bg-blue-50 border-blue-200 text-blue-700",
+    orange: "bg-orange-50 border-orange-200 text-orange-700",
+    rose: "bg-rose-50 border-rose-200 text-rose-700",
+    teal: "bg-teal-50 border-teal-200 text-teal-700",
+  } as const;
+  return <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium border", map[tone])}>{children}</span>;
+}
+
+function PrioridadBadge({ prioridad }: Readonly<{ prioridad?: Prioridad | null }>) {
+  if (!prioridad) return <Pill>—</Pill>;
+  const tone: Record<Prioridad, "slate" | "blue" | "orange" | "rose"> = {
+    baja: "slate",
+    media: "blue",
+    alta: "orange",
+    urgente: "rose",
+  };
+  return <Pill tone={tone[prioridad]}>{prioridad.toUpperCase()}</Pill>;
+}
+
+function EstadoBadge({ finalizada, nombre }: Readonly<{ finalizada: boolean; nombre?: string }>) {
+  const text = finalizada ? "Limpia" : nombre ?? "—";
+  const isClean = finalizada || text.toLowerCase() === "limpia";
+  return <Pill tone={isClean ? "teal" : "slate"}>{text}</Pill>;
+}
+
+type Props = { onEdit?: (item: LimpiezaItem) => void };
+
+// Mapa de columnas visibles -> SortKey que entiende el hook
+const SORT_MAP: Record<ColumnKey, SortKey | null> = {
+  numero: "habitacion",
+  tipo: "tipo",
+  piso: "piso",
+  estado: "estado",
+  prioridad: "prioridad",
+  asignador: null, // no ordenable
+  fecha_inicio: "fecha_inicio",
+  fecha_final: "fecha_final",
 };
 
-export default function RoomsTable({
-  sortedAndFilteredRooms,
-  selectedRooms,
-  toggleRoomSelection,
-  toggleAllRooms,
-  handleSort,
-  getStatusBadge,
-  onRowEdit,
-}: RoomsTableProps) {
-  const [internalSelected, setInternalSelected] = useState<string[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+export default function LimpiezasTable({ onEdit }: Readonly<Props>) {
+  const {
+    loading,
+    error,
+    items,
+    pagination,
+    selectedIds,
+    toggleOne,
+    toggleAllPage,
+    gotoPage,
+    handleSort,
+    finalizarLimpieza,
+  } = useLimpiezasTable({ initialFilters: { per_page: 10, pendientes: false } });
 
-  const selected = selectedRooms ?? internalSelected;
+  const totalPages = pagination.last_page;
 
-  const handleToggleOne =
-    toggleRoomSelection ??
-    ((id: string) =>
-      setInternalSelected((prev) =>
-        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-      ));
+  const columns = useMemo<ReadonlyArray<{ key: ColumnKey; label: string }>>(
+    () => [
+      { key: "numero", label: "Número" },
+      { key: "tipo", label: "Tipo" },
+      { key: "piso", label: "Piso" },
+      { key: "estado", label: "Estado" },
+      { key: "prioridad", label: "Prioridad" },
+      { key: "asignador", label: "Asignador" },
+      { key: "fecha_inicio", label: "Inicio" },
+      { key: "fecha_final", label: "Fin" },
+    ],
+    []
+  );
 
-  const onSortLocal =
-    handleSort ??
-    (() => {
-      /* noop */
-    });
+  if (loading && items.length === 0) return <div className="text-center text-slate-500 py-10 text-sm">Cargando…</div>;
+  if (error) return <div className="text-center text-rose-600 py-10 text-sm">Error: {error}</div>;
+  if (items.length === 0) return <div className="text-center text-slate-500 py-10 text-sm">No hay limpiezas para mostrar.</div>;
 
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedRooms = sortedAndFilteredRooms.slice(startIndex, endIndex);
-  const totalPages = Math.ceil(sortedAndFilteredRooms.length / itemsPerPage);
-
-  const handleToggleAllLocal =
-    toggleAllRooms ??
-    (() => {
-      const pageIds = paginatedRooms.map((r) => r.id);
-      const allSelected = pageIds.every((id) => selected.includes(id));
-      return setInternalSelected((prev) =>
-        allSelected
-          ? prev.filter((id) => !pageIds.includes(id))
-          : Array.from(new Set([...prev, ...pageIds]))
-      );
-    });
-
-  const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+  const onToggleEstado = (item: LimpiezaItem) => {
+    const finalizada = Boolean(item.fecha_final);
+    if (!finalizada) {
+      finalizarLimpieza(item.id_limpieza, {
+        fecha_final: new Date().toISOString(),
+        notas: item.notas ?? null,
+      });
+    } else {
+      alert("Aún no implementamos 'marcar sucia'.");
     }
   };
 
-  useEffect(() => {
-    const totalPagesCalc = Math.ceil(sortedAndFilteredRooms.length / itemsPerPage);
-    if (currentPage > totalPagesCalc) setCurrentPage(1);
-  }, [sortedAndFilteredRooms]);
-
-  if (sortedAndFilteredRooms.length === 0) {
-    return (
-      <div className="text-center text-slate-500 py-10 text-sm">
-        No hay habitaciones para mostrar.
-      </div>
-    );
-  }
-
-  const closeDetails = (el: HTMLElement) => {
-    const detailsEl = el.closest("details");
-    if (detailsEl instanceof HTMLDetailsElement) detailsEl.open = false;
-  };
-
   return (
-    <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-xl overflow-hidden">
+    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-slate-50/80 border-b border-slate-200">
+          <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
-              <th className="px-6 py-3">
+              <th className="px-4 py-3">
                 <input
                   type="checkbox"
-                  checked={
-                    paginatedRooms.length > 0 &&
-                    paginatedRooms.every((r) => selected.includes(r.id))
-                  }
-                  onChange={handleToggleAllLocal}
+                  checked={items.length > 0 && items.every((r) => selectedIds.includes(r.id_limpieza))}
+                  onChange={toggleAllPage}
                   className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                 />
               </th>
 
-              {(["number", "type", "floor"] as (keyof Room)[]).map((field) => (
-                <th
-                  key={field}
-                  className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider"
-                >
-                  <button
-                    type="button"
-                    onClick={() => onSortLocal(field)}
-                    className="flex items-center gap-1 hover:text-slate-900 transition-colors"
-                  >
-                    {/* ✅ sin ternarios anidados */}
-                    {COLUMN_LABEL[field as "number" | "type" | "floor"]}
-                    <ArrowUpDown className="w-3 h-3" />
-                  </button>
-                </th>
-              ))}
+              {columns.map((c) => {
+                const sortKey = SORT_MAP[c.key];
+                const isSortable = Boolean(sortKey);
 
-              <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Clave</th>
-              <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Estado</th>
-              <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Responsable</th>
-              <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Última limpieza</th>
-              <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Acciones</th>
+                return (
+                  <th
+                    key={c.key}
+                    className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider"
+                  >
+                    {isSortable ? (
+                      <button
+                        type="button"
+                        onClick={() => handleSort(sortKey as SortKey)}
+                        className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+                      >
+                        {c.label}
+                        <ArrowUpDown className="w-3 h-3" />
+                      </button>
+                    ) : (
+                      <span className="text-slate-600">{c.label}</span>
+                    )}
+                  </th>
+                );
+              })}
+
+              <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider text-right">
+                Acciones
+              </th>
             </tr>
           </thead>
 
           <tbody className="bg-white divide-y divide-slate-100">
-            {paginatedRooms.map((room) => {
-              const isSelected = selected.includes(room.id);
+            {items.map((item) => {
+              const isSelected = selectedIds.includes(item.id_limpieza);
+              const finalizada = Boolean(item.fecha_final);
+
+              const numero = item.habitacion?.numero_habitacion ?? "—";
+              const tipo = item.habitacion?.tipo ?? "—";
+              const piso = (item.habitacion as any)?.piso ?? (item.habitacion as any)?.nivel ?? "—";
+
               return (
                 <tr
-                  key={room.id}
-                  className={`hover:bg-slate-50/50 transition-colors ${isSelected ? "bg-teal-50/30" : ""}`}
+                  key={item.id_limpieza}
+                  className={cn("hover:bg-slate-50/50 transition-colors", isSelected && "bg-teal-50/30")}
                 >
-                  <td className="px-6 py-4">
+                  {/* Checkbox */}
+                  <td className="px-4 py-3">
                     <input
                       type="checkbox"
                       checked={isSelected}
-                      onChange={() => handleToggleOne(room.id)}
+                      onChange={() => toggleOne(item.id_limpieza)}
                       className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                     />
                   </td>
 
-                  <td className="px-6 py-4 text-sm text-slate-900 font-medium">{room.number}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{room.type}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{room.floor}</td>
+                  {/* Número */}
+                  <td className="px-4 py-3 text-sm text-slate-900 font-semibold">{numero}</td>
 
-                  <td className="px-6 py-4 text-sm text-slate-600">
-                    {room.keyCode ? (
+                  {/* Tipo */}
+                  <td className="px-4 py-3 text-sm text-slate-700">{tipo}</td>
+
+                  {/* Piso */}
+                  <td className="px-4 py-3 text-sm text-slate-700">{piso}</td>
+
+                  {/* Estado */}
+                  <td className="px-4 py-3">
+                    <EstadoBadge finalizada={finalizada} nombre={item.estadoHabitacion?.nombre} />
+                  </td>
+
+                  {/* Prioridad */}
+                  <td className="px-4 py-3">
+                    <PrioridadBadge prioridad={item.prioridad ?? null} />
+                  </td>
+
+                  {/* Asignador */}
+                  <td className="px-4 py-3 text-sm text-slate-600">
+                    {item.asignador ? (
                       <div className="flex items-center gap-2">
-                        <KeyRound className="w-4 h-4 text-teal-600" />
-                        {room.keyCode}
+                        <UserCheck className="w-4 h-4 text-teal-600" />
+                        {item.asignador.name}
                       </div>
                     ) : (
                       <span className="text-slate-400">—</span>
                     )}
                   </td>
 
-                  <td className="px-6 py-4">
-                    {getStatusBadge ? (
-                      getStatusBadge(room.status)
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-50 border border-slate-200 text-slate-700">
-                        {room.status}
-                      </span>
-                    )}
+                  {/* Fechas */}
+                  <td className="px-4 py-3 text-sm text-slate-600">
+                    {new Date(item.fecha_inicio).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-600">
+                    {item.fecha_final ? new Date(item.fecha_final).toLocaleString() : <span className="text-slate-400">—</span>}
                   </td>
 
-                  <td className="px-6 py-4 text-sm text-slate-600">
-                    {room.assignedTo ? (
-                      <div className="flex items-center gap-2">
-                        <UserCheck className="w-4 h-4 text-teal-600" />
-                        {room.assignedTo}
-                      </div>
-                    ) : (
-                      <span className="text-slate-400">Sin asignar</span>
-                    )}
-                  </td>
-
-                  <td className="px-6 py-4 text-sm text-slate-600">
-                    {room.lastCleaned || <span className="text-slate-400">—</span>}
-                  </td>
-
-                  <td className="px-6 py-4 text-right">
-                    <details className="relative">
-                      <summary className="list-none cursor-pointer inline-flex items-center gap-1 text-slate-600 hover:text-slate-900 px-2 py-1 rounded-lg hover:bg-slate-100">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="text-xs">Opciones</span>
-                      </summary>
-
-                      {/* ✅ rol interactivo en contenedor, no en <ul> */}
-                      <div
-                        className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-10"
-                        role="menu"
-                        aria-label="Opciones de habitación"
+                  {/* Acciones */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2 justify-end">
+                      <button
+                        type="button"
+                        onClick={() => onToggleEstado(item)}
+                        title={finalizada ? "Marcar sucia" : "Marcar limpia"}
+                        aria-label={finalizada ? "Marcar sucia" : "Marcar limpia"}
+                        className={cn(
+                          "inline-flex items-center justify-center w-8 h-8 rounded-full border transition hover:scale-105",
+                          finalizada ? "border-rose-300 hover:bg-rose-50" : "border-green-300 hover:bg-green-50"
+                        )}
                       >
-                        <ul className="text-sm text-slate-700">
-                          <li className="px-3 py-2">
-                            <button
-                              type="button"
-                              role="menuitem"
-                              className="w-full text-left hover:bg-slate-50 rounded-md px-1 py-1"
-                              onClick={(e) => {
-                                onRowEdit?.(room, "status");
-                                closeDetails(e.currentTarget as HTMLElement);
-                              }}
-                            >
-                              Cambiar estado
-                            </button>
-                          </li>
+                        {finalizada ? (
+                          <XCircle className="w-5 h-5 text-rose-600" />
+                        ) : (
+                          <CheckCircle2 className="w-5 h-5 text-green-600" />
+                        )}
+                      </button>
 
-                          <li className="px-3 py-2">
-                            <button
-                              type="button"
-                              role="menuitem"
-                              className="w-full text-left hover:bg-slate-50 rounded-md px-1 py-1"
-                              onClick={(e) => {
-                                onRowEdit?.(room, "reassign");
-                                closeDetails(e.currentTarget as HTMLElement);
-                              }}
-                            >
-                              Reasignar personal
-                            </button>
-                          </li>
-
-                          <li className="px-3 py-2 text-slate-400">Ver historial</li>
-                        </ul>
-                      </div>
-                    </details>
+                      <button
+                        type="button"
+                        onClick={() => onEdit?.(item)}
+                        title="Editar"
+                        aria-label="Editar"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-slate-300 text-slate-700 hover:bg-slate-50 transition hover:scale-105"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -243,34 +245,33 @@ export default function RoomsTable({
         </table>
       </div>
 
-      {/* PAGINACIÓN EXTERNA */}
+      {/* paginación */}
       <div className="flex justify-center items-center gap-1 py-5 bg-white border-t border-slate-100">
         <button
-          onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage === 1}
+          onClick={() => gotoPage(pagination.current_page - 1)}
+          disabled={pagination.current_page <= 1}
           className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-teal-600 disabled:opacity-30"
           aria-label="Página anterior"
         >
           ←
         </button>
 
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
           <button
-            key={page}
-            onClick={() => handlePageChange(page)}
-            className={`w-8 h-8 rounded-md text-sm transition-colors ${
-              currentPage === page
-                ? "text-teal-700 font-semibold bg-slate-100"
-                : "text-slate-500 hover:text-teal-600"
-            }`}
+            key={p}
+            onClick={() => gotoPage(p)}
+            className={cn(
+              "w-8 h-8 rounded-md text-sm transition-colors",
+              pagination.current_page === p ? "text-teal-700 font-semibold bg-slate-100" : "text-slate-500 hover:text-teal-600"
+            )}
           >
-            {page}
+            {p}
           </button>
         ))}
 
         <button
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
+          onClick={() => gotoPage(pagination.current_page + 1)}
+          disabled={pagination.current_page >= totalPages}
           className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-teal-600 disabled:opacity-30"
           aria-label="Página siguiente"
         >

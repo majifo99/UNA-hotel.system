@@ -1,16 +1,22 @@
+// src/modules/housekeeping/pages/HousekeepingDashboard.tsx
 import { useMemo, useState } from "react";
 import { HiOutlineDocumentReport } from "react-icons/hi";
 import { FiLogOut } from "react-icons/fi";
-import { Users, ClipboardCheck, AlertTriangle } from "lucide-react";   
-import FilterBar from "../components/FilterBar";
-import RoomsTable from "../components/RoomsTable";
-import AssignModal from "../components/AssignModal";
-import DamageReportModal from "../components/DamageReportModal";
-import { useRooms } from "../hooks/useRooms";
-import type { RoomFilters } from "../types/typesRoom";
+import { Users, ClipboardCheck, AlertTriangle } from "lucide-react";
 
+import { useLimpiezasTable } from "../hooks/useLimpiezasTable";
+import LimpiezasTable from "../components/RoomsTable";
+import AssignModal from "../components/Modals/AssignModal";
+import DamageReportModal from "../components/Modals/DamageReportModal";
+import FilterBar, { type RoomFilters } from "../components/FilterBar";
 
 export default function HousekeepingDashboard() {
+  // ---------- estado de modales ----------
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showDamageModal, setShowDamageModal] = useState(false);
+  const [selectedHabitacionId, setSelectedHabitacionId] = useState<string | null>(null);
+
+  // ---------- filtros (UI) ----------
   const [filters, setFilters] = useState<RoomFilters>({
     search: "",
     status: "",
@@ -18,57 +24,29 @@ export default function HousekeepingDashboard() {
     floor: "",
   });
 
-  const { rooms, isLoading, refetch } = useRooms(filters);
-  const [selectedRooms, setSelectedRooms] = useState<string[]>([]);
-  const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState<"assign" | "reassign" | "status">("assign");
-  const [showDamageModal, setShowDamageModal] = useState(false);
+  // ---------- datos ----------
+  const { loading, error, rawItems, pagination, refetch } = useLimpiezasTable();
 
-  const filteredRooms = useMemo(() => {
-    return rooms
-      .filter((room) => room.number.toLowerCase().includes(filters.search.toLowerCase().trim()))
-      .filter((room) => (filters.status ? room.status === filters.status : true))
-      .filter((room) => (filters.type ? room.type === filters.type : true))
-      .filter((room) => (filters.floor ? room.floor === parseInt(filters.floor) : true));
-  }, [rooms, filters]);
-
+  // ---------- métricas ----------
   const counts = useMemo(() => {
-    const countByStatus = (status: string) => filteredRooms.filter((r) => r.status === status).length;
+    const sucias = rawItems.filter((x) => !x.fecha_final).length;
+    const limpias = rawItems.filter((x) => !!x.fecha_final).length;
     return {
-      Pendiente: countByStatus("Pendiente"),
-      "En limpieza": countByStatus("En limpieza"),
-      Inspección: countByStatus("Inspección"),
-      Disponible: countByStatus("Disponible"),
-      total: filteredRooms.length,
+      Sucias: sucias,
+      Limpias: limpias,
+      total: pagination?.total ?? rawItems.length,
     };
-  }, [filteredRooms]);
+  }, [rawItems, pagination?.total]);
 
-  // Selección de una sola habitación
-  const handleToggleRoomSelection = (id: string) => {
-    setSelectedRooms((prev) => (prev.includes(id) ? prev.filter((roomId) => roomId !== id) : [id]));
+  // ---------- helpers ----------
+  const openAssign = (roomId: string | null = null) => {
+    setSelectedHabitacionId(roomId);
+    setShowAssignModal(true);
   };
 
-  // Botón superior: Asignar (solo responsable)
-  const handleOpenAssignModal = () => {
-    if (selectedRooms.length > 0) {
-      setModalMode("assign");
-      setShowModal(true);
-    } else {
-      alert("Por favor, selecciona una habitación primero.");
-    }
-  };
-
-  // Reportar daño
-  const handleOpenDamageModal = () => {
-    if (selectedRooms.length > 0) setShowDamageModal(true);
-    else alert("Por favor, selecciona una habitación primero.");
-  };
-
-  // El modal ya actualiza; aquí solo refrescamos y cerramos
-  const handleAssignDone = async () => {
-    await refetch();
-    setShowModal(false);
-    setSelectedRooms([]);
+  const openDamage = (roomId: string | null = null) => {
+    setSelectedHabitacionId(roomId);
+    setShowDamageModal(true);
   };
 
   return (
@@ -92,6 +70,12 @@ export default function HousekeepingDashboard() {
               <HiOutlineDocumentReport className="h-4 w-4" />
               Reporte
             </button>
+            <button
+              onClick={refetch}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 bg-white/80 hover:bg-white shadow-sm"
+            >
+              ↻ Refrescar
+            </button>
             <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 bg-white/80 hover:bg-white shadow-sm">
               <FiLogOut className="h-4 w-4" />
               Cerrar sesión
@@ -103,29 +87,24 @@ export default function HousekeepingDashboard() {
         <div className="mt-4 pt-4 border-t border-slate-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-8">
+              {/* Habitaciones sucias */}
               <div className="flex items-center gap-3 px-3 py-2 bg-red-50 rounded-lg border border-red-100">
                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                <span className="text-sm font-medium text-slate-700">Pendientes</span>
-                <span className="text-xl font-bold text-red-600">{counts.Pendiente}</span>
+                <span className="text-sm font-medium text-slate-700">Habitaciones sucias</span>
+                <span className="text-xl font-bold text-red-600">{counts.Sucias}</span>
               </div>
+
+              {/* Habitaciones limpias */}
               <div className="flex items-center gap-3 px-3 py-2 bg-blue-50 rounded-lg border border-blue-100">
                 <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                <span className="text-sm font-medium text-slate-700">En limpieza</span>
-                <span className="text-xl font-bold text-blue-600">{counts["En limpieza"]}</span>
-              </div>
-              <div className="flex items-center gap-3 px-3 py-2 bg-purple-50 rounded-lg border border-purple-100">
-                <div className="w-2 h-2 bg-purple-500 rounded-full" />
-                <span className="text-sm font-medium text-slate-700">Inspección</span>
-                <span className="text-xl font-bold text-purple-600">{counts.Inspección}</span>
-              </div>
-              <div className="flex items-center gap-3 px-3 py-2 bg-emerald-50 rounded-lg border border-emerald-100">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full" />
-                <span className="text-sm font-medium text-slate-700">Disponibles</span>
-                <span className="text-xl font-bold text-emerald-600">{counts.Disponible}</span>
+                <span className="text-sm font-medium text-slate-700">Habitaciones limpias</span>
+                <span className="text-xl font-bold text-blue-600">{counts.Limpias}</span>
               </div>
             </div>
+
+            {/* Total tareas */}
             <div className="text-sm text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-              Total: {counts.total} habitaciones
+              Total: {counts.total} tareas
             </div>
           </div>
         </div>
@@ -134,26 +113,27 @@ export default function HousekeepingDashboard() {
       {/* CONTENIDO */}
       <main className="p-5 pb-0">
         <div className="max-w-7xl mx-auto space-y-5">
-          <FilterBar filters={filters} setFilters={setFilters} totalRooms={filteredRooms.length} />
+          {/* Barra de filtros (UI) */}
+          <FilterBar filters={filters} setFilters={setFilters} totalRooms={counts.total} />
 
           {/* Acciones */}
           <div className="flex flex-wrap gap-3">
             <button
-              onClick={handleOpenAssignModal}
+              onClick={() => openAssign(null)}
               className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white shadow-sm"
-              disabled={selectedRooms.length === 0}
             >
               <Users className="h-4 w-4" />
-              Asignar responsable
+              Asignar limpieza
             </button>
+
             <button className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium border border-slate-300 text-slate-700 bg-white/80 hover:bg-white shadow-sm">
               <ClipboardCheck className="h-4 w-4" />
               Inspección Check-out
             </button>
+
             <button
-              onClick={handleOpenDamageModal}
+              onClick={() => openDamage(selectedHabitacionId)}
               className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium border border-slate-300 text-slate-700 bg-white/80 hover:bg-white shadow-sm"
-              disabled={selectedRooms.length === 0}
             >
               <AlertTriangle className="h-4 w-4" />
               Reportar daño
@@ -161,43 +141,44 @@ export default function HousekeepingDashboard() {
           </div>
 
           {/* Tabla */}
-          {isLoading ? (
-            <div className="text-center text-slate-600 py-10">Cargando habitaciones...</div>
-          ) : (
-            <RoomsTable
-              sortedAndFilteredRooms={filteredRooms}
-              selectedRooms={selectedRooms}
-              toggleRoomSelection={handleToggleRoomSelection}
-              onRowEdit={(room, action) => {
-                setSelectedRooms([room.id]);
-                setModalMode(action === "status" ? "status" : "reassign");
-                setShowModal(true);
-              }}
-            />
-          )}
+          {(() => {
+            if (loading) return <div className="text-center text-slate-600 py-10">Cargando limpiezas...</div>;
+            if (error) return <div className="text-center text-rose-600 py-10">Error: {error}</div>;
+            return (
+              <LimpiezasTable
+                onEdit={(item) => {
+                  const habId = item?.habitacion?.id_habitacion ?? null;
+                  setSelectedHabitacionId(habId ? String(habId) : null);
+                  setShowAssignModal(true);
+                }}
+              />
+            );
+          })()}
 
+          {/* Totales */}
           <div className="text-sm text-slate-500 bg-slate-100 px-3 py-3 rounded-full">
-            Total: {counts.total} habitaciones
+            Total: {counts.total} tareas
           </div>
-
-          {/* Modal único con modos */}
-          <AssignModal
-            isOpen={showModal}
-            onClose={() => setShowModal(false)}
-            onAssign={handleAssignDone}
-            selectedRoomId={selectedRooms[0] ?? null}
-            mode={modalMode}
-          />
-
-          {/* Modal de reporte de daño */}
-          <DamageReportModal
-            isOpen={showDamageModal}
-            onClose={() => setShowDamageModal(false)}
-            selectedRoomId={selectedRooms[0] ?? null}
-            onSent={refetch}
-          />
         </div>
       </main>
+
+      {/* Modales */}
+      <AssignModal
+        isOpen={showAssignModal}
+        onClose={() => setShowAssignModal(false)}
+        onSuccess={() => {
+          setShowAssignModal(false);
+          refetch();
+        }}
+        selectedRoomId={selectedHabitacionId}
+      />
+
+      <DamageReportModal
+        isOpen={showDamageModal}
+        onClose={() => setShowDamageModal(false)}
+        selectedRoomId={selectedHabitacionId}
+        onSent={refetch}
+      />
     </div>
   );
 }
