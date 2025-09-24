@@ -41,9 +41,14 @@ export const GuestProfilePage: React.FC = () => {
     updateEditValues
   } = useInlineEdit({
     onSave: async (data: Partial<UpdateGuestData>) => {
-      if (guest && data.id) {
-        await updateGuest(guest.id, data as UpdateGuestData);
-        refetch();
+      if (guest) {
+        try {
+          const updateData = { ...data, id: guest.id };
+          await updateGuest(guest.id, updateData as UpdateGuestData);
+          refetch();
+        } catch (error) {
+          console.error('Error updating guest:', error);
+        }
       }
     },
     initialData: guest ? {

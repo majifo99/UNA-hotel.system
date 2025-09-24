@@ -1,10 +1,3 @@
-/**
- * Home Page - Public Website
- * 
- * Main landing page for the public website with hero section and rooms showcase.
- * Features Lanaku Hotel - "Un Hogar para Descansar y Disfrutar"
- */
-
 import { Link } from 'react-router-dom';
 import { RoomsSection } from '../components/RoomsSection';
 
@@ -37,7 +30,7 @@ export function HomePage() {
             </Link>
             <Link
               to="/reservar"
-              className="inline-block bg-transparent border-2 border-white text-white px-8 py-3 rounded-md text-lg font-semibold hover:bg-white hover:text-una-primary-900 transition-colors"
+              className="inline-block bg-transparent border-2 border-white text-white px-8 py-3 rounded-md text-lg font-semibold hover:bg-gray-700 hover:text-una-primary-900 transition-colors"
             >
               Reservar Ahora
             </Link>

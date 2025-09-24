@@ -37,23 +37,7 @@ class GuestApiService {
       const response = await fetch(url, config);
       
       if (!response.ok) {
-        // Try to get error details from response body
-        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-        
-        try {
-          const errorData = await response.json();
-          if (errorData.message) {
-            errorMessage += ` - ${errorData.message}`;
-          }
-          if (errorData.errors) {
-            console.error('🚨 Validation Errors:', errorData.errors);
-            errorMessage += ` - Validation errors: ${JSON.stringify(errorData.errors)}`;
-          }
-        } catch (parseError) {
-          // If we can't parse the error response, just use the status
-        }
-        
-        throw new Error(errorMessage);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
       const data = await response.json();
@@ -122,9 +106,6 @@ class GuestApiService {
         programa_lealtad: guestData.loyaltyProgram?.memberId ? JSON.stringify(guestData.loyaltyProgram) : null,
         preferencias_habitacion: guestData.roomPreferences ? JSON.stringify(guestData.roomPreferences) : null
       };
-      
-      // Debug: Log the data being sent to the backend
-      console.log('🚀 Sending data to backend:', JSON.stringify(backendData, null, 2));
       
       const response = await this.post(this.baseUrl, backendData);
       
@@ -234,162 +215,89 @@ class GuestApiService {
   }
 
   /**
-   * Update an existing guest using Laravel wizard system
+   * Update an existing guest using direct endpoint
    */
   async updateGuest(id: string, guestData: UpdateGuestData): Promise<Guest> {
     try {
-      // El backend usa un sistema de wizard con múltiples endpoints
-      let successfulUpdates = 0;
-      let errors: string[] = [];
+      // Transform frontend data to backend format
+      const backendData: Record<string, any> = {};
       
-      // Variable para guardar el contacto de emergencia y enviarlo al final
-      let emergencyContactToUpdate: any = null;
-      if (guestData.emergencyContact?.name && guestData.emergencyContact.name.trim() !== '') {
-        emergencyContactToUpdate = guestData.emergencyContact;
+      // Basic information
+      if (guestData.firstName) backendData.nombre = guestData.firstName;
+      if (guestData.firstLastName) backendData.apellido1 = guestData.firstLastName;
+      if (guestData.secondLastName !== undefined) backendData.apellido2 = guestData.secondLastName;
+      if (guestData.email) backendData.email = guestData.email;
+      if (guestData.phone) backendData.telefono = guestData.phone;
+      if (guestData.documentType) backendData.id_tipo_doc = this.mapDocumentTypeToId(guestData.documentType);
+      if (guestData.documentNumber) backendData.numero_doc = guestData.documentNumber;
+      if (guestData.nationality) backendData.nacionalidad = guestData.nationality;
+      
+      // Optional fields
+      if (guestData.dateOfBirth || guestData.birthDate) {
+        backendData.fecha_nacimiento = guestData.dateOfBirth || guestData.birthDate;
+      }
+      if (guestData.gender) {
+        backendData.genero = this.mapGenderToBackend(guestData.gender);
+      }
+      if (guestData.address?.street) backendData.direccion = guestData.address.street;
+      if (guestData.city || guestData.address?.city) {
+        backendData.ciudad = guestData.city || guestData.address?.city;
+      }
+      if (guestData.country || guestData.address?.country) {
+        backendData.pais = guestData.country || guestData.address?.country;
+      }
+      if (guestData.address?.postalCode) backendData.codigo_postal = guestData.address.postalCode;
+      if (guestData.address?.state) backendData.estado_provincia = guestData.address.state;
+      if (guestData.preferredLanguage) backendData.idioma_preferido = guestData.preferredLanguage;
+      if (guestData.vipStatus !== undefined) backendData.es_vip = guestData.vipStatus;
+      if (guestData.notes) backendData.notas_personal = guestData.notes;
+      
+      // JSON fields
+      if (guestData.allergies?.length) {
+        backendData.alergias = JSON.stringify(guestData.allergies);
+      }
+      if (guestData.dietaryRestrictions?.length) {
+        backendData.restricciones_dieteticas = JSON.stringify(guestData.dietaryRestrictions);
+      }
+      if (guestData.medicalNotes) backendData.notas_medicas = guestData.medicalNotes;
+      if (guestData.communicationPreferences && Object.keys(guestData.communicationPreferences).length > 0) {
+        backendData.preferencias_comunicacion = JSON.stringify(guestData.communicationPreferences);
+      }
+      if (guestData.loyaltyProgram?.memberId) {
+        backendData.programa_lealtad = JSON.stringify(guestData.loyaltyProgram);
       }
       
-      // 1. Actualizar información básica (perfil-viaje)
-      if (guestData.firstName || guestData.firstLastName || guestData.email || guestData.phone) {
-        try {
-          const profileData: Record<string, any> = {
-            nombre: guestData.firstName,
-            apellido1: guestData.firstLastName,
-            apellido2: guestData.secondLastName || null,
-            email: guestData.email,
-            telefono: guestData.phone,
-            id_tipo_doc: this.mapDocumentTypeToId(guestData.documentType),
-            numero_doc: guestData.documentNumber,
-            nacionalidad: guestData.nationality || 'Costa Rica',
-          };
-          
-          // Agregar campos opcionales solo si existen
-          if (guestData.dateOfBirth || guestData.birthDate) {
-            profileData.fecha_nacimiento = guestData.dateOfBirth || guestData.birthDate;
-          }
-          if (guestData.gender) {
-            profileData.genero = this.mapGenderToBackend(guestData.gender);
-          }
-          if (guestData.address?.street) {
-            profileData.direccion = guestData.address.street;
-          }
-          if (guestData.city || guestData.address?.city) {
-            profileData.ciudad = guestData.city || guestData.address?.city;
-          }
-          if (guestData.country || guestData.address?.country) {
-            profileData.pais = guestData.country || guestData.address?.country;
-          }
-          if (guestData.address?.postalCode) {
-            profileData.codigo_postal = guestData.address.postalCode;
-          }
-          if (guestData.address?.state) {
-            profileData.estado_provincia = guestData.address.state;
-          }
-          if (guestData.preferredLanguage) {
-            profileData.idioma_preferido = guestData.preferredLanguage;
-          }
-          
-          await this.request(`/clientes/${id}/wizard/perfil-viaje`, {
-            method: 'PATCH',
-            body: JSON.stringify(profileData),
-          });
-          successfulUpdates++;
-        } catch (error) {
-          console.error('❌ Failed to update profile:', error);
-          errors.push('Profile update failed');
-        }
+      // Room preferences
+      if (guestData.roomPreferences && Object.keys(guestData.roomPreferences).length > 0) {
+        backendData.preferencias_habitacion = JSON.stringify(guestData.roomPreferences);
       }
       
-      // 2. Actualizar información médica y de salud
-      if (guestData.allergies || guestData.dietaryRestrictions || guestData.medicalNotes) {
-        try {
-          const healthData: Record<string, any> = {};
-          
-          if (guestData.allergies?.length) {
-            healthData.alergias = JSON.stringify(guestData.allergies);
-          }
-          if (guestData.dietaryRestrictions?.length) {
-            healthData.restricciones_dieteticas = JSON.stringify(guestData.dietaryRestrictions);
-          }
-          if (guestData.medicalNotes) {
-            healthData.notas_medicas = guestData.medicalNotes;
-          }
-          
-          await this.request(`/clientes/${id}/wizard/salud`, {
-            method: 'PATCH',
-            body: JSON.stringify(healthData),
-          });
-          successfulUpdates++;
-        } catch (error) {
-          console.error('❌ Failed to update health information:', error);
-          errors.push('Health information update failed');
-        }
+      // Emergency contact - send as nested object if the backend expects it
+      if (guestData.emergencyContact?.name) {
+        backendData.contacto_emergencia = JSON.stringify({
+          name: guestData.emergencyContact.name || '',
+          relationship: guestData.emergencyContact.relationship || '',
+          phone: guestData.emergencyContact.phone || '',
+          email: guestData.emergencyContact.email || ''
+        });
       }
       
-      // 3. Actualizar preferencias de habitación
-      if (guestData.roomPreferences || guestData.vipStatus !== undefined || guestData.notes) {
-        try {
-          const roomData: Record<string, any> = {};
-          
-          if (guestData.roomPreferences && Object.keys(guestData.roomPreferences).length > 0) {
-            roomData.preferencias_habitacion = JSON.stringify(guestData.roomPreferences);
-          }
-          if (guestData.vipStatus !== undefined) {
-            roomData.es_vip = guestData.vipStatus;
-          }
-          if (guestData.notes) {
-            roomData.notas_personal = guestData.notes;
-          }
-          if (guestData.communicationPreferences && Object.keys(guestData.communicationPreferences).length > 0) {
-            roomData.preferencias_comunicacion = JSON.stringify(guestData.communicationPreferences);
-          }
-          if (guestData.loyaltyProgram?.memberId) {
-            roomData.programa_lealtad = JSON.stringify(guestData.loyaltyProgram);
-          }
-          
-          await this.request(`/clientes/${id}/wizard/habitacion`, {
-            method: 'PATCH',
-            body: JSON.stringify(roomData),
-          });
-          successfulUpdates++;
-        } catch (error) {
-          console.error('❌ Failed to update room preferences:', error);
-          errors.push('Room preferences update failed');
-        }
+      // Use the direct PATCH endpoint
+      const response = await this.request(`${this.baseUrl}/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(backendData),
+      });
+      
+      if (!response.data) {
+        throw new Error('No data received from server');
       }
       
-      if (errors.length > 0) {
-        console.warn('⚠️ Some updates failed:', errors);
-      }
-      
-      // 4. FINAL: Actualizar contacto de emergencia (después de guardar toda la info)
-      if (emergencyContactToUpdate) {
-        try {
-          // Enviar los campos directamente, no como JSON serializado
-          const emergencyData = {
-            name: emergencyContactToUpdate.name || '',
-            relationship: emergencyContactToUpdate.relationship || '',
-            phone: emergencyContactToUpdate.phone || '',
-            email: emergencyContactToUpdate.email || ''
-          };
-          
-          await this.request(`/clientes/${id}/wizard/emergencia`, {
-            method: 'PATCH',
-            body: JSON.stringify(emergencyData),
-          });
-          successfulUpdates++;
-        } catch (error) {
-          console.error('❌ Failed to update emergency contact:', error);
-          errors.push('Emergency contact update failed');
-        }
-      }
-      
-      // Después de todas las actualizaciones, obtener el guest actualizado
-      return await this.getGuestById(id);
+      // Transform and return the updated guest
+      return this.transformGuestFromBackend(response.data);
       
     } catch (error) {
-      console.error('❌ Failed to update guest:', error);
-      console.error('❌ Error details:', error);
-      throw new Error('Error al actualizar el huésped: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      console.error('Error updating guest:', error);
+      throw new Error('Error al actualizar el huésped');
     }
   }
 
@@ -474,6 +382,24 @@ class GuestApiService {
       smokingAllowed: backendGuest.preferencias.smoking_allowed || false,
     } : {};
 
+    // Handle emergency contact from backend
+    const emergencyContact = backendGuest.contacto_emergencia ? {
+      name: backendGuest.contacto_emergencia.name || '',
+      relationship: backendGuest.contacto_emergencia.relationship || '',
+      phone: backendGuest.contacto_emergencia.phone || '',
+      email: backendGuest.contacto_emergencia.email || ''
+    } : {
+      name: '',
+      relationship: '',
+      phone: '',
+      email: ''
+    };
+
+    // Handle health information from backend
+    const allergies = backendGuest.salud?.allergies || [];
+    const dietaryRestrictions = backendGuest.salud?.dietary_restrictions || [];
+    const medicalNotes = backendGuest.salud?.medical_notes || '';
+
     const transformed: Guest = {
       id: backendGuest.id_cliente?.toString() || backendGuest.id?.toString() || '',
       firstName: backendGuest.nombre || '',
@@ -486,31 +412,32 @@ class GuestApiService {
       nationality: backendGuest.nacionalidad || '',
       address: {
         street: backendGuest.direccion || '',
-        city: '',
-        country: backendGuest.nacionalidad || '',
-        state: '',
-        postalCode: ''
+        city: backendGuest.ciudad || '',
+        country: backendGuest.pais || backendGuest.nacionalidad || '',
+        state: backendGuest.estado_provincia || '',
+        postalCode: backendGuest.codigo_postal || ''
       },
-      city: '',
-      country: backendGuest.nacionalidad || '',
+      city: backendGuest.ciudad || '',
+      country: backendGuest.pais || backendGuest.nacionalidad || '',
       birthDate: backendGuest.fecha_nacimiento || '',
       dateOfBirth: backendGuest.fecha_nacimiento || '',
       gender: this.mapGenderFromBackend(backendGuest.genero),
       vipStatus: backendGuest.es_vip || false,
       notes: backendGuest.notas_personal || '',
-      medicalNotes: '',
-      allergies: [],
-      dietaryRestrictions: [],
-      preferredLanguage: '',
-      emergencyContact: {
-        name: '',
-        relationship: '',
-        phone: '',
-        email: ''
-      },
-      communicationPreferences: {},
+      medicalNotes: medicalNotes,
+      allergies: allergies,
+      dietaryRestrictions: dietaryRestrictions,
+      preferredLanguage: backendGuest.idioma_preferido || '',
+      emergencyContact: emergencyContact,
+      communicationPreferences: backendGuest.preferencias_comunicacion ? 
+        (typeof backendGuest.preferencias_comunicacion === 'string' ? 
+          JSON.parse(backendGuest.preferencias_comunicacion) : 
+          backendGuest.preferencias_comunicacion) : {},
       roomPreferences: roomPreferences,
-      loyaltyProgram: {
+      loyaltyProgram: backendGuest.programa_lealtad ? 
+        (typeof backendGuest.programa_lealtad === 'string' ? 
+          JSON.parse(backendGuest.programa_lealtad) : 
+          backendGuest.programa_lealtad) : {
         memberId: '',
         tier: undefined,
         points: 0

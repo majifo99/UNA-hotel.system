@@ -1,9 +1,3 @@
-/**
- * Web Header Component - Public Website Header
- * 
- * Header for the public-facing website with navigation, user menu, and branding.
- */
-
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.tsx';
@@ -55,7 +49,7 @@ export function WebHeader() {
               className={`px-3 py-2 text-sm font-medium transition-colors ${
                 isActiveRoute('/') 
                   ? 'text-white border-b-2 border-una-accent-gold' 
-                  : 'text-gray-300 hover:text-white'
+                  : 'text-[#D6BD98] hover:text-[#baa688]'
               }`}
             >
               Inicio
@@ -65,7 +59,7 @@ export function WebHeader() {
               className={`px-3 py-2 text-sm font-medium transition-colors ${
                 isActiveRoute('/acerca') 
                   ? 'text-white border-b-2 border-una-accent-gold' 
-                  : 'text-gray-300 hover:text-white'
+                  : 'text-[#D6BD98] hover:text-[#baa688]'
               }`}
             >
               Acerca de Nosotros
@@ -75,7 +69,7 @@ export function WebHeader() {
               className={`px-3 py-2 text-sm font-medium transition-colors ${
                 isActiveRoute('/habitaciones') 
                   ? 'text-white border-b-2 border-una-accent-gold' 
-                  : 'text-gray-300 hover:text-white'
+                  : 'text-[#D6BD98] hover:text-[#baa688]'
               }`}
             >
               Habitaciones
@@ -85,7 +79,7 @@ export function WebHeader() {
               className={`px-3 py-2 text-sm font-medium transition-colors ${
                 isActiveRoute('/servicios') 
                   ? 'text-white border-b-2 border-una-accent-gold' 
-                  : 'text-gray-300 hover:text-white'
+                  : 'text-[#D6BD98] hover:text-[#baa688]'
               }`}
             >
               Servicios
@@ -95,7 +89,7 @@ export function WebHeader() {
               className={`px-3 py-2 text-sm font-medium transition-colors ${
                 isActiveRoute('/contacto') 
                   ? 'text-white border-b-2 border-una-accent-gold' 
-                  : 'text-gray-300 hover:text-white'
+                  : 'text-[#D6BD98] hover:text-[#baa688]'
               }`}
             >
               Contacto

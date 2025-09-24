@@ -1,9 +1,3 @@
-/**
- * About Page - Historia y Filosofía de Lanaku
- * 
- * Página dedicada a contar la historia, significado y filosofía del Hotel Lanaku
- */
-
 import { Link } from 'react-router-dom';
 
 // =================== COMPONENT ===================
@@ -33,7 +27,7 @@ export function AboutPage() {
       </section>
 
       {/* Main Story Section */}
-      <section className="py-20">
+         <section className="py-20 bg-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center mb-20">
             <div className="order-2 lg:order-1">
@@ -45,7 +39,7 @@ export function AboutPage() {
               </div>
               <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-8 leading-tight">
                 El Significado de 
-                <span className="text-green-600 block">Lanaku</span>
+                <span className="text-[#1A3636] block">Lanaku</span>
               </h2>
               <div className="space-y-6 text-lg text-gray-600 leading-relaxed">
                 <p>
@@ -68,7 +62,7 @@ export function AboutPage() {
             </div>
             <div className="order-1 lg:order-2 flex justify-center">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-green-600 rounded-2xl transform rotate-3"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-[#1A3636] to-[#1A3636] rounded-2xl transform rotate-3"></div>
                 <div className="relative bg-white p-8 rounded-2xl shadow-2xl">
                   <img 
                     src="/src/assets/Lanaku.png" 
@@ -84,7 +78,7 @@ export function AboutPage() {
           </div>
 
           {/* Heritage Section */}
-          <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-2xl p-12 mb-20">
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-12 mb-20">
             <div className="text-center mb-12">
               <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
                 Herencia Chorotega en Nicoya
@@ -152,11 +146,11 @@ export function AboutPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Mission */}
             <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-green-600 rounded-2xl transform group-hover:scale-105 transition-transform duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-green-300 to-green-800 rounded-2xl transform group-hover:scale-105 transition-transform duration-300"></div>
               <div className="relative bg-white p-10 rounded-2xl shadow-lg">
                 <div className="flex items-center mb-6">
                   <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mr-4">
-                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 text-[#1A3636]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                   </div>
@@ -308,7 +302,7 @@ export function AboutPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="relative py-24 bg-gradient-to-r from-green-600 to-green-800 overflow-hidden">
+      <section className="relative py-24 bg-gradient-to-r from-[#265858] to-[#2f5656] overflow-hidden">
         <div className="absolute inset-0 bg-black opacity-20"></div>
         <div className="absolute inset-0">
           <div className="absolute top-10 left-10 w-20 h-20 bg-white opacity-10 rounded-full"></div>

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { CreateGuestData, UpdateGuestData } from '../types';
 import { DEFAULT_GUEST_DATA } from '../constants';
+import { guestFormSchema, updateGuestFormSchema, formatZodErrors } from '../schemas';
 
 type GuestFormData = CreateGuestData | UpdateGuestData;
 
@@ -30,28 +31,30 @@ export const useGuestForm = <T extends GuestFormData>(
   }, [errors]);
 
   const validateForm = useCallback((): boolean => {
-    const newErrors: Partial<T> = {};
-
-    if (!formData.firstName?.trim()) {
-      newErrors.firstName = 'Nombre es requerido' as any;
+    try {
+      // Determinar si es una actualización (tiene id) o creación
+      const hasId = 'id' in formData && formData.id;
+      const schema = hasId ? updateGuestFormSchema : guestFormSchema;
+      
+      // Validar con Zod
+      schema.parse(formData);
+      
+      // Si llegamos aquí, no hay errores
+      setErrors({});
+      return true;
+    } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        // Es un ZodError
+        const zodError = error as any; // Temporalmente como any para evitar problemas de tipo
+        const formattedErrors = formatZodErrors<T>(zodError);
+        setErrors(formattedErrors);
+      } else {
+        // Error inesperado
+        console.error('Error de validación inesperado:', error);
+        setErrors({ general: 'Error de validación' } as any);
+      }
+      return false;
     }
-    if (!formData.firstLastName?.trim()) {
-      newErrors.firstLastName = 'Primer apellido es requerido' as any;
-    }
-    if (!formData.email?.trim()) {
-      newErrors.email = 'Email es requerido' as any;
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Email no válido' as any;
-    }
-    if (!formData.phone?.trim()) {
-      newErrors.phone = 'Teléfono es requerido' as any;
-    }
-    if (!formData.documentNumber?.trim()) {
-      newErrors.documentNumber = 'Número de documento es requerido' as any;
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
   }, [formData]);
 
   const resetForm = useCallback(() => {
