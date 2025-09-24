@@ -400,9 +400,9 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
       {
         id: 'maintenance-requests',
         label: 'Solicitudes',
-        path: ROUTES.MANTENIMIENTO.SOLICITUDES,
+        path: ROUTES.MANTENIMIENTO.BASE,
         icon: ClipboardList,
-        description: 'Solicitudes de mantenimiento',
+        description: 'Control de solicitudes de mantenimiento',
         category: 'management',
         shortcut: [8, 1], // ALT+8, luego 1
       },
