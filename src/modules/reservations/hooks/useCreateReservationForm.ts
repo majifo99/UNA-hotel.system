@@ -190,9 +190,29 @@ export const useCreateReservationForm = () => {
         return false;
       }
 
+      // Basic required field checks to prevent backend validation errors (422)
+      if (!data.guestId || String(data.guestId).trim() === '') {
+        toast.error('Seleccione un huésped antes de crear la reserva');
+        return false;
+      }
+
+      if ((data.numberOfAdults ?? 0) < 1) {
+        toast.error('La reserva debe tener al menos 1 adulto');
+        return false;
+      }
+
+      if ((data.total ?? 0) < 0) {
+        toast.error('Total de la reserva inválido');
+        return false;
+      }
+
       // For the service, use the first room ID for backwards compatibility
       const primaryRoomId = data.roomIds[0];
       const primaryRoom = selectedRooms[0];
+
+      // Debug: log payload that will be sent
+      // eslint-disable-next-line no-console
+      console.debug('[UI] Creating reservation payload (form):', { ...data, roomId: primaryRoomId, roomType: primaryRoom.type });
 
       await reservationService.createReservation({
         ...data,

@@ -13,6 +13,7 @@ import { default as CheckInPage } from '../modules/frontdesk/pages/CheckInPage';
 import { default as CheckOutPage } from '../modules/frontdesk/pages/CheckOutPage';
 import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
 import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
+import TestPage from '../pages/TestPage';
 
 /**
  * TanStack Query Client Configuration
@@ -169,6 +170,11 @@ const router = createBrowserRouter([
             element: <GuestProfilePage />, 
           }
         ],
+      },
+      {
+        // Test page (Development only)
+        path: 'test',
+        element: <TestPage />,
       },
     ],
   },

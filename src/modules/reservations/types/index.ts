@@ -17,3 +17,9 @@ export type {
   SimpleReservationFormData,
   ReservationValidationErrors
 } from './domain';
+
+// Export backend DTOs and mappers
+export type { ApiReservation, ApiReservaHabitacion } from './domain';
+export { mapApiReservationToReservation } from './domain';
+export type { ApiCreateReservaPayload } from './domain';
+export { mapSimpleFormToApiPayload } from './domain';
