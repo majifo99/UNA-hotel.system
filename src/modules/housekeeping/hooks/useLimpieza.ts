@@ -1,4 +1,3 @@
-// src/modules/housekeeping/hooks/useLimpieza.ts
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { limpiezaService } from "../services/limpiezaService";
 import type { Prioridad, LimpiezaCreateDTO } from "../types/limpieza";
@@ -24,18 +23,15 @@ export function useAssignForm(opts: Readonly<UseAssignFormOptions> = {}) {
     onClose,
   } = opts;
 
-  // 👇 Renombrado a camelCase para contentar Sonar (value + setter pair)
   const [habitacionId, setHabitacionId] = useState<number | null>(initialHabitacion);
-
   const [nombre, setNombre] = useState<string>(defaultNombre);
   const [descripcion, setDescripcion] = useState<string>(defaultDescripcion);
   const [prioridad, setPrioridad] = useState<Prioridad | null>(defaultPrioridad);
-  const [fecha, setFecha] = useState<string>(""); // YYYY-MM-DD
-  const [hora, setHora] = useState<string>("");   // HH:mm
-  const [notas, setNotas] = useState<string>(""); // opcional
+  const [fecha, setFecha] = useState<string>("");
+  const [hora, setHora] = useState<string>("");
+  const [notas, setNotas] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Sincroniza si cambia el valor inicial externo
   useEffect(() => {
     setHabitacionId(initialHabitacion ?? null);
   }, [initialHabitacion]);
@@ -50,14 +46,12 @@ export function useAssignForm(opts: Readonly<UseAssignFormOptions> = {}) {
     setHabitacionId(initialHabitacion ?? null);
   }, [defaultNombre, defaultDescripcion, defaultPrioridad, initialHabitacion]);
 
-  // Validación mínima (sin boolean literal redundante)
   const canSave = useMemo(() => {
     const hasNombre = nombre.trim().length > 0;
     const hasFecha = fecha !== "";
     const hasHora = hora !== "";
-    // Si quieres obligar habitación, añade: && habitacionId !== null
     return hasNombre && hasFecha && hasHora;
-  }, [nombre, fecha, hora /*, habitacionId*/]);
+  }, [nombre, fecha, hora]);
 
   const handleSave = useCallback(async () => {
     if (!canSave) return;
@@ -103,21 +97,22 @@ export function useAssignForm(opts: Readonly<UseAssignFormOptions> = {}) {
   ]);
 
   return {
-    // state
     id_habitacion: habitacionId,
     setIdHabitacion: setHabitacionId,
-    nombre, setNombre,
-    descripcion, setDescripcion,
-    prioridad, setPrioridad,
-    fecha, setFecha,
-    hora, setHora,
-    notas, setNotas,
-
-    // flags
+    nombre,
+    setNombre,
+    descripcion,
+    setDescripcion,
+    prioridad,
+    setPrioridad,
+    fecha,
+    setFecha,
+    hora,
+    setHora,
+    notas,
+    setNotas,
     canSave,
     loading,
-
-    // actions
     handleSave,
     reset,
   };
