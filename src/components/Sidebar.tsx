@@ -1,5 +1,5 @@
 /**
- * Enhanced Sidebar Component for UNA Hotel System
+ * Enhanced Sidebar Component for Lanaku Hotel System
  * 
  * Features:
  * - Config-driven navigation (single source of truth)
@@ -11,7 +11,7 @@
  * 
  * Design Preservation:
  * - Maintains existing visual design and color scheme
- * - Preserves UNA brand colors and styling
+ * - Preserves Lanaku brand colors and styling
  * - Keeps professional dark theme approach
  * - Enhances without breaking existing UX
  */
@@ -19,12 +19,12 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
-  Building2,
   ChevronRight,
   ChevronLeft,
   Keyboard,
   Search,
 } from 'lucide-react';
+import SolLogo from '../assets/Sol nav.png';
 import {
   getNavigationByCategory,
   NAVIGATION_CATEGORIES,
@@ -236,7 +236,7 @@ function SidebarNavigationItem({
  * - Professional dark green theme
  * - Category-based organization
  * - Hover states and active indicators
- * - UNA Hotel branding
+ * - Lanaku Hotel branding
  * 
  * Enhancements added:
  * - Config-driven navigation
@@ -300,24 +300,28 @@ function Sidebar() {
         style={{ backgroundColor: 'var(--color-darkGreen2)' }}
         aria-label="Navegación principal del sistema"
       >
-        {/* Header UNA Hotel (preserved design) */}
+        {/* Header Lanaku (preserved design) */}
         <div className="flex-shrink-0 p-6 border-b" style={{ borderColor: 'rgba(0,0,0,0.2)' }}>
           <div className="flex items-center gap-3 mb-3">
             <div 
               className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" 
               style={{ backgroundColor: 'var(--color-sand)' }}
             >
-              <Building2 className="w-6 h-6" style={{ color: 'var(--color-blackCustom)' }} />
+              <img 
+                src={SolLogo} 
+                alt="Sol Logo" 
+                className="w-8 h-8 object-contain rounded-lg" 
+              />
             </div>
             
             {!isCollapsed && (
               <div>
-                <h1 className="text-xl font-bold text-white">UNA Hotel</h1>
+                <h1 className="text-xl font-bold text-white">Lanaku</h1>
                 <div 
                   className="text-xs font-medium tracking-wider uppercase" 
                   style={{ color: 'var(--color-sand)' }}
                 >
-                  Management System
+                  Hotel Management
                 </div>
               </div>
             )}
@@ -334,7 +338,7 @@ function Sidebar() {
           
           {!isCollapsed && (
             <div className="text-white/60 text-sm leading-relaxed">
-              Sistema integral de gestión hotelera
+              Sistema integral de gestión hotelera Lanaku
             </div>
           )}
         </div>
@@ -422,7 +426,7 @@ function Sidebar() {
         {!isCollapsed && (
           <div className="flex-shrink-0 pt-6 pb-4 px-6 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
             <div className="text-xs text-white/40 text-center">
-              Universidad Nacional de Costa Rica
+              Lanaku Hotel Resort
             </div>
             <div className="text-xs text-white/30 text-center mt-1">
               Sistema de Gestión Hotelera

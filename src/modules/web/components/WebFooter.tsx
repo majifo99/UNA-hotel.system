@@ -17,18 +17,25 @@ export function WebFooter() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Hotel Info */}
           <div className="space-y-4">
-            <h3 className="text-xl font-bold" style={{ color: 'var(--color-sand)' }}>UNA Hotel</h3>
+            <div className="flex items-center space-x-3">
+              <img 
+                src="/src/assets/Lanaku.png" 
+                alt="Hotel Lanaku" 
+                className="h-15 w-auto"
+              />
+              <h3 className="text-xl font-bold" style={{ color: 'var(--color-sand)' }}>Hotel Lanaku</h3>
+            </div>
             <p className="text-gray-300 text-sm leading-relaxed">
-              Experimenta la hospitalidad excepcional en nuestro hotel de lujo. 
-              Donde cada detalle está diseñado para crear momentos inolvidables.
+              <strong>Lanaku:</strong> Un hogar para descansar y disfrutar. Experimenta la 
+              hospitalidad Chorotega en el corazón de Nicoya, donde cada huésped es familia.
             </p>
             <div className="flex space-x-4">
               {/* Social Media Icons */}
               <a 
-                href="https://facebook.com/unahotel" 
+                href="https://facebook.com/lanakuhotel" 
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-300 transition-colors"
+                className="text-gray-300 transition-colors hover:text-white"
                 style={{ color: 'var(--color-sand)' }}
                 aria-label="Síguenos en Facebook"
               >
@@ -37,10 +44,10 @@ export function WebFooter() {
                 </svg>
               </a>
               <a 
-                href="https://instagram.com/unahotel" 
+                href="https://instagram.com/lanakuhotel" 
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-300 transition-colors"
+                className="text-gray-300 transition-colors hover:text-white"
                 style={{ color: 'var(--color-sand)' }}
                 aria-label="Síguenos en Instagram"
               >
@@ -49,10 +56,10 @@ export function WebFooter() {
                 </svg>
               </a>
               <a 
-                href="https://twitter.com/unahotel" 
+                href="https://twitter.com/lanakuhotel" 
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-300 transition-colors"
+                className="text-gray-300 transition-colors hover:text-white"
                 style={{ color: 'var(--color-sand)' }}
                 aria-label="Síguenos en Twitter"
               >
@@ -67,6 +74,14 @@ export function WebFooter() {
           <div className="space-y-4">
             <h4 className="text-lg font-semibold" style={{ color: 'var(--color-sand)' }}>Enlaces Rápidos</h4>
             <ul className="space-y-2">
+              <li>
+                <Link 
+                  to="/acerca" 
+                  className="text-gray-300 hover:text-white transition-colors text-sm"
+                >
+                  Acerca de Nosotros
+                </Link>
+              </li>
               <li>
                 <Link 
                   to="/habitaciones" 
@@ -85,18 +100,10 @@ export function WebFooter() {
               </li>
               <li>
                 <Link 
-                  to="/promociones" 
+                  to="/contacto" 
                   className="text-gray-300 hover:text-white transition-colors text-sm"
                 >
-                  Promociones
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/galeria" 
-                  className="text-gray-300 hover:text-white transition-colors text-sm"
-                >
-                  Galería
+                  Contacto
                 </Link>
               </li>
             </ul>
@@ -107,19 +114,19 @@ export function WebFooter() {
             <h4 className="text-lg font-semibold" style={{ color: 'var(--color-sand)' }}>Servicios</h4>
             <ul className="space-y-2">
               <li>
-                <span className="text-gray-300 text-sm">Restaurante</span>
+                <span className="text-gray-300 text-sm">Cocina Local Chorotega</span>
               </li>
               <li>
-                <span className="text-gray-300 text-sm">Spa & Wellness</span>
+                <span className="text-gray-300 text-sm">Experiencias Culturales</span>
               </li>
               <li>
-                <span className="text-gray-300 text-sm">Centro de Negocios</span>
+                <span className="text-gray-300 text-sm">Tours Región Nicoya</span>
               </li>
               <li>
                 <span className="text-gray-300 text-sm">Servicio a la Habitación</span>
               </li>
               <li>
-                <span className="text-gray-300 text-sm">Transporte</span>
+                <span className="text-gray-300 text-sm">Concierge 24/7</span>
               </li>
             </ul>
           </div>
@@ -134,21 +141,21 @@ export function WebFooter() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
                 <p className="text-gray-300 text-sm">
-                  Av. Principal 123<br />
-                  Ciudad, País 12345
+                  Nicoya, Guanacaste<br />
+                  Costa Rica
                 </p>
               </div>
               <div className="flex items-center space-x-3">
                 <svg className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--color-sand)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                 </svg>
-                <p className="text-gray-300 text-sm">+1 (555) 123-4567</p>
+                <p className="text-gray-300 text-sm">+506 2685-5555</p>
               </div>
               <div className="flex items-center space-x-3">
                 <svg className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--color-sand)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
-                <p className="text-gray-300 text-sm">info@unahotel.com</p>
+                <p className="text-gray-300 text-sm">info@lanakuhotel.com</p>
               </div>
             </div>
           </div>
@@ -158,7 +165,7 @@ export function WebFooter() {
         <div className="border-t border-una-primary-800 mt-8 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-300 text-sm">
-              © {currentYear} UNA Hotel. Todos los derechos reservados.
+              © {currentYear} Hotel Lanaku. Todos los derechos reservados.
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <Link 
