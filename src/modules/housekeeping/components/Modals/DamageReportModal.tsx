@@ -1,13 +1,11 @@
-import { useState } from "react";
-import { useRoomById } from "../hooks/useRoomById";
-import { updateRoom } from "../services/roomService";
-import { STATUS_TO_KEY } from "../utils/statusToKey";
+// src/components/Modals/DamageReportModal.tsx
+import { useEffect, useState } from "react";
 
 type DamageReportModalProps = Readonly<{
   isOpen: boolean;
   onClose: () => void;
-  selectedRoomId: string | null;
-  onSent: () => Promise<void> | void;
+  selectedRoomId: string | null;     // viene del dashboard
+  onSent: () => Promise<void> | void; // callback para refrescar
 }>;
 
 export default function DamageReportModal({
@@ -16,35 +14,46 @@ export default function DamageReportModal({
   selectedRoomId,
   onSent,
 }: DamageReportModalProps) {
-  const { room, isLoading: loadingRoom, error: errorRoom } = useRoomById(selectedRoomId, isOpen);
+  // mantenemos un id de habitación local para permitir editarlo cuando no venga preseleccionado
+  const [habitacionId, setHabitacionId] = useState<number | null>(
+    selectedRoomId ? Number(selectedRoomId) : null
+  );
 
   const [description, setDescription] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // si cambia la selección desde fuera, sincroniza el estado local
+  useEffect(() => {
+    setHabitacionId(selectedRoomId ? Number(selectedRoomId) : null);
+  }, [selectedRoomId]);
+
   const handleSend = async () => {
-    if (!room || !selectedRoomId) return;
+    setSubmitError(null);
+
     if (!description.trim()) {
       setSubmitError("La descripción del daño es obligatoria.");
       return;
     }
+    if (habitacionId === null || Number.isNaN(habitacionId)) {
+      setSubmitError("Debes indicar el ID de la habitación.");
+      return;
+    }
+
     setSubmitting(true);
-    setSubmitError(null);
     try {
+      // Aquí iría tu request real si tienes endpoint de reportes de daño.
+      // Mientras, registramos y delegamos al callback onSent.
       console.log("Reporte de daño:", {
-        roomId: selectedRoomId,
+        habitacionId,
         description,
         image: imageFile?.name ?? null,
         when: new Date().toISOString(),
       });
 
-      await updateRoom(selectedRoomId, {
-        status: "Mantenimiento",
-        keyCode: STATUS_TO_KEY["Mantenimiento"] ?? "MANT",
-      });
-
       await onSent();
+      // reset suave tras enviar
       setDescription("");
       setImageFile(null);
       onClose();
@@ -65,25 +74,46 @@ export default function DamageReportModal({
         </h2>
 
         <div className="space-y-4">
+          {/* Habitación seleccionada o input para indicarla */}
           <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
-            {loadingRoom && <p className="text-slate-500 text-sm">Cargando habitación…</p>}
-            {errorRoom && <p className="text-rose-600 text-sm">{errorRoom}</p>}
-            {!loadingRoom && !errorRoom && room && (
+            {habitacionId !== null ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <p className="text-xs text-slate-500">Número</p>
-                  <p className="font-medium text-slate-800">{room.number ?? "—"}</p>
+                  <p className="text-xs text-slate-500">ID de habitación</p>
+                  <p className="font-medium text-slate-800">{habitacionId}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Clave (nomenclatura)</p>
-                  <p className="font-medium text-slate-800">{room.keyCode ?? "—"}</p>
+                  <p className="text-xs text-slate-500">Referencia</p>
+                  <p className="font-medium text-slate-800">—</p>
                 </div>
+              </div>
+            ) : (
+              <div>
+                <label
+                  htmlFor="room-id"
+                  className="block text-sm font-semibold text-slate-700 mb-2"
+                >
+                  ID de habitación <span className="text-rose-600">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={habitacionId ?? ""}
+                  onChange={(e) =>
+                    setHabitacionId(e.target.value ? Number(e.target.value) : null)
+                  }
+                  placeholder="Ej. 101"
+                  className="w-full rounded-xl border border-slate-300 bg-white/80 p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
               </div>
             )}
           </div>
 
+          {/* Descripción */}
           <div>
-            <label htmlFor="damage-description" className="block text-sm font-semibold text-slate-700 mb-2">
+            <label
+              htmlFor="damage-description"
+              className="block text-sm font-semibold text-slate-700 mb-2"
+            >
               Descripción del daño <span className="text-rose-600">*</span>
             </label>
             <textarea
@@ -96,8 +126,12 @@ export default function DamageReportModal({
             />
           </div>
 
+          {/* Imagen opcional */}
           <div>
-            <label htmlFor="damage-image" className="block text-sm font-semibold text-slate-700 mb-2">
+            <label
+              htmlFor="damage-image"
+              className="block text-sm font-semibold text-slate-700 mb-2"
+            >
               Adjuntar imagen (opcional)
             </label>
             <input
@@ -109,7 +143,8 @@ export default function DamageReportModal({
             />
             {imageFile && (
               <p className="mt-1 text-xs text-slate-500">
-                Archivo seleccionado: <span className="font-medium">{imageFile.name}</span>
+                Archivo seleccionado:{" "}
+                <span className="font-medium">{imageFile.name}</span>
               </p>
             )}
           </div>
@@ -127,7 +162,7 @@ export default function DamageReportModal({
           </button>
           <button
             onClick={handleSend}
-            disabled={submitting || !description.trim()}
+            disabled={submitting || !description.trim() || habitacionId === null}
             className="px-6 py-2 bg-gradient-to-r from-teal-600 to-teal-700 text-white rounded-xl hover:from-teal-700 hover:to-teal-800 disabled:opacity-50"
           >
             {submitting ? "Enviando…" : "Enviar"}
