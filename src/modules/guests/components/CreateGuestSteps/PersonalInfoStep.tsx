@@ -1,7 +1,10 @@
 import React from 'react';
-import { User, AlertCircle, CheckCircle } from 'lucide-react';
+import { User } from 'lucide-react';
 import PhoneInput from 'react-phone-input-2';
 import ReactFlagsSelect from 'react-flags-select';
+import { ValidatedTextInput, getValidationClassName, ValidationIndicator } from '../shared/ValidatedInputs';
+import { COUNTRY_LABELS, DOCUMENT_TYPE_OPTIONS } from '../../constants';
+import { getValidationState } from '../../utils';
 import type { Guest } from '../../types';
 
 interface ValidationErrors {
@@ -19,37 +22,6 @@ export const PersonalInfoStep: React.FC<PersonalInfoStepProps> = ({
   validationErrors,
   updateField
 }) => {
-  const renderFieldValidation = (fieldName: string, value: any) => {
-    if (validationErrors[fieldName]) {
-      return (
-        <div className="flex items-center gap-1 mt-1 text-red-600 text-sm">
-          <AlertCircle size={14} />
-          {validationErrors[fieldName]}
-        </div>
-      );
-    }
-    
-    if (value && !validationErrors[fieldName]) {
-      return (
-        <div className="flex items-center gap-1 mt-1 text-green-600 text-sm">
-          <CheckCircle size={14} />
-          Válido
-        </div>
-      );
-    }
-    
-    return null;
-  };
-
-  const getFieldClassName = (fieldName: string, value: any) => {
-    return `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-      validationErrors[fieldName] 
-        ? 'border-red-300 bg-red-50' 
-        : value 
-        ? 'border-green-300 bg-green-50' 
-        : 'border-gray-300'
-    }`;
-  };
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
@@ -62,67 +34,48 @@ export const PersonalInfoStep: React.FC<PersonalInfoStepProps> = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Nombre */}
-        <div>
-          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
-            Nombre *
-          </label>
-          <input
-            id="firstName"
-            type="text"
-            value={formData.firstName || ''}
-            onChange={(e) => updateField('firstName', e.target.value)}
-            className={getFieldClassName('firstName', formData.firstName)}
-            required
-          />
-          {renderFieldValidation('firstName', formData.firstName)}
-        </div>
+        <ValidatedTextInput
+          id="firstName"
+          label="Nombre"
+          value={formData.firstName || ''}
+          onChange={(value) => updateField('firstName', value)}
+          validationState={getValidationState(formData.firstName, validationErrors, 'firstName')}
+          error={validationErrors.firstName}
+          required
+        />
 
         {/* Apellido Uno */}
-        <div>
-          <label htmlFor="firstLastName" className="block text-sm font-medium text-gray-700 mb-2">
-            Apellido Uno *
-          </label>
-          <input
-            id="firstLastName"
-            type="text"
-            value={formData.firstLastName || ''}
-            onChange={(e) => updateField('firstLastName', e.target.value)}
-            className={getFieldClassName('firstLastName', formData.firstLastName)}
-            required
-          />
-          {renderFieldValidation('firstLastName', formData.firstLastName)}
-        </div>
+        <ValidatedTextInput
+          id="firstLastName"
+          label="Apellido Uno"
+          value={formData.firstLastName || ''}
+          onChange={(value) => updateField('firstLastName', value)}
+          validationState={getValidationState(formData.firstLastName, validationErrors, 'firstLastName')}
+          error={validationErrors.firstLastName}
+          required
+        />
 
         {/* Apellido Dos */}
-        <div>
-          <label htmlFor="secondLastName" className="block text-sm font-medium text-gray-700 mb-2">
-            Apellido Dos
-          </label>
-          <input
-            id="secondLastName"
-            type="text"
-            value={formData.secondLastName || ''}
-            onChange={(e) => updateField('secondLastName', e.target.value)}
-            className={getFieldClassName('secondLastName', formData.secondLastName)}
-          />
-          {renderFieldValidation('secondLastName', formData.secondLastName)}
-        </div>
+        <ValidatedTextInput
+          id="secondLastName"
+          label="Apellido Dos"
+          value={formData.secondLastName || ''}
+          onChange={(value) => updateField('secondLastName', value)}
+          validationState={getValidationState(formData.secondLastName, validationErrors, 'secondLastName')}
+          error={validationErrors.secondLastName}
+        />
 
         {/* Email */}
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-            Email *
-          </label>
-          <input
-            id="email"
-            type="email"
-            value={formData.email || ''}
-            onChange={(e) => updateField('email', e.target.value)}
-            className={getFieldClassName('email', formData.email)}
-            required
-          />
-          {renderFieldValidation('email', formData.email)}
-        </div>
+        <ValidatedTextInput
+          id="email"
+          label="Email"
+          type="email"
+          value={formData.email || ''}
+          onChange={(value) => updateField('email', value)}
+          validationState={getValidationState(formData.email, validationErrors, 'email')}
+          error={validationErrors.email}
+          required
+        />
 
         {/* Teléfono */}
         <div>
@@ -138,11 +91,17 @@ export const PersonalInfoStep: React.FC<PersonalInfoStepProps> = ({
               name: 'phone',
               required: true,
             }}
-            inputClass={getFieldClassName('phone', formData.phone)}
+            inputClass={getValidationClassName(
+              getValidationState(formData.phone, validationErrors, 'phone'),
+              'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors'
+            )}
             containerClass="w-full"
             buttonClass="!border-gray-300 !rounded-l-lg"
           />
-          {renderFieldValidation('phone', formData.phone)}
+          <ValidationIndicator 
+            state={getValidationState(formData.phone, validationErrors, 'phone')}
+            error={validationErrors.phone}
+          />
         </div>
 
         {/* Nacionalidad */}
@@ -154,18 +113,19 @@ export const PersonalInfoStep: React.FC<PersonalInfoStepProps> = ({
             selected={formData.nationality || 'CR'}
             onSelect={(code) => updateField('nationality', code)}
             className="w-full"
-            selectButtonClassName={`react-flags-select-button w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-left transition-colors ${
-              validationErrors.nationality 
-                ? 'border-red-300 bg-red-50' 
-                : formData.nationality 
-                ? 'border-green-300 bg-green-50' 
-                : 'border-gray-300'
-            }`}
+            selectButtonClassName={getValidationClassName(
+              getValidationState(formData.nationality, validationErrors, 'nationality'),
+              'react-flags-select-button w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-left transition-colors'
+            )}
             aria-labelledby="nationality-label"
             aria-required="true"
             placeholder="Seleccionar país"
+            customLabels={COUNTRY_LABELS}
           />
-          {renderFieldValidation('nationality', formData.nationality)}
+          <ValidationIndicator 
+            state={getValidationState(formData.nationality, validationErrors, 'nationality')}
+            error={validationErrors.nationality}
+          />
         </div>
 
         {/* Tipo de Documento */}
@@ -175,32 +135,29 @@ export const PersonalInfoStep: React.FC<PersonalInfoStepProps> = ({
           </label>
           <select
             id="documentType"
-            value={formData.documentType || 'id'}
+            value={formData.documentType || 'id_card'}
             onChange={(e) => updateField('documentType', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
           >
-            <option value="id_card">Cédula</option>
-            <option value="passport">Pasaporte</option>
-            <option value="license">Licencia</option>
+            {DOCUMENT_TYPE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
 
         {/* Número de Documento */}
-        <div>
-          <label htmlFor="documentNumber" className="block text-sm font-medium text-gray-700 mb-2">
-            Número de Documento *
-          </label>
-          <input
-            id="documentNumber"
-            type="text"
-            value={formData.documentNumber || ''}
-            onChange={(e) => updateField('documentNumber', e.target.value)}
-            className={getFieldClassName('documentNumber', formData.documentNumber)}
-            required
-          />
-          {renderFieldValidation('documentNumber', formData.documentNumber)}
-        </div>
+        <ValidatedTextInput
+          id="documentNumber"
+          label="Número de Documento"
+          value={formData.documentNumber || ''}
+          onChange={(value) => updateField('documentNumber', value)}
+          validationState={getValidationState(formData.documentNumber, validationErrors, 'documentNumber')}
+          error={validationErrors.documentNumber}
+          required
+        />
       </div>
     </div>
   );

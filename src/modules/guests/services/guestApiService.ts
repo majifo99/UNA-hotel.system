@@ -37,7 +37,23 @@ class GuestApiService {
       const response = await fetch(url, config);
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Try to get error details from response body
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        
+        try {
+          const errorData = await response.json();
+          if (errorData.message) {
+            errorMessage += ` - ${errorData.message}`;
+          }
+          if (errorData.errors) {
+            console.error('🚨 Validation Errors:', errorData.errors);
+            errorMessage += ` - Validation errors: ${JSON.stringify(errorData.errors)}`;
+          }
+        } catch (parseError) {
+          // If we can't parse the error response, just use the status
+        }
+        
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();
@@ -106,6 +122,9 @@ class GuestApiService {
         programa_lealtad: guestData.loyaltyProgram?.memberId ? JSON.stringify(guestData.loyaltyProgram) : null,
         preferencias_habitacion: guestData.roomPreferences ? JSON.stringify(guestData.roomPreferences) : null
       };
+      
+      // Debug: Log the data being sent to the backend
+      console.log('🚀 Sending data to backend:', JSON.stringify(backendData, null, 2));
       
       const response = await this.post(this.baseUrl, backendData);
       

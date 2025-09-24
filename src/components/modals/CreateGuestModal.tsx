@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
-import { User, Save, X } from 'lucide-react';
-import PhoneInput from 'react-phone-input-2';
-import 'react-phone-input-2/lib/style.css';
-import ReactFlagsSelect from 'react-flags-select';
+import React from 'react';
+import { Save, X } from 'lucide-react';
 import { Modal } from '../ui/Modal';
-import { useGuests } from '../../modules/guests/hooks';
+import { useGuests, useGuestForm } from '../../modules/guests/hooks';
+import { GuestFormFields } from '../../modules/guests/components/shared';
 import type { CreateGuestData, Guest } from '../../modules/guests/types';
 
 interface CreateGuestModalProps {
@@ -19,55 +17,14 @@ export const CreateGuestModal: React.FC<CreateGuestModalProps> = ({
   onGuestCreated
 }) => {
   const { createGuest, isCreating } = useGuests();
-  const [formData, setFormData] = useState<CreateGuestData>({
-    firstName: '',
-    firstLastName: '',
-    secondLastName: '',
-    email: '',
-    phone: '',
-    nationality: 'CR',
-    documentType: 'id_card',
-    documentNumber: '',
-    dateOfBirth: '',
-    gender: undefined,
-    notes: '',
-    isActive: true
-  });
-
-  const [errors, setErrors] = useState<Partial<CreateGuestData>>({});
-
-  const handleInputChange = (field: keyof CreateGuestData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  };
-
-  const validateForm = (): boolean => {
-    const newErrors: Partial<CreateGuestData> = {};
-
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'Nombre es requerido';
-    }
-    if (!formData.firstLastName.trim()) {
-      newErrors.firstLastName = 'Primer apellido es requerido';
-    }
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email es requerido';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email no válido';
-    }
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Teléfono es requerido';
-    }
-    if (!formData.documentNumber.trim()) {
-      newErrors.documentNumber = 'Número de documento es requerido';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const {
+    formData,
+    errors,
+    handleInputChange,
+    validateForm,
+    resetForm,
+    clearErrors
+  } = useGuestForm<CreateGuestData>();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,23 +35,7 @@ export const CreateGuestModal: React.FC<CreateGuestModalProps> = ({
       const newGuest = await createGuest(formData);
       onGuestCreated(newGuest);
       onClose();
-      
-      // Reset form
-      setFormData({
-        firstName: '',
-        firstLastName: '',
-        secondLastName: '',
-        email: '',
-        phone: '',
-        nationality: 'CR',
-        documentType: 'id_card',
-        documentNumber: '',
-        dateOfBirth: '',
-        gender: undefined,
-        notes: '',
-        isActive: true
-      });
-      setErrors({});
+      resetForm();
     } catch (error) {
       console.error('Error creating guest:', error);
     }
@@ -102,7 +43,7 @@ export const CreateGuestModal: React.FC<CreateGuestModalProps> = ({
 
   const handleClose = () => {
     onClose();
-    setErrors({});
+    clearErrors();
   };
 
   return (
@@ -113,244 +54,11 @@ export const CreateGuestModal: React.FC<CreateGuestModalProps> = ({
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Header Icon */}
-        <div className="flex items-center justify-center mb-4">
-          <div className="p-3 bg-blue-100 rounded-full">
-            <User size={24} className="text-blue-600" />
-          </div>
-        </div>
-
-        {/* Personal Information */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nombre *
-            </label>
-            <input
-              type="text"
-              value={formData.firstName}
-              onChange={(e) => handleInputChange('firstName', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                errors.firstName ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="Juan"
-            />
-            {errors.firstName && (
-              <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Apellido Uno *
-            </label>
-            <input
-              type="text"
-              value={formData.firstLastName}
-              onChange={(e) => handleInputChange('firstLastName', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                errors.firstLastName ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="Pérez"
-            />
-            {errors.firstLastName && (
-              <p className="mt-1 text-sm text-red-600">{errors.firstLastName}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Second Last Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Apellido Dos
-          </label>
-          <input
-            type="text"
-            value={formData.secondLastName || ''}
-            onChange={(e) => handleInputChange('secondLastName', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="González (opcional)"
-          />
-        </div>
-
-        {/* Contact Information */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Email *
-          </label>
-          <input
-            type="email"
-            value={formData.email}
-            onChange={(e) => handleInputChange('email', e.target.value)}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-              errors.email ? 'border-red-500' : 'border-gray-300'
-            }`}
-            placeholder="juan.perez@email.com"
-          />
-          {errors.email && (
-            <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-          )}
-        </div>
-
-        {/* Phone Input with Country Selector */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Teléfono *
-          </label>
-          <PhoneInput
-            country={'cr'}
-            value={formData.phone}
-            onChange={(phone: string) => handleInputChange('phone', phone)}
-            inputClass={`!w-full !py-2 !px-3 !text-base !border !rounded-lg !focus:ring-2 !focus:ring-blue-500 !focus:border-transparent ${
-              errors.phone ? '!border-red-500' : '!border-gray-300'
-            }`}
-            containerClass="mt-1"
-            buttonClass="!border !border-gray-300 !rounded-l-lg"
-            dropdownClass="!z-50"
-            searchClass="!px-3 !py-2 !border !border-gray-300 !rounded"
-            placeholder="8888-9999"
-            enableSearch
-            searchPlaceholder="Buscar país..."
-            preferredCountries={['cr', 'us', 'mx', 'ca', 'es', 'fr', 'de', 'it']}
-            localization={{
-              cr: 'Costa Rica',
-              us: 'Estados Unidos',
-              mx: 'México',
-              ca: 'Canadá',
-              es: 'España',
-              fr: 'Francia',
-              de: 'Alemania',
-              it: 'Italia'
-            }}
-          />
-          {errors.phone && (
-            <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
-          )}
-        </div>
-
-        {/* Nationality with Flag Selector */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nacionalidad
-          </label>
-          <ReactFlagsSelect
-            selected={formData.nationality}
-            onSelect={(countryCode: string) => handleInputChange('nationality', countryCode)}
-            placeholder="Selecciona tu nacionalidad"
-            searchable
-            customLabels={{
-              CR: 'Costa Rica',
-              US: 'Estados Unidos',
-              MX: 'México',
-              CA: 'Canadá',
-              ES: 'España',
-              FR: 'Francia',
-              DE: 'Alemania',
-              IT: 'Italia',
-              BR: 'Brasil',
-              AR: 'Argentina',
-              CL: 'Chile',
-              CO: 'Colombia',
-              PE: 'Perú',
-              VE: 'Venezuela',
-              EC: 'Ecuador',
-              BO: 'Bolivia',
-              PY: 'Paraguay',
-              UY: 'Uruguay',
-              PA: 'Panamá',
-              GT: 'Guatemala',
-              HN: 'Honduras',
-              SV: 'El Salvador',
-              NI: 'Nicaragua',
-              BZ: 'Belice',
-              DO: 'República Dominicana',
-              CU: 'Cuba',
-              JM: 'Jamaica'
-            }}
-          />
-        </div>
-
-        {/* Document Information */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tipo de Documento
-            </label>
-            <select
-              value={formData.documentType}
-              onChange={(e) => handleInputChange('documentType', e.target.value as any)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="id_card">Cédula</option>
-              <option value="passport">Pasaporte</option>
-              <option value="license">Licencia</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Número de Documento *
-            </label>
-            <input
-              type="text"
-              value={formData.documentNumber}
-              onChange={(e) => handleInputChange('documentNumber', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                errors.documentNumber ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="1-1234-5678"
-            />
-            {errors.documentNumber && (
-              <p className="mt-1 text-sm text-red-600">{errors.documentNumber}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Additional Information */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Fecha de Nacimiento
-            </label>
-            <input
-              type="date"
-              value={formData.dateOfBirth || ''}
-              onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Género
-            </label>
-            <select
-              value={formData.gender || ''}
-              onChange={(e) => handleInputChange('gender', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Seleccionar...</option>
-              <option value="male">Masculino</option>
-              <option value="female">Femenino</option>
-              <option value="other">Otro</option>
-              <option value="prefer_not_to_say">Prefiero no decir</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Notes */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Notas
-          </label>
-          <textarea
-            value={formData.notes || ''}
-            onChange={(e) => handleInputChange('notes', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            rows={3}
-            placeholder="Cualquier información adicional sobre el huésped..."
-          />
-        </div>
+        <GuestFormFields
+          formData={formData}
+          errors={errors}
+          onInputChange={handleInputChange}
+        />
 
         {/* Action Buttons */}
         <div className="flex gap-3 pt-6">
