@@ -77,20 +77,35 @@ export const PersonalInfoStep: React.FC<PersonalInfoStepProps> = ({
           {renderFieldValidation('firstName', formData.firstName)}
         </div>
 
-        {/* Apellidos */}
+        {/* Apellido Uno */}
         <div>
-          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
-            Apellidos *
+          <label htmlFor="firstLastName" className="block text-sm font-medium text-gray-700 mb-2">
+            Apellido Uno *
           </label>
           <input
-            id="lastName"
+            id="firstLastName"
             type="text"
-            value={formData.lastName || ''}
-            onChange={(e) => updateField('lastName', e.target.value)}
-            className={getFieldClassName('lastName', formData.lastName)}
+            value={formData.firstLastName || ''}
+            onChange={(e) => updateField('firstLastName', e.target.value)}
+            className={getFieldClassName('firstLastName', formData.firstLastName)}
             required
           />
-          {renderFieldValidation('lastName', formData.lastName)}
+          {renderFieldValidation('firstLastName', formData.firstLastName)}
+        </div>
+
+        {/* Apellido Dos */}
+        <div>
+          <label htmlFor="secondLastName" className="block text-sm font-medium text-gray-700 mb-2">
+            Apellido Dos
+          </label>
+          <input
+            id="secondLastName"
+            type="text"
+            value={formData.secondLastName || ''}
+            onChange={(e) => updateField('secondLastName', e.target.value)}
+            className={getFieldClassName('secondLastName', formData.secondLastName)}
+          />
+          {renderFieldValidation('secondLastName', formData.secondLastName)}
         </div>
 
         {/* Email */}

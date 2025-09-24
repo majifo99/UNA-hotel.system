@@ -19,6 +19,7 @@ export { WebLayout } from './layouts/WebLayout';
 export { LoginPage } from './pages/LoginPage';
 export { RegisterPage } from './pages/RegisterPage';
 export { HomePage } from './pages/HomePage';
+export { AboutPage } from './pages/AboutPage';
 
 // =================== HOOKS ===================
 export { useAuth, AuthProvider } from './hooks/useAuth.tsx';

@@ -6,50 +6,54 @@ import {
   CreditCard, Bed, Settings, AlertTriangle
 } from 'lucide-react';
 import ReactFlagsSelect from 'react-flags-select';
-import type { Guest, UpdateGuestData } from '../types';
-import { useGuests } from '../hooks';
+import type { UpdateGuestData } from '../types';
+import { useGuests, useGuestById } from '../hooks';
 
 export const GuestProfilePage: React.FC = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getGuestById, updateGuest, isUpdating } = useGuests();
-  const [guest, setGuest] = useState<Guest | null>(null);
+  const { updateGuest, isUpdating } = useGuests();
+  
+  // Usar el nuevo hook para obtener el huésped
+  const { 
+    data: guest, 
+    isLoading, 
+    error, 
+    refetch 
+  } = useGuestById(id);
+  
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Partial<UpdateGuestData>>({});
 
   useEffect(() => {
-    const fetchGuest = async () => {
-      if (id) {
-        const data = await getGuestById(id);
-        setGuest(data);
-        // Initialize edit values with current guest data
-        setEditValues({
-          id: data.id,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          phone: data.phone,
-          documentType: data.documentType,
-          documentNumber: data.documentNumber,
-          nationality: data.nationality,
-          dateOfBirth: data.dateOfBirth,
-          gender: data.gender,
-          preferredLanguage: data.preferredLanguage,
-          notes: data.notes,
-          medicalNotes: data.medicalNotes,
-          vipStatus: data.vipStatus,
-          allergies: data.allergies,
-          dietaryRestrictions: data.dietaryRestrictions,
-          address: data.address,
-          emergencyContact: data.emergencyContact,
-          communicationPreferences: data.communicationPreferences,
-          roomPreferences: data.roomPreferences,
-          loyaltyProgram: data.loyaltyProgram
-        });
-      }
-    };
-    fetchGuest();
-  }, [id]);
+    if (guest) {
+      // Initialize edit values with current guest data
+      setEditValues({
+        id: guest.id,
+        firstName: guest.firstName,
+        firstLastName: guest.firstLastName,
+        secondLastName: guest.secondLastName,
+        email: guest.email,
+        phone: guest.phone,
+        documentType: guest.documentType,
+        documentNumber: guest.documentNumber,
+        nationality: guest.nationality,
+        dateOfBirth: guest.dateOfBirth,
+        gender: guest.gender,
+        preferredLanguage: guest.preferredLanguage,
+        notes: guest.notes,
+        medicalNotes: guest.medicalNotes,
+        vipStatus: guest.vipStatus,
+        allergies: guest.allergies,
+        dietaryRestrictions: guest.dietaryRestrictions,
+        address: guest.address,
+        emergencyContact: guest.emergencyContact,
+        communicationPreferences: guest.communicationPreferences,
+        roomPreferences: guest.roomPreferences,
+        loyaltyProgram: guest.loyaltyProgram
+      });
+    }
+  }, [guest]);
 
   const handleEdit = useCallback((fieldName: string) => {
     setEditingField(fieldName);
@@ -62,7 +66,8 @@ export const GuestProfilePage: React.FC = () => {
       setEditValues({
         id: guest.id,
         firstName: guest.firstName,
-        lastName: guest.lastName,
+        firstLastName: guest.firstLastName,
+        secondLastName: guest.secondLastName,
         email: guest.email,
         phone: guest.phone,
         documentType: guest.documentType,
@@ -92,14 +97,15 @@ export const GuestProfilePage: React.FC = () => {
           ...editValues,
           id: guest.id
         };
-        const updatedGuest = await updateGuest(guest.id, updateData);
-        setGuest(updatedGuest);
+        await updateGuest(guest.id, updateData);
+        // Refrescar los datos del huésped
+        refetch();
         setEditingField(null);
       } catch (error) {
         console.error('Error updating guest:', error);
       }
     }
-  }, [guest, editValues, updateGuest]);
+  }, [guest, editValues, updateGuest, refetch]);
 
   const handleInputChange = useCallback((field: string, value: any) => {
     setEditValues(prev => ({
@@ -126,10 +132,50 @@ export const GuestProfilePage: React.FC = () => {
     }));
   }, []);
 
-  if (!guest) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 space-y-4">
+        <AlertTriangle className="h-12 w-12 text-red-500" />
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Error al cargar el huésped</h2>
+          <p className="text-gray-600 mb-4">
+            {error instanceof Error ? error.message : 'No se pudo cargar la información del huésped'}
+          </p>
+          <button
+            onClick={() => refetch()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!guest) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 space-y-4">
+        <User className="h-12 w-12 text-gray-400" />
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Huésped no encontrado</h2>
+          <p className="text-gray-600 mb-4">
+            No se encontró el huésped con ID: {id}
+          </p>
+          <button
+            onClick={() => navigate('/guests')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Volver a Huéspedes
+          </button>
+        </div>
       </div>
     );
   }
@@ -564,7 +610,7 @@ export const GuestProfilePage: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  {guest.firstName} {guest.lastName}
+                  {guest.firstName} {guest.firstLastName} {guest.secondLastName || ''}
                 </h1>
                 <div className="flex items-center space-x-4 mt-1">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -627,7 +673,8 @@ export const GuestProfilePage: React.FC = () => {
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {renderEditableField('Nombre', 'firstName', guest.firstName)}
-                  {renderEditableField('Apellido', 'lastName', guest.lastName)}
+                  {renderEditableField('Primer Apellido', 'firstLastName', guest.firstLastName)}
+                  {renderEditableField('Segundo Apellido', 'secondLastName', guest.secondLastName || '')}
                   {renderEditableField('Email', 'email', guest.email, 'email')}
                   {renderEditableField('Teléfono', 'phone', guest.phone, 'tel')}
                   {renderEditableField('Fecha de Nacimiento', 'dateOfBirth', guest.dateOfBirth)}

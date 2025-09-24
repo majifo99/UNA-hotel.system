@@ -12,10 +12,11 @@ export const GuestsPage: React.FC = () => {
 
   // Filtrar huéspedes por término de búsqueda
   const filteredGuests = guests.filter((guest: Guest) =>
-    guest.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    guest.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    guest.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    guest.documentNumber.toLowerCase().includes(searchTerm.toLowerCase())
+    (guest.firstName && guest.firstName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (guest.firstLastName && guest.firstLastName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (guest.secondLastName && guest.secondLastName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (guest.email && guest.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (guest.documentNumber && guest.documentNumber.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleCreateGuest = () => {
@@ -135,11 +136,11 @@ export const GuestsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredGuests.length > 0 ? filteredGuests.map((guest: Guest) => (
-                <tr key={guest.id} className="hover:bg-gray-50">
+              {filteredGuests.length > 0 ? filteredGuests.map((guest: Guest, index: number) => (
+                <tr key={guest.id || `guest-${index}`} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
-                      {guest.firstName} {guest.lastName}
+                      {guest.firstName} {guest.firstLastName} {guest.secondLastName || ''}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -156,7 +157,7 @@ export const GuestsPage: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
-                      onClick={() => navigate(ROUTES.GUESTS.DETAIL(guest.id))}
+                      onClick={() => guest.id && navigate(ROUTES.GUESTS.DETAIL(guest.id))}
                       className="text-blue-600 hover:underline"
                     >
                       Ver perfil

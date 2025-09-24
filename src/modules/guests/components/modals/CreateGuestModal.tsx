@@ -21,12 +21,16 @@ export const CreateGuestModal: React.FC<CreateGuestModalProps> = ({
   const { createGuest, isCreating } = useGuests();
   const [formData, setFormData] = useState<CreateGuestData>({
     firstName: '',
-    lastName: '',
+    firstLastName: '',
+    secondLastName: '',
     email: '',
     phone: '',
     nationality: 'CR',
     documentType: 'id_card',
     documentNumber: '',
+    dateOfBirth: '',
+    gender: undefined,
+    notes: '',
     isActive: true
   });
 
@@ -46,8 +50,8 @@ export const CreateGuestModal: React.FC<CreateGuestModalProps> = ({
     if (!formData.firstName.trim()) {
       newErrors.firstName = 'Nombre es requerido';
     }
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Apellido es requerido';
+    if (!formData.firstLastName.trim()) {
+      newErrors.firstLastName = 'Primer apellido es requerido';
     }
     if (!formData.email.trim()) {
       newErrors.email = 'Email es requerido';
@@ -78,12 +82,16 @@ export const CreateGuestModal: React.FC<CreateGuestModalProps> = ({
       // Reset form
       setFormData({
         firstName: '',
-        lastName: '',
+        firstLastName: '',
+        secondLastName: '',
         email: '',
         phone: '',
         nationality: 'CR',
         documentType: 'id_card',
         documentNumber: '',
+        dateOfBirth: '',
+        gender: undefined,
+        notes: '',
         isActive: true
       });
       setErrors({});
@@ -113,7 +121,7 @@ export const CreateGuestModal: React.FC<CreateGuestModalProps> = ({
         </div>
 
         {/* Personal Information */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Nombre *
@@ -134,20 +142,33 @@ export const CreateGuestModal: React.FC<CreateGuestModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Apellido *
+              Primer Apellido *
             </label>
             <input
               type="text"
-              value={formData.lastName}
-              onChange={(e) => handleInputChange('lastName', e.target.value)}
+              value={formData.firstLastName}
+              onChange={(e) => handleInputChange('firstLastName', e.target.value)}
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                errors.lastName ? 'border-red-500' : 'border-gray-300'
+                errors.firstLastName ? 'border-red-500' : 'border-gray-300'
               }`}
               placeholder="Pérez"
             />
-            {errors.lastName && (
-              <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>
+            {errors.firstLastName && (
+              <p className="mt-1 text-sm text-red-600">{errors.firstLastName}</p>
             )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Segundo Apellido
+            </label>
+            <input
+              type="text"
+              value={formData.secondLastName || ''}
+              onChange={(e) => handleInputChange('secondLastName', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="González"
+            />
           </div>
         </div>
 
@@ -282,6 +303,52 @@ export const CreateGuestModal: React.FC<CreateGuestModalProps> = ({
               <p className="mt-1 text-sm text-red-600">{errors.documentNumber}</p>
             )}
           </div>
+        </div>
+
+        {/* Additional Information */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Fecha de Nacimiento
+            </label>
+            <input
+              type="date"
+              value={formData.dateOfBirth || ''}
+              onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Género
+            </label>
+            <select
+              value={formData.gender || ''}
+              onChange={(e) => handleInputChange('gender', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Seleccionar...</option>
+              <option value="male">Masculino</option>
+              <option value="female">Femenino</option>
+              <option value="other">Otro</option>
+              <option value="prefer_not_to_say">Prefiero no decir</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Notes */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Notas
+          </label>
+          <textarea
+            value={formData.notes || ''}
+            onChange={(e) => handleInputChange('notes', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            rows={3}
+            placeholder="Cualquier información adicional sobre el huésped..."
+          />
         </div>
 
         {/* Action Buttons */}

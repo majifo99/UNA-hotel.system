@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import 'react-phone-input-2/lib/style.css';
 import type { Guest } from '../types';
+import { useGuests } from '../hooks';
 import { ProgressIndicator } from '../components/ProgressIndicator';
 import { StepNavigation } from '../components/StepNavigation';
 import {
@@ -36,7 +37,7 @@ interface StepConfig {
 
 export const CreateGuestPage: React.FC = () => {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
+  const { createGuest, isCreating } = useGuests();
   const [currentStep, setCurrentStep] = useState(1);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [showMedicalSection, setShowMedicalSection] = useState(false);
@@ -47,7 +48,7 @@ export const CreateGuestPage: React.FC = () => {
       title: 'Datos Personales',
       description: 'Información básica del huésped',
       icon: <User size={20} />,
-      fields: ['firstName', 'lastName', 'email', 'phone', 'nationality', 'documentType', 'documentNumber']
+      fields: ['firstName', 'firstLastName', 'email', 'phone', 'nationality', 'documentType', 'documentNumber']
     },
     {
       id: 2,
@@ -96,7 +97,8 @@ export const CreateGuestPage: React.FC = () => {
     } 
   }>({
     firstName: '',
-    lastName: '',
+    firstLastName: '',
+    secondLastName: '',
     email: '',
     phone: '',
     nationality: 'CR',
@@ -153,8 +155,10 @@ export const CreateGuestPage: React.FC = () => {
   const validateField = (fieldName: string, value: any): string => {
     switch (fieldName) {
       case 'firstName':
-      case 'lastName':
+      case 'firstLastName':
         return !value || value.trim() === '' ? 'Este campo es obligatorio' : '';
+      case 'secondLastName':
+        return ''; // Campo opcional
       case 'email': {
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         if (!value) return 'El email es obligatorio';
@@ -231,22 +235,41 @@ export const CreateGuestPage: React.FC = () => {
     if (!validateCurrentStep()) {
       return;
     }
-    
-    setIsLoading(true);
 
     try {
-      // Aquí iría la lógica para crear el huésped
-      console.log('Creating guest:', formData);
+      // Preparar datos para la API (asegurar que los campos requeridos están presentes)
+      const guestData = {
+        firstName: formData.firstName || '',
+        firstLastName: formData.firstLastName || '',
+        secondLastName: formData.secondLastName || '',
+        email: formData.email || '',
+        phone: formData.phone || '',
+        nationality: formData.nationality || 'CR',
+        documentType: formData.documentType || 'id_card',
+        documentNumber: formData.documentNumber || '',
+        dateOfBirth: formData.dateOfBirth,
+        gender: formData.gender,
+        notes: formData.notes,
+        vipStatus: formData.vipStatus,
+        allergies: formData.allergies,
+        dietaryRestrictions: formData.dietaryRestrictions,
+        medicalNotes: formData.medicalNotes,
+        address: formData.address,
+        roomPreferences: formData.roomPreferences,
+        emergencyContact: formData.emergencyContact,
+        communicationPreferences: formData.communicationPreferences,
+        preferredLanguage: formData.preferredLanguage,
+        isActive: true
+      };
       
-      // Simular llamada API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Crear el huésped usando el hook
+      await createGuest(guestData);
       
       // Redirigir a la lista de huéspedes
       navigate('/guests');
     } catch (error) {
       console.error('Error creating guest:', error);
-    } finally {
-      setIsLoading(false);
+      // Aquí podrías mostrar un mensaje de error al usuario
     }
   };
 
@@ -385,7 +408,7 @@ export const CreateGuestPage: React.FC = () => {
       <StepNavigation
         currentStep={currentStep}
         totalSteps={steps.length}
-        isLoading={isLoading}
+        isLoading={isCreating}
         onPrevStep={prevStep}
         onNextStep={nextStep}
         onCancel={() => navigate('/guests')}

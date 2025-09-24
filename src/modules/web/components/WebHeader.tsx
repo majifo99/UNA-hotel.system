@@ -31,16 +31,20 @@ export function WebHeader() {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-una-bg-300 sticky top-0 z-50">
+    <header style={{ backgroundColor: 'var(--color-darkGreen1)' }} className=" shadow-lg border-b border-gray-700 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-24">
           {/* Logo */}
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 flex items-center mt-5">
             <Link 
               to="/" 
-              className="text-una-primary-900 text-xl font-bold hover:text-una-primary-800 transition-colors"
+              className="flex items-center hover:opacity-90 transition-opacity"
             >
-              UNA Hotel
+              <img 
+                src="/src/assets/Sol nav.png" 
+                alt="Hotel Lanaku" 
+                className="h-30 w-auto"
+              />
             </Link>
           </div>
 
@@ -50,18 +54,28 @@ export function WebHeader() {
               to="/"
               className={`px-3 py-2 text-sm font-medium transition-colors ${
                 isActiveRoute('/') 
-                  ? 'text-una-primary-900 border-b-2 border-una-primary-600' 
-                  : 'text-neutral-600 hover:text-una-primary-900'
+                  ? 'text-white border-b-2 border-una-accent-gold' 
+                  : 'text-gray-300 hover:text-white'
               }`}
             >
               Inicio
             </Link>
             <Link
+              to="/acerca"
+              className={`px-3 py-2 text-sm font-medium transition-colors ${
+                isActiveRoute('/acerca') 
+                  ? 'text-white border-b-2 border-una-accent-gold' 
+                  : 'text-gray-300 hover:text-white'
+              }`}
+            >
+              Acerca de Nosotros
+            </Link>
+            <Link
               to="/habitaciones"
               className={`px-3 py-2 text-sm font-medium transition-colors ${
                 isActiveRoute('/habitaciones') 
-                  ? 'text-una-primary-900 border-b-2 border-una-primary-600' 
-                  : 'text-neutral-600 hover:text-una-primary-900'
+                  ? 'text-white border-b-2 border-una-accent-gold' 
+                  : 'text-gray-300 hover:text-white'
               }`}
             >
               Habitaciones
@@ -70,8 +84,8 @@ export function WebHeader() {
               to="/servicios"
               className={`px-3 py-2 text-sm font-medium transition-colors ${
                 isActiveRoute('/servicios') 
-                  ? 'text-una-primary-900 border-b-2 border-una-primary-600' 
-                  : 'text-neutral-600 hover:text-una-primary-900'
+                  ? 'text-white border-b-2 border-una-accent-gold' 
+                  : 'text-gray-300 hover:text-white'
               }`}
             >
               Servicios
@@ -80,8 +94,8 @@ export function WebHeader() {
               to="/contacto"
               className={`px-3 py-2 text-sm font-medium transition-colors ${
                 isActiveRoute('/contacto') 
-                  ? 'text-una-primary-900 border-b-2 border-una-primary-600' 
-                  : 'text-neutral-600 hover:text-una-primary-900'
+                  ? 'text-white border-b-2 border-una-accent-gold' 
+                  : 'text-gray-300 hover:text-white'
               }`}
             >
               Contacto
@@ -95,8 +109,7 @@ export function WebHeader() {
               <div className="relative">
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center space-x-2 text-neutral-700 transition-colors"
-                  style={{ color: 'var(--color-darkGreen1)' }}
+                  className="flex items-center space-x-2 text-white transition-colors"
                 >
                   <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--color-darkGreen1)' }}>
                     <span className="text-white text-sm font-medium">
@@ -151,8 +164,7 @@ export function WebHeader() {
               <div className="flex items-center space-x-3">
                 <Link
                   to="/login"
-                  className="font-medium transition-colors"
-                  style={{ color: 'var(--color-darkGreen1)' }}
+                  className="font-medium transition-colors text-gray-300 hover:text-white"
                 >
                   Iniciar Sesión
                 </Link>
@@ -169,7 +181,7 @@ export function WebHeader() {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 rounded-md text-neutral-600 hover:text-una-primary-900 hover:bg-una-bg-100 transition-colors"
+              className="md:hidden p-2 rounded-md text-gray-300 hover:text-white hover:bg-gray-700 transition-colors"
             >
               <svg 
                 className="w-6 h-6" 
@@ -190,25 +202,36 @@ export function WebHeader() {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-una-bg-300">
+          <div className="md:hidden py-4 border-t border-gray-700">
             <div className="flex flex-col space-y-2">
               <Link
                 to="/"
                 className={`px-3 py-2 text-base font-medium transition-colors ${
                   isActiveRoute('/') 
-                    ? 'text-una-primary-900 bg-una-bg-100' 
-                    : 'text-neutral-600 hover:text-una-primary-900 hover:bg-una-bg-100'
+                    ? 'text-white bg-gray-700' 
+                    : 'text-gray-300 hover:text-white hover:bg-gray-700'
                 }`}
                 onClick={() => setIsMenuOpen(false)}
               >
                 Inicio
               </Link>
               <Link
+                to="/acerca"
+                className={`px-3 py-2 text-base font-medium transition-colors ${
+                  isActiveRoute('/acerca') 
+                    ? 'text-white bg-gray-700' 
+                    : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                }`}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Acerca de Nosotros
+              </Link>
+              <Link
                 to="/habitaciones"
                 className={`px-3 py-2 text-base font-medium transition-colors ${
                   isActiveRoute('/habitaciones') 
-                    ? 'text-una-primary-900 bg-una-bg-100' 
-                    : 'text-neutral-600 hover:text-una-primary-900 hover:bg-una-bg-100'
+                    ? 'text-white bg-gray-700' 
+                    : 'text-gray-300 hover:text-white hover:bg-gray-700'
                 }`}
                 onClick={() => setIsMenuOpen(false)}
               >
@@ -218,8 +241,8 @@ export function WebHeader() {
                 to="/servicios"
                 className={`px-3 py-2 text-base font-medium transition-colors ${
                   isActiveRoute('/servicios') 
-                    ? 'text-una-primary-900 bg-una-bg-100' 
-                    : 'text-neutral-600 hover:text-una-primary-900 hover:bg-una-bg-100'
+                    ? 'text-white bg-gray-700' 
+                    : 'text-gray-300 hover:text-white hover:bg-gray-700'
                 }`}
                 onClick={() => setIsMenuOpen(false)}
               >
@@ -229,8 +252,8 @@ export function WebHeader() {
                 to="/contacto"
                 className={`px-3 py-2 text-base font-medium transition-colors ${
                   isActiveRoute('/contacto') 
-                    ? 'text-una-primary-900 bg-una-bg-100' 
-                    : 'text-neutral-600 hover:text-una-primary-900 hover:bg-una-bg-100'
+                    ? 'text-white bg-gray-700' 
+                    : 'text-gray-300 hover:text-white hover:bg-gray-700'
                 }`}
                 onClick={() => setIsMenuOpen(false)}
               >
@@ -240,11 +263,10 @@ export function WebHeader() {
               {/* Mobile Auth Actions */}
               {!isAuthenticated && (
                 <>
-                  <hr className="my-2 border-una-bg-300" />
+                  <hr className="my-2 border-gray-700" />
                   <Link
                     to="/login"
-                    className="px-3 py-2 text-base font-medium hover:bg-una-bg-100 transition-colors"
-                    style={{ color: 'var(--color-darkGreen1)' }}
+                    className="px-3 py-2 text-base font-medium hover:bg-gray-700 transition-colors text-gray-300 hover:text-white"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Iniciar Sesión

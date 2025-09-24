@@ -20,7 +20,8 @@ class ReservationService {
       guest: {
         id: reservationData.guestId,
         firstName: 'Pendiente',
-        lastName: 'Asignación',
+        firstLastName: 'Asignación',
+        secondLastName: '',
         email: 'pending@example.com',
         phone: '',
         nationality: '',
@@ -131,7 +132,8 @@ class ReservationService {
     return reservations.filter((reservation: Reservation) => {
       const matchesGuestName = !query.guestName || 
         (reservation.guest?.firstName?.toLowerCase().includes(query.guestName.toLowerCase()) ||
-         reservation.guest?.lastName?.toLowerCase().includes(query.guestName.toLowerCase()));
+         reservation.guest?.firstLastName?.toLowerCase().includes(query.guestName.toLowerCase()) ||
+         reservation.guest?.secondLastName?.toLowerCase().includes(query.guestName.toLowerCase()));
       
       const matchesEmail = !query.email || 
         reservation.guest?.email?.toLowerCase().includes(query.email.toLowerCase());
