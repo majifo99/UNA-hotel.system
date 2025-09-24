@@ -1,11 +1,15 @@
-import { useMemo } from "react";
-import { ArrowUpDown, CheckCircle2, XCircle, UserCheck, Pencil } from "lucide-react";
+"use client";
+
+import { useMemo, useEffect, useState, useCallback } from "react";
+import { UserCheck, MoreHorizontal, Eye, RefreshCw, AlertTriangle, Pencil } from "lucide-react";
 import type { Prioridad, LimpiezaItem } from "../types/limpieza";
 import { useLimpiezasTable } from "../hooks/useLimpiezasTable";
 import type { ColumnKey, SortKey } from "../types/table";
 
-const cn = (...xs: Array<string | false | null | undefined>) =>
-  xs.filter(Boolean).join(" ");
+import LimpiezaDetailModal from "./Modals/LimpiezaDetailModal";
+import CleanToggle, { type FinalizePayload } from "./CleanToggle";
+
+const cn = (...xs: Array<string | false | null | undefined>) => xs.filter(Boolean).join(" ");
 
 function Pill({
   children,
@@ -32,27 +36,44 @@ function PrioridadBadge({ prioridad }: Readonly<{ prioridad?: Prioridad | null }
   return <Pill tone={tone[prioridad]}>{prioridad.toUpperCase()}</Pill>;
 }
 
-function EstadoBadge({ finalizada, nombre }: Readonly<{ finalizada: boolean; nombre?: string }>) {
-  const text = finalizada ? "Limpia" : nombre ?? "—";
-  const isClean = finalizada || text.toLowerCase() === "limpia";
-  return <Pill tone={isClean ? "teal" : "slate"}>{text}</Pill>;
+function EstadoBadge({ clean }: Readonly<{ clean: boolean }>) {
+  return <Pill tone={clean ? "teal" : "rose"}>{clean ? "Limpia" : "Sucia"}</Pill>;
 }
 
-type Props = { onEdit?: (item: LimpiezaItem) => void };
+export type SelectedRoom = {
+  id: number;
+  numero?: string;
+  piso?: string | number;
+  tipoNombre?: string;
+};
 
-// Mapa de columnas visibles -> SortKey que entiende el hook
-const SORT_MAP: Record<ColumnKey, SortKey | null> = {
+type Props = {
+  onEdit?: (item: LimpiezaItem) => void;
+  onSelectionChange?: (room: SelectedRoom | null) => void;
+};
+
+const SORT_MAP: Record<ColumnKey | "descripcion" | "notas" | "habitacion", SortKey | null> = {
   numero: "habitacion",
   tipo: "tipo",
   piso: "piso",
   estado: "estado",
   prioridad: "prioridad",
-  asignador: null, // no ordenable
-  fecha_inicio: "fecha_inicio",
-  fecha_final: "fecha_final",
+  asignador: null,
+  fecha_inicio: null,
+  fecha_final: null,
+  descripcion: null,
+  notas: null,
+  habitacion: "habitacion",
 };
 
-export default function LimpiezasTable({ onEdit }: Readonly<Props>) {
+function getRowId(item: any): number {
+  return item.id_limpieza ?? item.id;
+}
+function getEstado(item: any): { nombre?: string } | undefined {
+  return item.estadoHabitacion ?? item.estado;
+}
+
+export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<Props>) {
   const {
     loading,
     error,
@@ -68,46 +89,105 @@ export default function LimpiezasTable({ onEdit }: Readonly<Props>) {
 
   const totalPages = pagination.last_page;
 
-  const columns = useMemo<ReadonlyArray<{ key: ColumnKey; label: string }>>(
+  const columns = useMemo<
+    ReadonlyArray<{ key: ColumnKey | "descripcion" | "notas" | "habitacion"; label: string }>
+  >(
     () => [
-      { key: "numero", label: "Número" },
-      { key: "tipo", label: "Tipo" },
-      { key: "piso", label: "Piso" },
+      { key: "habitacion", label: "Habitación" },
       { key: "estado", label: "Estado" },
       { key: "prioridad", label: "Prioridad" },
       { key: "asignador", label: "Asignador" },
-      { key: "fecha_inicio", label: "Inicio" },
-      { key: "fecha_final", label: "Fin" },
+      { key: "notas", label: "Notas" },
+      { key: "descripcion", label: "Descripción" },
     ],
     []
   );
+
+  // UI optimista para LIMPIA/SUCIA
+  const [optimisticCleanIds, setOptimisticCleanIds] = useState<Set<number>>(new Set());
+  const addOptimistic = (id: number) => setOptimisticCleanIds((prev) => new Set(prev).add(id));
+  const removeOptimistic = (id: number) =>
+    setOptimisticCleanIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+
+  // wrapper para compatibilizar firma con CleanToggle (notas opcional)
+  const handleFinalizeForToggle = useCallback(
+    async (id: number, payload: FinalizePayload) => {
+      await finalizarLimpieza(id, {
+        fecha_final: payload.fecha_final,
+        notas: payload.notas ?? null,
+      });
+    },
+    [finalizarLimpieza]
+  );
+
+  // menú por fila
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  useEffect(() => {
+    const close = () => setOpenMenuId(null);
+    if (openMenuId !== null) document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [openMenuId]);
+
+  // estado para el modal de detalles
+  const [detailId, setDetailId] = useState<number | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  // emitir habitación seleccionada
+  useEffect(() => {
+    if (!onSelectionChange) return;
+    if (!items || !Array.isArray(items) || !Array.isArray(selectedIds) || selectedIds.length === 0) {
+      onSelectionChange(null);
+      return;
+    }
+    const selectedRows = items.filter((r) => selectedIds.includes(getRowId(r)));
+    const firstWithRoom = selectedRows.find(
+      (r) => typeof r?.habitacion?.id === "number" || typeof r?.habitacion?.id === "string"
+    );
+    if (!firstWithRoom) return onSelectionChange(null);
+
+    const rawId = firstWithRoom.habitacion!.id;
+    const numericId = typeof rawId === "number" ? rawId : Number(rawId);
+
+    const room: SelectedRoom = {
+      id: numericId,
+      numero: firstWithRoom.habitacion?.numero,
+      piso: firstWithRoom.habitacion?.piso,
+      tipoNombre: firstWithRoom.habitacion?.tipo?.nombre,
+    };
+    onSelectionChange(room);
+  }, [selectedIds, items, onSelectionChange]);
 
   if (loading && items.length === 0) return <div className="text-center text-slate-500 py-10 text-sm">Cargando…</div>;
   if (error) return <div className="text-center text-rose-600 py-10 text-sm">Error: {error}</div>;
   if (items.length === 0) return <div className="text-center text-slate-500 py-10 text-sm">No hay limpiezas para mostrar.</div>;
 
-  const onToggleEstado = (item: LimpiezaItem) => {
-    const finalizada = Boolean(item.fecha_final);
-    if (!finalizada) {
-      finalizarLimpieza(item.id_limpieza, {
-        fecha_final: new Date().toISOString(),
-        notas: item.notas ?? null,
-      });
-    } else {
-      alert("Aún no implementamos 'marcar sucia'.");
-    }
-  };
+  const HEAD_BASE = "p-4 font-medium text-gray-700 capitalize text-left";
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col className="w-12" />
+            <col className="w-[16%]" />
+            <col className="w-[9%]" />
+            <col className="w-[12%]" />
+            <col className="w-[16%]" />
+            <col className="w-[16%]" />
+            <col className="w-[16%]" />
+            <col className="w-[110px]" />
+          </colgroup>
+
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
               <th className="px-4 py-3">
                 <input
                   type="checkbox"
-                  checked={items.length > 0 && items.every((r) => selectedIds.includes(r.id_limpieza))}
+                  checked={items.length > 0 && items.every((r) => selectedIds.includes(getRowId(r)))}
                   onChange={toggleAllPage}
                   className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                 />
@@ -116,12 +196,8 @@ export default function LimpiezasTable({ onEdit }: Readonly<Props>) {
               {columns.map((c) => {
                 const sortKey = SORT_MAP[c.key];
                 const isSortable = Boolean(sortKey);
-
                 return (
-                  <th
-                    key={c.key}
-                    className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider"
-                  >
+                  <th key={c.key} className={HEAD_BASE}>
                     {isSortable ? (
                       <button
                         type="button"
@@ -129,61 +205,66 @@ export default function LimpiezasTable({ onEdit }: Readonly<Props>) {
                         className="flex items-center gap-1 hover:text-slate-900 transition-colors"
                       >
                         {c.label}
-                        <ArrowUpDown className="w-3 h-3" />
                       </button>
                     ) : (
-                      <span className="text-slate-600">{c.label}</span>
+                      <span>{c.label}</span>
                     )}
                   </th>
                 );
               })}
 
-              <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider text-right">
-                Acciones
-              </th>
+              <th className={HEAD_BASE + " text-right"}>Acciones</th>
             </tr>
           </thead>
 
           <tbody className="bg-white divide-y divide-slate-100">
-            {items.map((item) => {
-              const isSelected = selectedIds.includes(item.id_limpieza);
-              const finalizada = Boolean(item.fecha_final);
+            {items.map((raw) => {
+              const item: any = raw;
+              const id = getRowId(item);
+              const isSelected = selectedIds.includes(id);
 
-              const numero = item.habitacion?.numero_habitacion ?? "—";
-              const tipo = item.habitacion?.tipo ?? "—";
-              const piso = (item.habitacion as any)?.piso ?? (item.habitacion as any)?.nivel ?? "—";
+              const numero = item.habitacion?.numero ?? "—";
+              const tipo = item.habitacion?.tipo?.nombre ?? "—";
+              const pisoVal = item.habitacion?.piso ?? "—";
+              const pisoFmt = pisoVal === "—" ? "—" : `Piso ${String(pisoVal)}`;
+
+              const estado = getEstado(item);
+              const estadoNombre = estado?.nombre;
+
+              const clean =
+                optimisticCleanIds.has(id) ||
+                Boolean(item.fecha_final) ||
+                (estadoNombre ?? "").toLowerCase() === "limpia";
 
               return (
-                <tr
-                  key={item.id_limpieza}
-                  className={cn("hover:bg-slate-50/50 transition-colors", isSelected && "bg-teal-50/30")}
-                >
-                  {/* Checkbox */}
+                <tr key={id} className={cn("hover:bg-slate-50/50 transition-colors", isSelected && "bg-teal-50/30")}>
+                  {/* checkbox */}
                   <td className="px-4 py-3">
                     <input
                       type="checkbox"
                       checked={isSelected}
-                      onChange={() => toggleOne(item.id_limpieza)}
+                      onChange={() => toggleOne(id)}
                       className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                     />
                   </td>
 
-                  {/* Número */}
-                  <td className="px-4 py-3 text-sm text-slate-900 font-semibold">{numero}</td>
-
-                  {/* Tipo */}
-                  <td className="px-4 py-3 text-sm text-slate-700">{tipo}</td>
-
-                  {/* Piso */}
-                  <td className="px-4 py-3 text-sm text-slate-700">{piso}</td>
+                  {/* Habitación */}
+                  <td className="p-4">
+                    <div className="flex flex-col">
+                      <span className="font-medium text-gray-900">{numero}</span>
+                      <span className="text-sm text-gray-600">
+                        {tipo} • {pisoFmt}
+                      </span>
+                    </div>
+                  </td>
 
                   {/* Estado */}
-                  <td className="px-4 py-3">
-                    <EstadoBadge finalizada={finalizada} nombre={item.estadoHabitacion?.nombre} />
+                  <td className="p-4">
+                    <EstadoBadge clean={clean} />
                   </td>
 
                   {/* Prioridad */}
-                  <td className="px-4 py-3">
+                  <td className="p-4">
                     <PrioridadBadge prioridad={item.prioridad ?? null} />
                   </td>
 
@@ -192,50 +273,110 @@ export default function LimpiezasTable({ onEdit }: Readonly<Props>) {
                     {item.asignador ? (
                       <div className="flex items-center gap-2">
                         <UserCheck className="w-4 h-4 text-teal-600" />
-                        {item.asignador.name}
+                        <span className="text-sm font-medium text-slate-700">{item.asignador.name}</span>
                       </div>
                     ) : (
-                      <span className="text-slate-400">—</span>
+                      <span className="text-slate-400 text-sm">—</span>
                     )}
                   </td>
 
-                  {/* Fechas */}
-                  <td className="px-4 py-3 text-sm text-slate-600">
-                    {new Date(item.fecha_inicio).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-600">
-                    {item.fecha_final ? new Date(item.fecha_final).toLocaleString() : <span className="text-slate-400">—</span>}
+                  {/* Notas */}
+                  <td className="px-4 py-3 text-sm text-slate-700 truncate" title={item.notas ?? ""}>
+                    {item.notas ?? <span className="text-slate-400">—</span>}
                   </td>
 
-                  {/* Acciones */}
+                  {/* Descripción */}
+                  <td className="px-4 py-3 text-sm text-slate-700 truncate" title={item.descripcion ?? ""}>
+                    {item.descripcion ?? <span className="text-slate-400">—</span>}
+                  </td>
+
+                  {/* Acciones: toggle + menú */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 justify-end">
-                      <button
-                        type="button"
-                        onClick={() => onToggleEstado(item)}
-                        title={finalizada ? "Marcar sucia" : "Marcar limpia"}
-                        aria-label={finalizada ? "Marcar sucia" : "Marcar limpia"}
-                        className={cn(
-                          "inline-flex items-center justify-center w-8 h-8 rounded-full border transition hover:scale-105",
-                          finalizada ? "border-rose-300 hover:bg-rose-50" : "border-green-300 hover:bg-green-50"
-                        )}
-                      >
-                        {finalizada ? (
-                          <XCircle className="w-5 h-5 text-rose-600" />
-                        ) : (
-                          <CheckCircle2 className="w-5 h-5 text-green-600" />
-                        )}
-                      </button>
+                      <CleanToggle
+                        id={id}
+                        clean={clean}
+                        notas={item.notas ?? null}
+                        onFinalize={handleFinalizeForToggle}
+                        onOptimisticAdd={addOptimistic}
+                        onOptimisticRemove={removeOptimistic}
+                      />
 
-                      <button
-                        type="button"
-                        onClick={() => onEdit?.(item)}
-                        title="Editar"
-                        aria-label="Editar"
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-slate-300 text-slate-700 hover:bg-slate-50 transition hover:scale-105"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
+                      {/* Menú tres puntos */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuId((prev) => (prev === id ? null : id));
+                          }}
+                          aria-haspopup="menu"
+                          aria-expanded={openMenuId === id}
+                          aria-label="Más acciones"
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-slate-300 text-slate-700 hover:bg-slate-50 transition hover:scale-105"
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+
+                        {openMenuId === id && (
+                          <div
+                            role="menu"
+                            aria-label="Acciones de limpieza"
+                            tabIndex={-1}
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") setOpenMenuId(null);
+                            }}
+                            className="absolute right-0 mt-2 w-44 rounded-xl border border-slate-200 bg-white shadow-lg py-1 z-20"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              role="menuitem"
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                setDetailId(id);
+                                setDetailOpen(true);
+                              }}
+                            >
+                              <Eye className="w-4 h-4 text-slate-600" />
+                              Ver detalles
+                            </button>
+                            <button
+                              role="menuitem"
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                onEdit?.(item);
+                              }}
+                            >
+                              <Pencil className="w-4 h-4 text-slate-600" />
+                              Editar
+                            </button>
+                            <button
+                              role="menuitem"
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                alert(`Reasignar tarea de la habitación ${numero}`);
+                              }}
+                            >
+                              <RefreshCw className="w-4 h-4 text-slate-600" />
+                              Reasignar
+                            </button>
+                            <button
+                              role="menuitem"
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                alert(`Reportar problema en la habitación ${numero}`);
+                              }}
+                            >
+                              <AlertTriangle className="w-4 h-4 text-rose-600" />
+                              Reportar problema
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -245,7 +386,7 @@ export default function LimpiezasTable({ onEdit }: Readonly<Props>) {
         </table>
       </div>
 
-      {/* paginación */}
+      {/* Paginación */}
       <div className="flex justify-center items-center gap-1 py-5 bg-white border-t border-slate-100">
         <button
           onClick={() => gotoPage(pagination.current_page - 1)}
@@ -255,7 +396,6 @@ export default function LimpiezasTable({ onEdit }: Readonly<Props>) {
         >
           ←
         </button>
-
         {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
           <button
             key={p}
@@ -268,7 +408,6 @@ export default function LimpiezasTable({ onEdit }: Readonly<Props>) {
             {p}
           </button>
         ))}
-
         <button
           onClick={() => gotoPage(pagination.current_page + 1)}
           disabled={pagination.current_page >= totalPages}
@@ -278,6 +417,20 @@ export default function LimpiezasTable({ onEdit }: Readonly<Props>) {
           →
         </button>
       </div>
+
+      {/* Modal de detalles */}
+      <LimpiezaDetailModal
+        open={detailOpen}
+        limpiezaId={detailId}
+        onClose={() => setDetailOpen(false)}
+        onEdit={(itm) => {
+          setDetailOpen(false);
+          onEdit?.(itm);
+        }}
+        onMarkCompleted={async (id) => {
+          await finalizarLimpieza(id, { fecha_final: new Date().toISOString(), notas: null });
+        }}
+      />
     </div>
   );
 }

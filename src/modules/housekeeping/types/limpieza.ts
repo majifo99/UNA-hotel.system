@@ -1,4 +1,3 @@
-// src/modules/housekeeping/types/limpieza.ts
 export type Prioridad = "baja" | "media" | "alta" | "urgente";
 export const PRIORIDADES: Readonly<Prioridad[]> = ["baja", "media", "alta", "urgente"] as const;
 
@@ -10,14 +9,23 @@ export type Usuario = {
 };
 
 export type Habitacion = {
-  id_habitacion: number;
-  numero_habitacion: string;
-  tipo?: string;
+  id: number; // Maps to id_habitacion
+  numero: string; // Maps to numero
+  piso: string | number; // Maps to piso
+  tipo?: {
+    id_tipo_hab: number;
+    nombre: string;
+    descripcion: string;
+    created_at?: string | null;
+    updated_at?: string | null;
+  };
 };
 
 export type EstadoHabitacion = {
-  id_estado_hab: number;
+  id_estado_hab: number; // Maps to id_estado_hab or id
   nombre: string;
+  tipo?: string; // From estadoHabitacion
+  descripcion?: string; // From estadoHabitacion
 };
 
 export type HistorialLimpieza = {
@@ -41,7 +49,7 @@ export type LimpiezaCreateDTO = {
 };
 
 // DTO para actualizar limpieza
-export type LimpiezaUpdateDTO = Partial<Omit<LimpiezaCreateDTO, 'fecha_reporte' | 'id_usuario_reporta'>>;
+export type LimpiezaUpdateDTO = Partial<Omit<LimpiezaCreateDTO, "fecha_reporte" | "id_usuario_reporta">>;
 
 // Respuesta completa de la API
 export type LimpiezaItem = {
