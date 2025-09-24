@@ -40,7 +40,7 @@ export const useGuestForm = <T extends GuestFormData>(
     }
     if (!formData.email?.trim()) {
       newErrors.email = 'Email es requerido' as any;
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Email no válido' as any;
     }
     if (!formData.phone?.trim()) {
