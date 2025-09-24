@@ -13,6 +13,7 @@ import { ProtectedRoute } from '../modules/web/components/ProtectedRoute';
 import { HomePage } from '../modules/web/pages/HomePage';
 import { LoginPage } from '../modules/web/pages/LoginPage';
 import { RegisterPage } from '../modules/web/pages/RegisterPage';
+import { AboutPage } from '../modules/web/pages/AboutPage';
 import { WebReservationPage } from '../modules/web/pages/WebReservationPage';
 
 // =================== QUERY CLIENT ===================
@@ -122,6 +123,10 @@ const webRouter = createBrowserRouter([
       {
         index: true,
         element: <HomePage />,
+      },
+      {
+        path: 'acerca',
+        element: <AboutPage />,
       },
       {
         path: 'habitaciones',

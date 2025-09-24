@@ -26,7 +26,8 @@ export const GuestSelector: React.FC<GuestSelectorProps> = ({
   // Filter guests based on search
   const filteredGuests = guests.filter((guest: Guest) =>
     guest.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    guest.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    guest.firstLastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (guest.secondLastName && guest.secondLastName.toLowerCase().includes(searchQuery.toLowerCase())) ||
     guest.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     guest.documentNumber.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -65,7 +66,7 @@ export const GuestSelector: React.FC<GuestSelectorProps> = ({
               </div>
               <div>
                 <h4 className="font-semibold text-gray-900">
-                  {selectedGuest.firstName} {selectedGuest.lastName}
+                  {selectedGuest.firstName} {selectedGuest.firstLastName} {selectedGuest.secondLastName || ''}
                 </h4>
                 <p className="text-sm text-gray-600">{selectedGuest.email}</p>
                 <p className="text-sm text-gray-600">{selectedGuest.phone}</p>
@@ -153,7 +154,7 @@ export const GuestSelector: React.FC<GuestSelectorProps> = ({
                           </div>
                           <div>
                             <div className="font-medium text-gray-900">
-                              {guest.firstName} {guest.lastName}
+                              {guest.firstName} {guest.firstLastName} {guest.secondLastName || ''}
                             </div>
                             <div className="text-sm text-gray-600">{guest.email}</div>
                             <div className="text-xs text-gray-500">

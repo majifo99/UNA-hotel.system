@@ -27,7 +27,8 @@ import type {
  */
 export interface CreateGuestData {
   firstName: string;
-  lastName: string;
+  firstLastName: string;
+  secondLastName?: string;
   email: string;
   phone: string;
   documentType: DocumentType;
@@ -205,7 +206,8 @@ export interface ReservationValidationErrors {
 
 export interface GuestValidationErrors {
   firstName?: string;
-  lastName?: string;
+  firstLastName?: string;
+  secondLastName?: string;
   email?: string;
   phone?: string;
   documentNumber?: string;

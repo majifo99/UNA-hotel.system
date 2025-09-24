@@ -1,68 +1,91 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  ArrowLeft, User, Heart, Phone, Star, Edit3, Save, X, 
+  ArrowLeft, User, Heart, Phone, Star, Edit3,
   Mail, MapPin, Shield, FileText, Globe,
   CreditCard, Bed, Settings, AlertTriangle
 } from 'lucide-react';
 import ReactFlagsSelect from 'react-flags-select';
-import type { Guest, UpdateGuestData } from '../types';
-import { useGuests } from '../hooks';
+import type { UpdateGuestData } from '../types';
+import { useGuests, useGuestById } from '../hooks/useGuests';
+import { useInlineEdit } from '../hooks/useInlineEdit';
+import { 
+  InlineEditField, 
+  InlineEditNestedField, 
+  SimpleArrayField 
+} from '../components/shared';
 
 export const GuestProfilePage: React.FC = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getGuestById, updateGuest, isUpdating } = useGuests();
-  const [guest, setGuest] = useState<Guest | null>(null);
-  const [editingField, setEditingField] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<Partial<UpdateGuestData>>({});
+  const { updateGuest, isUpdating } = useGuests();
+  
+  // Usar el nuevo hook para obtener el huésped
+  const { 
+    data: guest, 
+    isLoading, 
+    error, 
+    refetch 
+  } = useGuestById(id);
 
-  useEffect(() => {
-    const fetchGuest = async () => {
-      if (id) {
-        const data = await getGuestById(id);
-        setGuest(data);
-        // Initialize edit values with current guest data
-        setEditValues({
-          id: data.id,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          phone: data.phone,
-          documentType: data.documentType,
-          documentNumber: data.documentNumber,
-          nationality: data.nationality,
-          dateOfBirth: data.dateOfBirth,
-          gender: data.gender,
-          preferredLanguage: data.preferredLanguage,
-          notes: data.notes,
-          medicalNotes: data.medicalNotes,
-          vipStatus: data.vipStatus,
-          allergies: data.allergies,
-          dietaryRestrictions: data.dietaryRestrictions,
-          address: data.address,
-          emergencyContact: data.emergencyContact,
-          communicationPreferences: data.communicationPreferences,
-          roomPreferences: data.roomPreferences,
-          loyaltyProgram: data.loyaltyProgram
-        });
+  // Use the new inline edit hook
+  const {
+    editingField,
+    editValues,
+    isEditing,
+    handleEdit,
+    handleCancel,
+    handleSave,
+    handleInputChange,
+    handleNestedInputChange,
+    updateEditValues
+  } = useInlineEdit({
+    onSave: async (data: Partial<UpdateGuestData>) => {
+      if (guest) {
+        try {
+          const updateData = { ...data, id: guest.id };
+          await updateGuest(guest.id, updateData as UpdateGuestData);
+          refetch();
+        } catch (error) {
+          console.error('Error updating guest:', error);
+        }
       }
-    };
-    fetchGuest();
-  }, [id]);
+    },
+    initialData: guest ? {
+      id: guest.id,
+      firstName: guest.firstName,
+      firstLastName: guest.firstLastName,
+      secondLastName: guest.secondLastName,
+      email: guest.email,
+      phone: guest.phone,
+      documentType: guest.documentType,
+      documentNumber: guest.documentNumber,
+      nationality: guest.nationality,
+      dateOfBirth: guest.dateOfBirth,
+      gender: guest.gender,
+      preferredLanguage: guest.preferredLanguage,
+      notes: guest.notes,
+      medicalNotes: guest.medicalNotes,
+      vipStatus: guest.vipStatus,
+      allergies: guest.allergies,
+      dietaryRestrictions: guest.dietaryRestrictions,
+      address: guest.address,
+      emergencyContact: guest.emergencyContact,
+      communicationPreferences: guest.communicationPreferences,
+      roomPreferences: guest.roomPreferences,
+      loyaltyProgram: guest.loyaltyProgram
+    } : {},
+    isUpdating
+  });
 
-  const handleEdit = useCallback((fieldName: string) => {
-    setEditingField(fieldName);
-  }, []);
-
-  const handleCancel = useCallback(() => {
-    setEditingField(null);
-    // Reset edit values to current guest data
+  // Update edit values when guest data changes
+  useEffect(() => {
     if (guest) {
-      setEditValues({
+      updateEditValues({
         id: guest.id,
         firstName: guest.firstName,
-        lastName: guest.lastName,
+        firstLastName: guest.firstLastName,
+        secondLastName: guest.secondLastName,
         email: guest.email,
         phone: guest.phone,
         documentType: guest.documentType,
@@ -83,50 +106,11 @@ export const GuestProfilePage: React.FC = () => {
         loyaltyProgram: guest.loyaltyProgram
       });
     }
-  }, [guest]);
+  }, [guest, updateEditValues]);
 
-  const handleSave = useCallback(async () => {
-    if (guest && editValues.id) {
-      try {
-        const updateData: UpdateGuestData = {
-          ...editValues,
-          id: guest.id
-        };
-        const updatedGuest = await updateGuest(guest.id, updateData);
-        setGuest(updatedGuest);
-        setEditingField(null);
-      } catch (error) {
-        console.error('Error updating guest:', error);
-      }
-    }
-  }, [guest, editValues, updateGuest]);
 
-  const handleInputChange = useCallback((field: string, value: any) => {
-    setEditValues(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  }, []);
 
-  const handleNestedInputChange = useCallback((parentField: string, field: string, value: any) => {
-    setEditValues(prev => ({
-      ...prev,
-      [parentField]: {
-        ...(prev[parentField as keyof UpdateGuestData] as object || {}),
-        [field]: value
-      }
-    }));
-  }, []);
-
-  const handleArrayInputChange = useCallback((field: string, value: string) => {
-    const arrayValue = value.split(',').map(item => item.trim()).filter(item => item.length > 0);
-    setEditValues(prev => ({
-      ...prev,
-      [field]: arrayValue
-    }));
-  }, []);
-
-  if (!guest) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -134,406 +118,47 @@ export const GuestProfilePage: React.FC = () => {
     );
   }
 
-  const renderEditableField = (
-    label: string, 
-    field: string, 
-    value?: string | number | boolean,
-    type: 'text' | 'email' | 'tel' | 'select' | 'textarea' | 'checkbox' = 'text',
-    options?: { value: string; label: string }[]
-  ) => {
-    const isEditing = editingField === field;
-    
+  if (error) {
     return (
-      <div className="relative group">
-        <p className="text-sm text-gray-600 mb-1">{label}:</p>
-        <div className="flex items-center gap-2">
-          {isEditing ? (
-            <div className="flex items-center gap-2 w-full">
-              {type === 'select' ? (
-                <select
-                  value={editValues[field as keyof UpdateGuestData] as string || ''}
-                  onChange={(e) => handleInputChange(field, e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Seleccionar...</option>
-                  {options?.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              ) : type === 'textarea' ? (
-                <textarea
-                  value={editValues[field as keyof UpdateGuestData] as string || ''}
-                  onChange={(e) => handleInputChange(field, e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={3}
-                />
-              ) : type === 'checkbox' ? (
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={editValues[field as keyof UpdateGuestData] as boolean || false}
-                    onChange={(e) => handleInputChange(field, e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700">
-                    {editValues[field as keyof UpdateGuestData] ? 'Sí' : 'No'}
-                  </span>
-                </label>
-              ) : (
-                <input
-                  type={type}
-                  value={editValues[field as keyof UpdateGuestData] as string || ''}
-                  onChange={(e) => handleInputChange(field, e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              )}
-              <button
-                onClick={handleSave}
-                disabled={isUpdating}
-                className="p-2 text-green-600 hover:bg-green-50 rounded-md transition-colors disabled:opacity-50"
-                title="Guardar"
-              >
-                {isUpdating ? (
-                  <div className="w-4 h-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
-                ) : (
-                  <Save size={16} />
-                )}
-              </button>
-              <button
-                onClick={handleCancel}
-                disabled={isUpdating}
-                className="p-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors disabled:opacity-50"
-                title="Cancelar"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 w-full">
-              <p className="text-base text-gray-800 font-medium flex-1">
-                {type === 'checkbox' 
-                  ? (value ? 'Sí' : 'No')
-                  : value !== undefined && value !== '' ? String(value) : '—'
-                }
-              </p>
-              <button
-                onClick={() => handleEdit(field)}
-                className="opacity-60 hover:opacity-100 group-hover:opacity-100 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200"
-                title="Editar"
-                aria-label="Editar campo"
-              >
-                <Edit3 size={16} />
-              </button>
-            </div>
-          )}
+      <div className="flex flex-col items-center justify-center h-96 space-y-4">
+        <AlertTriangle className="h-12 w-12 text-red-500" />
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Error al cargar el huésped</h2>
+          <p className="text-gray-600 mb-4">
+            {error instanceof Error ? error.message : 'No se pudo cargar la información del huésped'}
+          </p>
+          <button
+            onClick={() => refetch()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Reintentar
+          </button>
         </div>
       </div>
     );
-  };
+  }
 
-  const renderEditableNestedField = (
-    label: string,
-    parentField: string,
-    field: string,
-    value?: string | number | boolean,
-    type: 'text' | 'email' | 'tel' | 'select' = 'text',
-    options?: { value: string; label: string }[]
-  ) => {
-    const fieldKey = `${parentField}.${field}`;
-    const isEditing = editingField === fieldKey;
-    
+  if (!guest) {
     return (
-      <div className="relative group">
-        <p className="text-sm text-gray-600 mb-1">{label}:</p>
-        <div className="flex items-center gap-2">
-          {isEditing ? (
-            <div className="flex items-center gap-2 w-full">
-              {type === 'select' ? (
-                <select
-                  value={
-                    (editValues[parentField as keyof UpdateGuestData] as any)?.[field] || ''
-                  }
-                  onChange={(e) => handleNestedInputChange(parentField, field, e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Seleccionar...</option>
-                  {options?.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type={type}
-                  value={
-                    (editValues[parentField as keyof UpdateGuestData] as any)?.[field] || ''
-                  }
-                  onChange={(e) => handleNestedInputChange(parentField, field, e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              )}
-              <button
-                onClick={handleSave}
-                disabled={isUpdating}
-                className="p-2 text-green-600 hover:bg-green-50 rounded-md transition-colors disabled:opacity-50"
-                title="Guardar"
-              >
-                {isUpdating ? (
-                  <div className="w-4 h-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
-                ) : (
-                  <Save size={16} />
-                )}
-              </button>
-              <button
-                onClick={handleCancel}
-                disabled={isUpdating}
-                className="p-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors disabled:opacity-50"
-                title="Cancelar"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 w-full">
-              <p className="text-base text-gray-800 font-medium flex-1">
-                {value !== undefined && value !== '' ? String(value) : '—'}
-              </p>
-              <button
-                onClick={() => handleEdit(fieldKey)}
-                className="opacity-60 hover:opacity-100 group-hover:opacity-100 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200"
-                title="Editar"
-              >
-                <Edit3 size={16} />
-              </button>
-            </div>
-          )}
+      <div className="flex flex-col items-center justify-center h-96 space-y-4">
+        <User className="h-12 w-12 text-gray-400" />
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Huésped no encontrado</h2>
+          <p className="text-gray-600 mb-4">
+            No se encontró el huésped con ID: {id}
+          </p>
+          <button
+            onClick={() => navigate('/guests')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Volver a Huéspedes
+          </button>
         </div>
       </div>
     );
-  };
+  }
 
-  const renderEditableArrayField = (label: string, field: string, list: string[] = []) => {
-    const isEditing = editingField === field;
-    
-    return (
-      <div className="relative group">
-        <p className="text-sm text-gray-600 mb-1">{label}:</p>
-        <div className="flex items-start gap-2">
-          {isEditing ? (
-            <div className="flex items-start gap-2 w-full">
-              <textarea
-                value={(editValues[field as keyof UpdateGuestData] as string[])?.join(', ') || ''}
-                onChange={(e) => handleArrayInputChange(field, e.target.value)}
-                placeholder="Separar elementos con comas"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={2}
-              />
-              <div className="flex flex-col gap-1">
-                <button
-                  onClick={handleSave}
-                  disabled={isUpdating}
-                  className="p-2 text-green-600 hover:bg-green-50 rounded-md transition-colors disabled:opacity-50"
-                  title="Guardar"
-                >
-                  {isUpdating ? (
-                    <div className="w-4 h-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
-                  ) : (
-                    <Save size={16} />
-                  )}
-                </button>
-                <button
-                  onClick={handleCancel}
-                  disabled={isUpdating}
-                  className="p-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors disabled:opacity-50"
-                  title="Cancelar"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-start gap-2 w-full">
-              <div className="flex-1">
-                <ul className="list-disc pl-5 text-gray-800">
-                  {list.length > 0 ? list.map((item, index) => <li key={`${field}-${item}-${index}`}>{item}</li>) : <li>—</li>}
-                </ul>
-              </div>
-              <button
-                onClick={() => handleEdit(field)}
-                className="opacity-60 hover:opacity-100 group-hover:opacity-100 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200"
-                title="Editar"
-              >
-                <Edit3 size={16} />
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
 
-  const renderCountryField = (label: string, field: string, value?: string) => {
-    const isEditing = editingField === field;
-    
-    return (
-      <div className="relative group">
-        <p className="text-sm text-gray-600 mb-1">{label}:</p>
-        <div className="flex items-center gap-2">
-          {isEditing ? (
-            <div className="flex items-center gap-2 w-full">
-              <div className="flex-1">
-                <ReactFlagsSelect
-                  selected={editValues[field as keyof UpdateGuestData] as string || ''}
-                  onSelect={(countryCode) => handleInputChange(field, countryCode)}
-                  placeholder="Seleccionar país..."
-                  searchable
-                  searchPlaceholder="Buscar país..."
-                  className="w-full"
-                  selectButtonClassName="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                  showSelectedLabel={true}
-                  showOptionLabel={true}
-                />
-              </div>
-              <button
-                onClick={handleSave}
-                disabled={isUpdating}
-                className="p-2 text-green-600 hover:bg-green-50 rounded-md transition-colors disabled:opacity-50"
-                title="Guardar"
-              >
-                {isUpdating ? (
-                  <div className="w-4 h-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
-                ) : (
-                  <Save size={16} />
-                )}
-              </button>
-              <button
-                onClick={handleCancel}
-                disabled={isUpdating}
-                className="p-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors disabled:opacity-50"
-                title="Cancelar"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 w-full">
-              <div className="flex items-center gap-2 flex-1">
-                {value && (
-                  <div className="flex items-center gap-2">
-                    <ReactFlagsSelect
-                      selected={value}
-                      onSelect={() => {}} // No interaction in view mode
-                      showSelectedLabel={true}
-                      disabled={true}
-                      className="pointer-events-none"
-                      selectButtonClassName="border-none bg-transparent p-0 cursor-default"
-                    />
-                  </div>
-                )}
-                {!value && (
-                  <p className="text-base text-gray-800 font-medium">—</p>
-                )}
-              </div>
-              <button
-                onClick={() => handleEdit(field)}
-                className="opacity-60 hover:opacity-100 group-hover:opacity-100 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200"
-                title="Editar"
-              >
-                <Edit3 size={16} />
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderEditableNestedCountryField = (
-    label: string,
-    parentField: string,
-    field: string,
-    value?: string
-  ) => {
-    const fieldKey = `${parentField}.${field}`;
-    const isEditing = editingField === fieldKey;
-    
-    return (
-      <div className="relative group">
-        <p className="text-sm text-gray-600 mb-1">{label}:</p>
-        <div className="flex items-center gap-2">
-          {isEditing ? (
-            <div className="flex items-center gap-2 w-full">
-              <div className="flex-1">
-                <ReactFlagsSelect
-                  selected={
-                    (editValues[parentField as keyof UpdateGuestData] as any)?.[field] || ''
-                  }
-                  onSelect={(countryCode) => handleNestedInputChange(parentField, field, countryCode)}
-                  placeholder="Seleccionar país..."
-                  searchable
-                  searchPlaceholder="Buscar país..."
-                  className="w-full"
-                  selectButtonClassName="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                  showSelectedLabel={true}
-                  showOptionLabel={true}
-                />
-              </div>
-              <button
-                onClick={handleSave}
-                disabled={isUpdating}
-                className="p-2 text-green-600 hover:bg-green-50 rounded-md transition-colors disabled:opacity-50"
-                title="Guardar"
-              >
-                {isUpdating ? (
-                  <div className="w-4 h-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
-                ) : (
-                  <Save size={16} />
-                )}
-              </button>
-              <button
-                onClick={handleCancel}
-                disabled={isUpdating}
-                className="p-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors disabled:opacity-50"
-                title="Cancelar"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 w-full">
-              <div className="flex items-center gap-2 flex-1">
-                {value && (
-                  <div className="flex items-center gap-2">
-                    <ReactFlagsSelect
-                      selected={value}
-                      onSelect={() => {}} // No interaction in view mode
-                      showSelectedLabel={true}
-                      disabled={true}
-                      className="pointer-events-none"
-                      selectButtonClassName="border-none bg-transparent p-0 cursor-default"
-                    />
-                  </div>
-                )}
-                {!value && (
-                  <p className="text-base text-gray-800 font-medium">—</p>
-                )}
-              </div>
-              <button
-                onClick={() => handleEdit(fieldKey)}
-                className="opacity-60 hover:opacity-100 group-hover:opacity-100 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200"
-                title="Editar"
-              >
-                <Edit3 size={16} />
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -564,7 +189,7 @@ export const GuestProfilePage: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  {guest.firstName} {guest.lastName}
+                  {guest.firstName} {guest.firstLastName} {guest.secondLastName || ''}
                 </h1>
                 <div className="flex items-center space-x-4 mt-1">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -626,19 +251,120 @@ export const GuestProfilePage: React.FC = () => {
               </div>
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {renderEditableField('Nombre', 'firstName', guest.firstName)}
-                  {renderEditableField('Apellido', 'lastName', guest.lastName)}
-                  {renderEditableField('Email', 'email', guest.email, 'email')}
-                  {renderEditableField('Teléfono', 'phone', guest.phone, 'tel')}
-                  {renderEditableField('Fecha de Nacimiento', 'dateOfBirth', guest.dateOfBirth)}
-                  {renderEditableField('Género', 'gender', guest.gender, 'select', [
-                    { value: 'male', label: 'Masculino' },
-                    { value: 'female', label: 'Femenino' },
-                    { value: 'other', label: 'Otro' },
-                    { value: 'prefer_not_to_say', label: 'Prefiero no decir' }
-                  ])}
-                  {renderCountryField('Nacionalidad', 'nationality', guest.nationality)}
-                  {renderEditableField('Idioma Preferido', 'preferredLanguage', guest.preferredLanguage)}
+                  <InlineEditField 
+                    label="Nombre"
+                    value={guest.firstName}
+                    isEditing={isEditing('firstName')}
+                    onEdit={() => handleEdit('firstName')}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    isUpdating={isUpdating}
+                    type="text"
+                    editValue={editValues.firstName || ''}
+                    onChange={(value: string) => handleInputChange('firstName', value)}
+                  />
+                  <InlineEditField 
+                    label="Primer Apellido"
+                    value={guest.firstLastName}
+                    isEditing={isEditing('firstLastName')}
+                    onEdit={() => handleEdit('firstLastName')}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    isUpdating={isUpdating}
+                    type="text"
+                    editValue={editValues.firstLastName || ''}
+                    onChange={(value: string) => handleInputChange('firstLastName', value)}
+                  />
+                  <InlineEditField 
+                    label="Segundo Apellido"
+                    value={guest.secondLastName || ''}
+                    isEditing={isEditing('secondLastName')}
+                    onEdit={() => handleEdit('secondLastName')}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    isUpdating={isUpdating}
+                    type="text"
+                    editValue={editValues.secondLastName || ''}
+                    onChange={(value: string) => handleInputChange('secondLastName', value)}
+                  />
+                  <InlineEditField 
+                    label="Email"
+                    value={guest.email}
+                    isEditing={isEditing('email')}
+                    onEdit={() => handleEdit('email')}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    isUpdating={isUpdating}
+                    type="email"
+                    editValue={editValues.email || ''}
+                    onChange={(value: string) => handleInputChange('email', value)}
+                  />
+                  <InlineEditField 
+                    label="Teléfono"
+                    value={guest.phone}
+                    isEditing={isEditing('phone')}
+                    onEdit={() => handleEdit('phone')}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    isUpdating={isUpdating}
+                    type="tel"
+                    editValue={editValues.phone || ''}
+                    onChange={(value: string) => handleInputChange('phone', value)}
+                  />
+                  <InlineEditField 
+                    label="Fecha de Nacimiento"
+                    value={guest.dateOfBirth}
+                    isEditing={isEditing('dateOfBirth')}
+                    onEdit={() => handleEdit('dateOfBirth')}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    isUpdating={isUpdating}
+                    type="text"
+                    editValue={editValues.dateOfBirth || ''}
+                    onChange={(value: string) => handleInputChange('dateOfBirth', value)}
+                  />
+                  <InlineEditField 
+                    label="Género"
+                    value={guest.gender}
+                    isEditing={isEditing('gender')}
+                    onEdit={() => handleEdit('gender')}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    isUpdating={isUpdating}
+                    type="select"
+                    editValue={editValues.gender || ''}
+                    onChange={(value: string) => handleInputChange('gender', value)}
+                    options={[
+                      { value: 'male', label: 'Masculino' },
+                      { value: 'female', label: 'Femenino' },
+                      { value: 'other', label: 'Otro' },
+                      { value: 'prefer_not_to_say', label: 'Prefiero no decir' }
+                    ]}
+                  />
+                  <InlineEditField 
+                    label="Nacionalidad"
+                    value={guest.nationality}
+                    isEditing={isEditing('nationality')}
+                    onEdit={() => handleEdit('nationality')}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    isUpdating={isUpdating}
+                    type="country"
+                    editValue={editValues.nationality || ''}
+                    onChange={(value: string) => handleInputChange('nationality', value)}
+                  />
+                  <InlineEditField 
+                    label="Idioma Preferido"
+                    value={guest.preferredLanguage}
+                    isEditing={isEditing('preferredLanguage')}
+                    onEdit={() => handleEdit('preferredLanguage')}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    isUpdating={isUpdating}
+                    type="text"
+                    editValue={editValues.preferredLanguage || ''}
+                    onChange={(value: string) => handleInputChange('preferredLanguage', value)}
+                  />
                 </div>
               </div>
             </div>
@@ -655,12 +381,35 @@ export const GuestProfilePage: React.FC = () => {
               </div>
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {renderEditableField('Tipo de Documento', 'documentType', guest.documentType, 'select', [
-                    { value: 'passport', label: 'Pasaporte' },
-                    { value: 'license', label: 'Licencia de Conducir' },
-                    { value: 'id_card', label: 'Cédula de Identidad' }
-                  ])}
-                  {renderEditableField('Número de Documento', 'documentNumber', guest.documentNumber)}
+                  <InlineEditField 
+                    label="Tipo de Documento"
+                    value={guest.documentType}
+                    isEditing={isEditing('documentType')}
+                    onEdit={() => handleEdit('documentType')}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    isUpdating={isUpdating}
+                    type="select"
+                    editValue={editValues.documentType || ''}
+                    onChange={(value: string) => handleInputChange('documentType', value)}
+                    options={[
+                      { value: 'passport', label: 'Pasaporte' },
+                      { value: 'license', label: 'Licencia de Conducir' },
+                      { value: 'id_card', label: 'Cédula de Identidad' }
+                    ]}
+                  />
+                  <InlineEditField 
+                    label="Número de Documento"
+                    value={guest.documentNumber}
+                    isEditing={isEditing('documentNumber')}
+                    onEdit={() => handleEdit('documentNumber')}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    isUpdating={isUpdating}
+                    type="text"
+                    editValue={editValues.documentNumber || ''}
+                    onChange={(value: string) => handleInputChange('documentNumber', value)}
+                  />
                 </div>
               </div>
             </div>
@@ -677,11 +426,70 @@ export const GuestProfilePage: React.FC = () => {
               </div>
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {renderEditableNestedField('Calle', 'address', 'street', guest.address?.street)}
-                  {renderEditableNestedField('Ciudad', 'address', 'city', guest.address?.city)}
-                  {renderEditableNestedField('Provincia/Estado', 'address', 'state', guest.address?.state)}
-                  {renderEditableNestedCountryField('País', 'address', 'country', guest.address?.country)}
-                  {renderEditableNestedField('Código Postal', 'address', 'postalCode', guest.address?.postalCode)}
+                  <InlineEditNestedField 
+                    label="Calle"
+                    value={{ street: guest.address?.street }}
+                    isEditing={isEditing('address.street')}
+                    onEdit={() => handleEdit('address.street')}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    isUpdating={isUpdating}
+                    editValue={{ street: (editValues.address as any)?.street || '' }}
+                    onChange={(key: string, value: string) => handleNestedInputChange('address', key, value)}
+                    fields={[{ key: 'street', label: 'Calle', type: 'text', placeholder: 'Ingrese la calle' }]}
+                    displayFormat={(data) => data.street || ''}
+                  />
+                  <InlineEditNestedField 
+                    label="Ciudad"
+                    value={{ city: guest.address?.city }}
+                    isEditing={isEditing('address.city')}
+                    onEdit={() => handleEdit('address.city')}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    isUpdating={isUpdating}
+                    editValue={{ city: (editValues.address as any)?.city || '' }}
+                    onChange={(key: string, value: string) => handleNestedInputChange('address', key, value)}
+                    fields={[{ key: 'city', label: 'Ciudad', type: 'text', placeholder: 'Ingrese la ciudad' }]}
+                    displayFormat={(data) => data.city || ''}
+                  />
+                  <InlineEditNestedField 
+                    label="Provincia/Estado"
+                    value={{ state: guest.address?.state }}
+                    isEditing={isEditing('address.state')}
+                    onEdit={() => handleEdit('address.state')}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    isUpdating={isUpdating}
+                    editValue={{ state: (editValues.address as any)?.state || '' }}
+                    onChange={(key: string, value: string) => handleNestedInputChange('address', key, value)}
+                    fields={[{ key: 'state', label: 'Provincia/Estado', type: 'text', placeholder: 'Ingrese la provincia o estado' }]}
+                    displayFormat={(data) => data.state || ''}
+                  />
+                  <InlineEditField 
+                    label="País"
+                    value={guest.address?.country}
+                    isEditing={isEditing('address.country')}
+                    onEdit={() => handleEdit('address.country')}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    isUpdating={isUpdating}
+                    type="country"
+                    editValue={(editValues.address as any)?.country || ''}
+                    onChange={(value: string) => handleNestedInputChange('address', 'country', value)}
+                  />
+                  <InlineEditNestedField 
+                    label="Código Postal"
+                    value={{ postalCode: guest.address?.postalCode }}
+                    isEditing={isEditing('address.postalCode')}
+                    onEdit={() => handleEdit('address.postalCode')}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    isUpdating={isUpdating}
+                    editValue={{ postalCode: (editValues.address as any)?.postalCode || '' }}
+                    onChange={(key: string, value: string) => handleNestedInputChange('address', key, value)}
+                    fields={[{ key: 'postalCode', label: 'Código Postal', type: 'text', placeholder: 'Ingrese el código postal' }]}
+                    displayFormat={(data) => data.postalCode || ''}
+                  />
                 </div>
               </div>
             </div>
@@ -698,9 +506,50 @@ export const GuestProfilePage: React.FC = () => {
                 </div>
               </div>
               <div className="p-6 space-y-6">
-                {renderEditableArrayField('Alergias', 'allergies', guest.allergies)}
-                {renderEditableArrayField('Restricciones Dietéticas', 'dietaryRestrictions', guest.dietaryRestrictions)}
-                {renderEditableField('Notas Médicas', 'medicalNotes', guest.medicalNotes, 'textarea')}
+                <SimpleArrayField 
+                  label="Alergias"
+                  value={guest.allergies || []}
+                  isEditing={isEditing('allergies')}
+                  onEdit={() => handleEdit('allergies')}
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                  isUpdating={isUpdating}
+                  editValue={editValues.allergies as string[] || []}
+                  onChange={(value: string) => {
+                    const arrayValue = value.split(',').map(item => item.trim()).filter(item => item.length > 0);
+                    handleInputChange('allergies', arrayValue);
+                  }}
+                  emptyText="No hay alergias registradas"
+                  placeholder="Separar alergias con comas"
+                />
+                <SimpleArrayField 
+                  label="Restricciones Dietéticas"
+                  value={guest.dietaryRestrictions || []}
+                  isEditing={isEditing('dietaryRestrictions')}
+                  onEdit={() => handleEdit('dietaryRestrictions')}
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                  isUpdating={isUpdating}
+                  editValue={editValues.dietaryRestrictions as string[] || []}
+                  onChange={(value: string) => {
+                    const arrayValue = value.split(',').map(item => item.trim()).filter(item => item.length > 0);
+                    handleInputChange('dietaryRestrictions', arrayValue);
+                  }}
+                  emptyText="No hay restricciones dietéticas registradas"
+                  placeholder="Separar restricciones con comas"
+                />
+                <InlineEditField 
+                  label="Notas Médicas"
+                  value={guest.medicalNotes}
+                  isEditing={isEditing('medicalNotes')}
+                  onEdit={() => handleEdit('medicalNotes')}
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                  isUpdating={isUpdating}
+                  type="textarea"
+                  editValue={editValues.medicalNotes || ''}
+                  onChange={(value: string) => handleInputChange('medicalNotes', value)}
+                />
               </div>
             </div>
           </div>
@@ -718,10 +567,58 @@ export const GuestProfilePage: React.FC = () => {
                 </div>
               </div>
               <div className="p-6 space-y-4">
-                {renderEditableNestedField('Nombre', 'emergencyContact', 'name', guest.emergencyContact?.name)}
-                {renderEditableNestedField('Relación', 'emergencyContact', 'relationship', guest.emergencyContact?.relationship)}
-                {renderEditableNestedField('Teléfono', 'emergencyContact', 'phone', guest.emergencyContact?.phone, 'tel')}
-                {renderEditableNestedField('Email', 'emergencyContact', 'email', guest.emergencyContact?.email, 'email')}
+                <InlineEditNestedField 
+                  label="Nombre"
+                  value={{ name: guest.emergencyContact?.name }}
+                  isEditing={isEditing('emergencyContact.name')}
+                  onEdit={() => handleEdit('emergencyContact.name')}
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                  isUpdating={isUpdating}
+                  editValue={{ name: (editValues.emergencyContact as any)?.name || '' }}
+                  onChange={(key: string, value: string) => handleNestedInputChange('emergencyContact', key, value)}
+                  fields={[{ key: 'name', label: 'Nombre', type: 'text', placeholder: 'Ingrese el nombre del contacto' }]}
+                  displayFormat={(data) => data.name || ''}
+                />
+                <InlineEditNestedField 
+                  label="Relación"
+                  value={{ relationship: guest.emergencyContact?.relationship }}
+                  isEditing={isEditing('emergencyContact.relationship')}
+                  onEdit={() => handleEdit('emergencyContact.relationship')}
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                  isUpdating={isUpdating}
+                  editValue={{ relationship: (editValues.emergencyContact as any)?.relationship || '' }}
+                  onChange={(key: string, value: string) => handleNestedInputChange('emergencyContact', key, value)}
+                  fields={[{ key: 'relationship', label: 'Relación', type: 'text', placeholder: 'Ej: Hermano, Madre, Amigo' }]}
+                  displayFormat={(data) => data.relationship || ''}
+                />
+                <InlineEditNestedField 
+                  label="Teléfono"
+                  value={{ phone: guest.emergencyContact?.phone }}
+                  isEditing={isEditing('emergencyContact.phone')}
+                  onEdit={() => handleEdit('emergencyContact.phone')}
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                  isUpdating={isUpdating}
+                  editValue={{ phone: (editValues.emergencyContact as any)?.phone || '' }}
+                  onChange={(key: string, value: string) => handleNestedInputChange('emergencyContact', key, value)}
+                  fields={[{ key: 'phone', label: 'Teléfono', type: 'tel', placeholder: 'Ingrese el teléfono' }]}
+                  displayFormat={(data) => data.phone || ''}
+                />
+                <InlineEditNestedField 
+                  label="Email"
+                  value={{ email: guest.emergencyContact?.email }}
+                  isEditing={isEditing('emergencyContact.email')}
+                  onEdit={() => handleEdit('emergencyContact.email')}
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                  isUpdating={isUpdating}
+                  editValue={{ email: (editValues.emergencyContact as any)?.email || '' }}
+                  onChange={(key: string, value: string) => handleNestedInputChange('emergencyContact', key, value)}
+                  fields={[{ key: 'email', label: 'Email', type: 'email', placeholder: 'Ingrese el email' }]}
+                  displayFormat={(data) => data.email || ''}
+                />
               </div>
             </div>
 
@@ -840,7 +737,18 @@ export const GuestProfilePage: React.FC = () => {
                 </div>
               </div>
               <div className="p-6">
-                {renderEditableField('Notas', 'notes', guest.notes, 'textarea')}
+                <InlineEditField 
+                  label="Notas"
+                  value={guest.notes}
+                  isEditing={isEditing('notes')}
+                  onEdit={() => handleEdit('notes')}
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                  isUpdating={isUpdating}
+                  type="textarea"
+                  editValue={editValues.notes || ''}
+                  onChange={(value: string) => handleInputChange('notes', value)}
+                />
               </div>
             </div>
           </div>

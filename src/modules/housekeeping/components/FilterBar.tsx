@@ -1,3 +1,4 @@
+// src/modules/housekeeping/components/FilterBar.tsx
 import { useState } from "react";
 import { FiSearch, FiChevronDown, FiChevronUp, FiSliders } from "react-icons/fi";
 
@@ -76,13 +77,8 @@ export default function FilterBar({ filters, setFilters, totalRooms }: FilterBar
                 className="h-9 rounded-lg border border-slate-300 bg-white/80 px-3 text-sm text-slate-700 hover:bg-white focus:outline-none"
               >
                 <option value="">Todos los estados</option>
-                <option value="Disponible">Disponible</option>
-                <option value="Ocupada">Ocupada</option>
-                <option value="Pendiente">Pendiente</option>
-                <option value="En limpieza">En limpieza</option>
-                <option value="Inspección">Inspección</option>
-                <option value="Fuera de servicio">Fuera de servicio</option>
-                <option value="Mantenimiento">Mantenimiento</option>
+                <option value="Sucia">Sucia</option>
+                <option value="Limpia">Limpia</option>
               </select>
             </div>
 
@@ -115,8 +111,6 @@ export default function FilterBar({ filters, setFilters, totalRooms }: FilterBar
                 <option value="">Todos los pisos</option>
                 <option value="1">Piso 1</option>
                 <option value="2">Piso 2</option>
-                <option value="3">Piso 3</option>
-                <option value="4">Piso 4</option>
               </select>
             </div>
 

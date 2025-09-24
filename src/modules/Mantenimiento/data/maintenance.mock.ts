@@ -12,6 +12,9 @@ export const MAINTENANCE_ITEMS: MaintenanceItem[] = [
     scheduledAt: "2025-01-15",
     priority: "Alta",
     createdAt: "2025-01-10T10:00:00Z",
+    // NUEVO
+    name: "Reparación de aire acondicionado",
+    summary: "El aire acondicionado no enfría correctamente",
   },
   {
     id: "2",
@@ -24,6 +27,8 @@ export const MAINTENANCE_ITEMS: MaintenanceItem[] = [
     scheduledAt: "2025-01-14",
     priority: "Media",
     createdAt: "2025-01-10T10:00:00Z",
+    name: "Cambio de bombillas LED",
+    summary: "Reemplazo programado de iluminación",
   },
   {
     id: "3",
@@ -36,5 +41,7 @@ export const MAINTENANCE_ITEMS: MaintenanceItem[] = [
     scheduledAt: "2025-01-12",
     priority: "Baja",
     createdAt: "2025-01-10T10:00:00Z",
+    name: "Revisión de grifería",
+    summary: "Mantenimiento preventivo completado",
   },
 ];

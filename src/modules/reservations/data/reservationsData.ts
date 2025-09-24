@@ -7,7 +7,7 @@ export const reservationsData: Reservation[] = [
     guest: {
       id: "guest-001",
       firstName: "María",
-      lastName: "González",
+      firstLastName: "González",
       email: "maria.gonzalez@email.com",
       phone: "8888-1234",
       nationality: "CR",
@@ -41,7 +41,7 @@ export const reservationsData: Reservation[] = [
     guest: {
       id: "guest-002",
       firstName: "Carlos",
-      lastName: "Rodríguez",
+      firstLastName: "Rodríguez",
       email: "carlos.rodriguez@email.com",
       phone: "8888-5678",
       nationality: "CR",
