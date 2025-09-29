@@ -1,6 +1,6 @@
 /**
  * Room Service - Standardized API Service
- * 
+ *
  * Handles all room-related operations using the standardized BaseApiService pattern.
  * Includes proper error handling, mocking support, and type safety.
  */
@@ -23,9 +23,9 @@ class RoomService extends BaseApiService {
    * Get available rooms for given dates and criteria
    */
   async getAvailableRooms(
-    checkIn: string | Date, 
-    checkOut: string | Date, 
-    numberOfGuests?: number, 
+    checkIn: string | Date,
+    checkOut: string | Date,
+    numberOfGuests?: number,
     roomType?: string
   ): Promise<Room[]> {
     try {
@@ -128,7 +128,7 @@ class RoomService extends BaseApiService {
   /**
    * Get all room types
    */
-  async getAllRoomTypes(): Promise<Array<{ type: string; name: string; basePrice: number }>> {
+  async getAllRoomTypes(): Promise<Array<{ type: string; name: string; basePrice: number; capacity?: number }>> {
     try {
       if (this.config.enableMocking) {
         const legacyRooms = await simulateApiCall(cloneData(roomsData), 200);
@@ -141,12 +141,18 @@ class RoomService extends BaseApiService {
             type,
             name: roomOfType.name,
             basePrice: roomOfType.basePrice || roomOfType.pricePerNight || 0,
+            capacity: roomOfType.capacity,
           };
         });
       }
 
-      const response = await this.get<Array<{ type: string; name: string; basePrice: number }>>('/rooms/types');
-      return response.data || [];
+      const response = await this.get<Array<{ type: string; name: string; basePrice: number; capacity?: number }>>('/rooms/types');
+      return (response.data || []).map((roomType) => ({
+        type: roomType.type,
+        name: roomType.name,
+        basePrice: roomType.basePrice ?? 0,
+        capacity: roomType.capacity,
+      }));
 
     } catch (error) {
       console.error('Error fetching room types:', error);

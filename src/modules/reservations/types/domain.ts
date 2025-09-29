@@ -173,6 +173,25 @@ export function mapEstadoIdToStatus(id?: number): Reservation['status'] {
   }
 }
 
+export function mapStatusToEstadoId(status: Reservation['status']): number {
+  switch (status) {
+    case 'cancelled':
+      return 1;
+    case 'pending':
+      return 2;
+    case 'confirmed':
+      return 3;
+    case 'checked_in':
+      return 4;
+    case 'checked_out':
+      return 5;
+    case 'no_show':
+      return 6;
+    default:
+      return 2;
+  }
+}
+
 /**
  * Map an ApiReservation (backend) to the frontend Reservation domain model.
  * Optionally accepts an array of `ApiReservaHabitacion` to populate
@@ -417,3 +436,4 @@ export interface ReservationValidationErrors {
   roomType?: string;
   general?: string;
 }
+

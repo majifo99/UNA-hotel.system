@@ -1,5 +1,5 @@
 import type { SimpleReservationFormData, Reservation, ApiCreateReservaPayload, ApiReservation, ApiReservaHabitacion } from '../types/domain';
-import { mapSimpleFormToApiPayload, mapApiReservationToReservation } from '../types';
+import { mapSimpleFormToApiPayload, mapApiReservationToReservation, mapStatusToEstadoId } from '../types';
 import type { AdditionalService } from '../../../types/core/domain';
 import { simulateApiCall, cloneData } from '../utils/mockApi';
 import { servicesData } from '../data/servicesData';
@@ -211,14 +211,33 @@ class ReservationService {
 
   async getAllReservations(): Promise<Reservation[]> {
     if (USE_MOCKS) {
-      const reservations = await simulateApiCall(cloneData(reservationsData), 500);
-      return reservations;
+      return simulateApiCall(cloneData(reservationsData), 500);
     }
 
     const res = await apiClient.get('/reservas');
     const payload = res.data as { data?: ApiReservation[] };
-    const apiList = payload.data || res.data || [];
-    return (apiList as ApiReservation[]).map(api => mapApiReservationToReservation(api as ApiReservation));
+    const apiList = Array.isArray(payload?.data) ? payload.data! : (Array.isArray(res.data) ? res.data : []);
+
+    const reservations = await Promise.all((apiList as ApiReservation[]).map(async (apiReservation) => {
+      let habitaciones: ApiReservaHabitacion[] | undefined;
+
+      if (Array.isArray((apiReservation as any).habitaciones)) {
+        habitaciones = (apiReservation as any).habitaciones as ApiReservaHabitacion[];
+      } else {
+        try {
+          const habitacionesRes = await apiClient.get(`/reservas/${apiReservation.id_reserva}/habitaciones`);
+          const habitacionesPayload = habitacionesRes.data as { data?: ApiReservaHabitacion[] };
+          const list = Array.isArray(habitacionesPayload?.data) ? habitacionesPayload.data! : (Array.isArray(habitacionesRes.data) ? habitacionesRes.data : []);
+          habitaciones = list as ApiReservaHabitacion[];
+        } catch (error: any) {
+          console.warn(`[API] No se pudieron obtener las habitaciones para la reserva ${apiReservation.id_reserva}:`, error?.message || error);
+        }
+      }
+
+      return mapApiReservationToReservation(apiReservation, undefined, undefined, habitaciones);
+    }));
+
+    return reservations;
   }
 
   async getReservationsByDate(startDate: string, endDate?: string): Promise<Reservation[]> {
@@ -231,7 +250,7 @@ class ReservationService {
       const filteredReservations = reservations.filter((reservation: Reservation) => {
         const checkIn = new Date(reservation.checkInDate);
         const checkOut = new Date(reservation.checkOutDate);
-        return (checkIn <= end && checkOut >= start);
+        return checkIn <= end && checkOut >= start;
       });
 
       return filteredReservations;
@@ -243,42 +262,119 @@ class ReservationService {
   }
 
   async updateReservation(id: string, updates: Partial<Reservation>): Promise<Reservation | null> {
+    const normalizedUpdates: Partial<Reservation> = { ...updates };
+
+    if (normalizedUpdates.checkInDate && normalizedUpdates.checkOutDate) {
+      try {
+        const checkIn = new Date(normalizedUpdates.checkInDate);
+        const checkOut = new Date(normalizedUpdates.checkOutDate);
+        const diff = Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)));
+        normalizedUpdates.numberOfNights = diff;
+      } catch (error) {
+        console.warn('[Reservations] No se pudo calcular el n�mero de noches:', error);
+      }
+    }
+
     if (USE_MOCKS) {
       await simulateApiCall(null, 800);
 
       const reservations = cloneData(reservationsData);
       const reservationIndex = reservations.findIndex((r: Reservation) => r.id === id);
-      
+
       if (reservationIndex === -1) return null;
 
+      const existing = reservations[reservationIndex];
       const updatedReservation: Reservation = {
-        ...reservations[reservationIndex],
-        ...updates,
+        ...existing,
+        ...normalizedUpdates,
+        numberOfNights: normalizedUpdates.numberOfNights ?? existing.numberOfNights,
         updatedAt: new Date().toISOString(),
       };
 
       return updatedReservation;
     }
 
-    // Build partial payload for backend update
     const payload: Partial<ApiCreateReservaPayload> = {};
-    if (updates.specialRequests !== undefined) payload.notas = updates.specialRequests;
-    if (updates.total !== undefined) payload.total_monto_reserva = updates.total;
+    if (normalizedUpdates.specialRequests !== undefined) payload.notas = normalizedUpdates.specialRequests;
+    if (normalizedUpdates.total !== undefined) payload.total_monto_reserva = normalizedUpdates.total;
+    if (normalizedUpdates.status !== undefined) payload.id_estado_res = mapStatusToEstadoId(normalizedUpdates.status);
+    if (normalizedUpdates.numberOfGuests !== undefined) {
+      payload.adultos = Math.max(1, Math.round(normalizedUpdates.numberOfGuests));
+      payload.ninos = 0;
+      payload.bebes = 0;
+    }
 
-    const res = await apiClient.put(`/reservas/${id}`, payload);
-    const apiRes: ApiReservation = res.data?.data ? res.data.data : res.data;
-    return apiRes ? mapApiReservationToReservation(apiRes) : null;
+    try {
+      if (Object.keys(payload).length > 0) {
+        await apiClient.put(`/reservas/${id}`, payload);
+      }
+    } catch (error: any) {
+      console.error('[API] Error actualizando /reservas/:id', error?.message || error);
+    }
+
+    if (
+      normalizedUpdates.checkInDate ||
+      normalizedUpdates.checkOutDate ||
+      normalizedUpdates.numberOfGuests !== undefined ||
+      normalizedUpdates.roomId
+    ) {
+      const habitacionPayload: Partial<ApiReservaHabitacion> = {};
+      if (normalizedUpdates.roomId) habitacionPayload.id_habitacion = Number(normalizedUpdates.roomId);
+      if (normalizedUpdates.checkInDate) habitacionPayload.fecha_llegada = normalizedUpdates.checkInDate;
+      if (normalizedUpdates.checkOutDate) habitacionPayload.fecha_salida = normalizedUpdates.checkOutDate;
+      if (normalizedUpdates.numberOfGuests !== undefined) habitacionPayload.pax_total = Number(normalizedUpdates.numberOfGuests);
+
+      try {
+        await apiClient.put(`/reservas/${id}/habitaciones`, habitacionPayload);
+      } catch (error: any) {
+        console.warn('[API] No se pudo actualizar la reserva_habitacion:', error?.message || error);
+      }
+    }
+
+    const latest = await this.getReservationById(id);
+    if (!latest) {
+      return null;
+    }
+
+    return {
+      ...latest,
+      ...normalizedUpdates,
+      updatedAt: new Date().toISOString(),
+    };
   }
 
-  async cancelReservation(id: string): Promise<boolean> {
-    await simulateApiCall(null, 600);
-    
-    const updatedReservation = await this.updateReservation(id, { 
-      status: 'cancelled',
-      updatedAt: new Date().toISOString()
-    });
+  async cancelReservation(id: string, options?: { penalty?: number; note?: string }): Promise<Reservation | null> {
+    if (USE_MOCKS) {
+      await simulateApiCall(null, 600);
+      return this.updateReservation(id, {
+        status: 'cancelled',
+        updatedAt: new Date().toISOString(),
+      });
+    }
 
-    return updatedReservation !== null;
+    let cancelledReservation: Reservation | null = null;
+
+    try {
+      await apiClient.post(`/reservas/${id}/cancel`, {
+        motivo: options?.note,
+        penalidad: options?.penalty,
+      });
+      cancelledReservation = await this.getReservationById(id);
+    } catch (error: any) {
+      console.warn('[API] Endpoint /reservas/:id/cancel no disponible, usando actualizaci�n est�ndar:', error?.message || error);
+    }
+
+    if (cancelledReservation && cancelledReservation.status === 'cancelled') {
+      return {
+        ...cancelledReservation,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    return this.updateReservation(id, {
+      status: 'cancelled',
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   async updateReservationStatus(id: string, status: Reservation['status']): Promise<Reservation | null> {
@@ -336,15 +432,12 @@ class ReservationService {
     let totalNights = 0;
 
     reservations.forEach((reservation: Reservation) => {
-      // Count by status
       stats.byStatus[reservation.status] = (stats.byStatus[reservation.status] || 0) + 1;
       
-      // Calculate revenue (only for confirmed/completed reservations)
       if (reservation.status === 'confirmed' || reservation.status === 'checked_out') {
         stats.revenue += reservation.total;
       }
       
-      // Calculate average stay
       totalNights += reservation.numberOfNights;
     });
 
@@ -352,6 +445,7 @@ class ReservationService {
 
     return stats;
   }
+
 }
 
 export const reservationService = new ReservationService();
