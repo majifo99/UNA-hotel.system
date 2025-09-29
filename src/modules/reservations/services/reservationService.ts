@@ -259,43 +259,69 @@ class ReservationService {
     }
 
     const res = await apiClient.get('/reservas', { params: { fecha_llegada: startDate, fecha_salida: endDate } });
-    const payload = res.data as { data?: ApiReservation[] };
-    return (payload.data || []).map(api => mapApiReservationToReservation(api as ApiReservation));
+    const apiList = (res.data && (res.data.data ?? res.data)) as ApiReservation[] | undefined;
+    const list = Array.isArray(apiList) ? apiList : [];
+    return list.map(api => mapApiReservationToReservation(api as ApiReservation));
   }
 
   async updateReservation(id: string, updates: Partial<Reservation>): Promise<Reservation | null> {
     const normalizedUpdates: Partial<Reservation> = { ...updates };
 
-    if (normalizedUpdates.checkInDate && normalizedUpdates.checkOutDate) {
-      try {
-        const checkIn = new Date(normalizedUpdates.checkInDate);
-        const checkOut = new Date(normalizedUpdates.checkOutDate);
-        const diff = Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)));
-        normalizedUpdates.numberOfNights = diff;
-      } catch (error) {
-        console.warn('[Reservations] No se pudo calcular el n�mero de noches:', error);
-      }
-    }
+    this.calculateNightsIfNeeded(normalizedUpdates);
 
     if (USE_MOCKS) {
-      await simulateApiCall(null, 800);
-
-      const reservations = cloneData(reservationsData);
-      const reservationIndex = reservations.findIndex((r: Reservation) => r.id === id);
-
-      if (reservationIndex === -1) return null;
-
-      const existing = reservations[reservationIndex];
-      const updatedReservation: Reservation = {
-        ...existing,
-        ...normalizedUpdates,
-        numberOfNights: normalizedUpdates.numberOfNights ?? existing.numberOfNights,
-        updatedAt: new Date().toISOString(),
-      };
-
-      return updatedReservation;
+      const mocked = await this.applyMockUpdate(id, normalizedUpdates);
+      return mocked;
     }
 
+    const payload = this.buildApiPayloadFromUpdates(normalizedUpdates);
+    await this.updateApiReservation(id, payload);
+
+    await this.updateHabitacionIfNeeded(id, normalizedUpdates);
+
+    const latest = await this.getReservationById(id);
+    if (!latest) return null;
+
+    return {
+      ...latest,
+      ...normalizedUpdates,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  private calculateNightsIfNeeded(normalizedUpdates: Partial<Reservation>): void {
+    if (!(normalizedUpdates.checkInDate && normalizedUpdates.checkOutDate)) return;
+
+    try {
+      const checkIn = new Date(normalizedUpdates.checkInDate as string);
+      const checkOut = new Date(normalizedUpdates.checkOutDate as string);
+      const diff = Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)));
+      normalizedUpdates.numberOfNights = diff;
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn('[Reservations] No se pudo calcular el número de noches:', error);
+    }
+  }
+
+  private async applyMockUpdate(id: string, normalizedUpdates: Partial<Reservation>): Promise<Reservation | null> {
+    await simulateApiCall(null, 800);
+
+    const reservations = cloneData(reservationsData);
+    const reservationIndex = reservations.findIndex((r: Reservation) => r.id === id);
+    if (reservationIndex === -1) return null;
+
+    const existing = reservations[reservationIndex];
+    const updatedReservation: Reservation = {
+      ...existing,
+      ...normalizedUpdates,
+      numberOfNights: normalizedUpdates.numberOfNights ?? existing.numberOfNights,
+      updatedAt: new Date().toISOString(),
+    };
+
+    return updatedReservation;
+  }
+
+  private buildApiPayloadFromUpdates(normalizedUpdates: Partial<Reservation>): Partial<ApiCreateReservaPayload> {
     const payload: Partial<ApiCreateReservaPayload> = {};
     if (normalizedUpdates.specialRequests !== undefined) payload.notas = normalizedUpdates.specialRequests;
     if (normalizedUpdates.total !== undefined) payload.total_monto_reserva = normalizedUpdates.total;
@@ -305,44 +331,42 @@ class ReservationService {
       payload.ninos = 0;
       payload.bebes = 0;
     }
+    return payload;
+  }
 
+  private async updateApiReservation(id: string, payload: Partial<ApiCreateReservaPayload>): Promise<void> {
     try {
       if (Object.keys(payload).length > 0) {
         await apiClient.put(`/reservas/${id}`, payload);
       }
     } catch (error: any) {
+      // eslint-disable-next-line no-console
       console.error('[API] Error actualizando /reservas/:id', error?.message || error);
     }
+  }
 
+  private async updateHabitacionIfNeeded(id: string, normalizedUpdates: Partial<Reservation>): Promise<void> {
     if (
-      normalizedUpdates.checkInDate ||
-      normalizedUpdates.checkOutDate ||
-      normalizedUpdates.numberOfGuests !== undefined ||
-      normalizedUpdates.roomId
-    ) {
-      const habitacionPayload: Partial<ApiReservaHabitacion> = {};
-      if (normalizedUpdates.roomId) habitacionPayload.id_habitacion = Number(normalizedUpdates.roomId);
-      if (normalizedUpdates.checkInDate) habitacionPayload.fecha_llegada = normalizedUpdates.checkInDate;
-      if (normalizedUpdates.checkOutDate) habitacionPayload.fecha_salida = normalizedUpdates.checkOutDate;
-      if (normalizedUpdates.numberOfGuests !== undefined) habitacionPayload.pax_total = Number(normalizedUpdates.numberOfGuests);
+      !(
+        normalizedUpdates.checkInDate ||
+        normalizedUpdates.checkOutDate ||
+        normalizedUpdates.numberOfGuests !== undefined ||
+        normalizedUpdates.roomId
+      )
+    ) return;
 
-      try {
-        await apiClient.put(`/reservas/${id}/habitaciones`, habitacionPayload);
-      } catch (error: any) {
-        console.warn('[API] No se pudo actualizar la reserva_habitacion:', error?.message || error);
-      }
+    const habitacionPayload: Partial<ApiReservaHabitacion> = {};
+    if (normalizedUpdates.roomId) habitacionPayload.id_habitacion = Number(normalizedUpdates.roomId);
+    if (normalizedUpdates.checkInDate) habitacionPayload.fecha_llegada = normalizedUpdates.checkInDate;
+    if (normalizedUpdates.checkOutDate) habitacionPayload.fecha_salida = normalizedUpdates.checkOutDate;
+    if (normalizedUpdates.numberOfGuests !== undefined) habitacionPayload.pax_total = Number(normalizedUpdates.numberOfGuests);
+
+    try {
+      await apiClient.put(`/reservas/${id}/habitaciones`, habitacionPayload);
+    } catch (error: any) {
+      // eslint-disable-next-line no-console
+      console.warn('[API] No se pudo actualizar la reserva_habitacion:', error?.message || error);
     }
-
-    const latest = await this.getReservationById(id);
-    if (!latest) {
-      return null;
-    }
-
-    return {
-      ...latest,
-      ...normalizedUpdates,
-      updatedAt: new Date().toISOString(),
-    };
   }
 
   async cancelReservation(id: string, options?: { penalty?: number; note?: string }): Promise<Reservation | null> {
