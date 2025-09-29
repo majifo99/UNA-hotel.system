@@ -1,4 +1,4 @@
-import axios from 'axios';
+﻿import axios from 'axios';
 
 function mapEstadoIdToStatus(id) {
   switch (id) {
@@ -13,24 +13,24 @@ function mapEstadoIdToStatus(id) {
 }
 
 function mapApiReservationToReservation(api) {
-  let mappedGuest;
   const apiCliente = api.cliente;
-  if (apiCliente) {
-    mappedGuest = {
-      id: String(apiCliente.id_cliente),
-      firstName: apiCliente.nombre || '',
-      lastName: [apiCliente.apellido1 || '', apiCliente.apellido2 || ''].filter(Boolean).join(' ') || '',
-      email: apiCliente.email || '',
-      phone: apiCliente.telefono || '',
-      documentType: 'id_card',
-      documentNumber: apiCliente.numero_doc || '',
-      nationality: apiCliente.nacionalidad || '',
-      createdAt: apiCliente.created_at || api.created_at || new Date().toISOString(),
-      updatedAt: apiCliente.updated_at || api.updated_at || new Date().toISOString(),
-      isActive: true,
-    };
-  }
-  const numberOfGuests = (api.adultos||0)+(api.ninos||0)+(api.bebes||0);
+  const mappedGuest = apiCliente ? {
+    id: String(apiCliente.id_cliente),
+    firstName: apiCliente.nombre || '',
+    firstLastName: apiCliente.apellido1 || '',
+    secondLastName: apiCliente.apellido2 || '',
+    email: apiCliente.email || '',
+    phone: apiCliente.telefono || '',
+    documentType: 'id_card',
+    documentNumber: apiCliente.numero_doc || '',
+    nationality: apiCliente.nacionalidad || '',
+    createdAt: apiCliente.created_at || api.created_at || new Date().toISOString(),
+    updatedAt: apiCliente.updated_at || api.updated_at || new Date().toISOString(),
+    isActive: true,
+  } : undefined;
+
+  const numberOfGuests = (api.adultos || 0) + (api.ninos || 0) + (api.bebes || 0);
+
   return {
     id: String(api.id_reserva),
     confirmationNumber: String(api.id_reserva),
@@ -57,11 +57,14 @@ function mapApiReservationToReservation(api) {
   };
 }
 
-async function run() {
-  const url = process.env.API_URL || 'http://127.0.0.1:8000/api/reservas';
+const url = process.env.API_URL || 'http://127.0.0.1:8000/api/reservas';
+
+try {
   const { data } = await axios.get(url);
-  const list = Array.isArray(data) ? data : (data.data || []);
-  const mapped = list.map(r => mapApiReservationToReservation(r));
+  const list = Array.isArray(data) ? data : (data?.data || []);
+  const mapped = list.map((reservation) => mapApiReservationToReservation(reservation));
   console.log(JSON.stringify(mapped, null, 2));
+} catch (error) {
+  console.error('Error fetching reservations:', error);
+  process.exit(1);
 }
-run().catch(e => { console.error(e); process.exit(1); });

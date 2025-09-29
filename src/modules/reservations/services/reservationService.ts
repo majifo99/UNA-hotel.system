@@ -44,42 +44,13 @@ class ReservationService {
 
     // Real API call
     try {
-      // Ensure we provide a valid id_estado_res if not present in the payload
-      if (payload.id_estado_res === undefined) {
-        try {
-          const estadosRes = await apiClient.get('/estados-reserva');
-          const list: any[] = estadosRes.data?.data || estadosRes.data || [];
-          // Prefer explicit id 2 or a name containing 'pend'
-          const preferred = list.find(e => Number(e.id_estado_res) === 2)
-            || list.find(e => String(e.nombre || '').toLowerCase().includes('pend'))
-            || list[0];
-          if (preferred) {
-            // eslint-disable-next-line no-console
-            console.debug('[API] Selected id_estado_res for new reserva:', preferred.id_estado_res);
-            payload.id_estado_res = Number(preferred.id_estado_res);
-          }
-        } catch (err) {
-          // eslint-disable-next-line no-console
-          console.warn('[API] Could not fetch estados-reserva, proceeding without id_estado_res:', String(err));
-        }
-      }
+      await this.ensureEstadoIfMissing(payload);
 
       // eslint-disable-next-line no-console
       console.debug('[API] POST /reservas payload:', payload);
       const res = await apiClient.post('/reservas', payload);
-      // Backend may return the created resource inside data or directly
-      const apiRes: ApiReservation = res.data?.data ? res.data.data : res.data;
 
-      // If backend returned a paginated-like envelope, try to extract first element
-      let createdApiReserva: ApiReservation | null = null;
-      if (!apiRes) {
-        createdApiReserva = null;
-      } else if (Array.isArray(apiRes)) {
-        createdApiReserva = apiRes[0] as ApiReservation;
-      } else {
-        createdApiReserva = apiRes as ApiReservation;
-      }
-
+      const createdApiReserva = this.extractCreatedApiReserva(res);
       if (!createdApiReserva) {
         // eslint-disable-next-line no-console
         console.error('[API] Unexpected /reservas POST response:', res.status, res.data);
@@ -88,25 +59,7 @@ class ReservationService {
 
       // If room assignment info is present on the request, attach a reserva_habitacion
       const reservaId = String(createdApiReserva.id_reserva);
-
-      // If reservationData includes roomId and dates, post a habitacion
-      if (reservationData.roomId && reservationData.checkInDate && reservationData.checkOutDate) {
-        try {
-          const habitacionPayload = {
-            id_habitacion: Number(reservationData.roomId),
-            fecha_llegada: reservationData.checkInDate,
-            fecha_salida: reservationData.checkOutDate,
-            pax_total: Number(reservationData.numberOfGuests || 1),
-          };
-          // eslint-disable-next-line no-console
-          console.debug('[API] POST /reservas/' + reservaId + '/habitaciones payload:', habitacionPayload);
-          await apiClient.post(`/reservas/${reservaId}/habitaciones`, habitacionPayload);
-        } catch (err: any) {
-          // eslint-disable-next-line no-console
-          console.error('[API] Failed to create reserva_habitacion:', err?.message || err);
-          // Do not fail the whole flow — reservation was created; surface warning
-        }
-      }
+      await this.postHabitacionIfNeeded(reservaId, reservationData);
 
       const reservation = mapApiReservationToReservation(createdApiReserva as ApiReservation);
       return reservation;
@@ -119,6 +72,55 @@ class ReservationService {
         console.error('[API] /reservas error response body:', error.response.data);
       }
       throw error;
+    }
+  }
+
+  private async ensureEstadoIfMissing(payload: ApiCreateReservaPayload): Promise<void> {
+    if (payload.id_estado_res !== undefined) return;
+
+    try {
+      const estadosRes = await apiClient.get('/estados-reserva');
+      const list: any[] = estadosRes.data?.data || estadosRes.data || [];
+      // Prefer explicit id 2 or a name containing 'pend'
+      const preferred = list.find(e => Number(e.id_estado_res) === 2)
+        || list.find(e => String(e.nombre || '').toLowerCase().includes('pend'))
+        || list[0];
+      if (preferred) {
+        // eslint-disable-next-line no-console
+        console.debug('[API] Selected id_estado_res for new reserva:', preferred.id_estado_res);
+        payload.id_estado_res = Number(preferred.id_estado_res);
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('[API] Could not fetch estados-reserva, proceeding without id_estado_res:', String(err));
+    }
+  }
+
+  private extractCreatedApiReserva(res: any): ApiReservation | null {
+    const apiRes: ApiReservation = res.data?.data ? res.data.data : res.data;
+
+    if (!apiRes) return null;
+    if (Array.isArray(apiRes)) return apiRes[0] as ApiReservation;
+    return apiRes as ApiReservation;
+  }
+
+  private async postHabitacionIfNeeded(reservaId: string, reservationData: SimpleReservationFormData & { roomId: string }): Promise<void> {
+    if (!reservationData.roomId || !reservationData.checkInDate || !reservationData.checkOutDate) return;
+
+    try {
+      const habitacionPayload = {
+        id_habitacion: Number(reservationData.roomId),
+        fecha_llegada: reservationData.checkInDate,
+        fecha_salida: reservationData.checkOutDate,
+        pax_total: Number(reservationData.numberOfGuests || 1),
+      };
+      // eslint-disable-next-line no-console
+      console.debug('[API] POST /reservas/' + reservaId + '/habitaciones payload:', habitacionPayload);
+      await apiClient.post(`/reservas/${reservaId}/habitaciones`, habitacionPayload);
+    } catch (err: any) {
+      // eslint-disable-next-line no-console
+      console.error('[API] Failed to create reserva_habitacion:', err?.message || err);
+      // Do not fail the whole flow — reservation was created; surface warning
     }
   }
 
