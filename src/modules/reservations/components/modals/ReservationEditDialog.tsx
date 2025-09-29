@@ -11,6 +11,21 @@ import { Alert } from '../../../../components/ui/Alert';
 const reservationEditSchema = z.object({
   checkInDate: z.string().min(1, 'La fecha de entrada es obligatoria'),
   checkOutDate: z.string().min(1, 'La fecha de salida es obligatoria'),
+  numberOfAdults: z
+    .number()
+    .refine((value) => !Number.isNaN(value), 'Debes indicar la cantidad de adultos')
+    .int('Usa valores enteros')
+    .min(1, 'Al menos 1 adulto'),
+  numberOfChildren: z
+    .number()
+    .refine((value) => !Number.isNaN(value), 'Debes indicar la cantidad de niños')
+    .int('Usa valores enteros')
+    .min(0, 'No puede ser negativo'),
+  numberOfInfants: z
+    .number()
+    .refine((value) => !Number.isNaN(value), 'Debes indicar la cantidad de bebés')
+    .int('Usa valores enteros')
+    .min(0, 'No puede ser negativo'),
   numberOfGuests: z
     .number()
     .refine((value) => !Number.isNaN(value), 'Debes indicar la cantidad de huéspedes')
@@ -42,16 +57,22 @@ export const ReservationEditDialog: React.FC<ReservationEditDialogProps> = ({
     defaultValues: {
       checkInDate: reservation.checkInDate || '',
       checkOutDate: reservation.checkOutDate || '',
+      numberOfAdults: reservation.numberOfAdults ?? Math.max(1, reservation.numberOfGuests || 1),
+      numberOfChildren: reservation.numberOfChildren ?? 0,
+      numberOfInfants: reservation.numberOfInfants ?? 0,
       numberOfGuests: reservation.numberOfGuests || 1,
       roomType: reservation.roomType || '',
     },
     mode: 'onChange',
   });
 
-  const { register, handleSubmit, formState, watch, setValue, setError } = form;
+  const { register, handleSubmit, formState, watch, setValue, setError, clearErrors, reset } = form;
 
   const selectedRoomType = watch('roomType');
   const numberOfGuestsValue = watch('numberOfGuests');
+  const numberOfAdultsValue = watch('numberOfAdults');
+  const numberOfChildrenValue = watch('numberOfChildren');
+  const numberOfInfantsValue = watch('numberOfInfants');
   const checkInValue = watch('checkInDate');
   const checkOutValue = watch('checkOutDate');
 
@@ -66,10 +87,42 @@ export const ReservationEditDialog: React.FC<ReservationEditDialogProps> = ({
   }, [roomInfo, reservation.room?.capacity, reservation.numberOfGuests]);
 
   React.useEffect(() => {
-    if (numberOfGuestsValue > maxGuests) {
-      setValue('numberOfGuests', maxGuests, { shouldValidate: true, shouldDirty: true });
+    if (!isOpen) return;
+    reset({
+      checkInDate: reservation.checkInDate || '',
+      checkOutDate: reservation.checkOutDate || '',
+      numberOfAdults: reservation.numberOfAdults ?? Math.max(1, reservation.numberOfGuests || 1),
+      numberOfChildren: reservation.numberOfChildren ?? 0,
+      numberOfInfants: reservation.numberOfInfants ?? 0,
+      numberOfGuests: reservation.numberOfGuests || 1,
+      roomType: reservation.roomType || reservation.room?.type || '',
+    }, {
+      keepDirty: false,
+      keepErrors: false,
+    });
+  }, [isOpen, reservation, reset]);
+
+  React.useEffect(() => {
+    const totalGuests = (numberOfAdultsValue || 0) + (numberOfChildrenValue || 0) + (numberOfInfantsValue || 0);
+    if (totalGuests !== numberOfGuestsValue) {
+      setValue('numberOfGuests', totalGuests, { shouldValidate: true, shouldDirty: true });
     }
-  }, [numberOfGuestsValue, maxGuests, setValue]);
+
+    if (totalGuests <= 0) {
+      setError('numberOfGuests', { type: 'manual', message: 'Debe registrar al menos 1 huésped.' });
+    } else if (formState.errors.numberOfGuests?.type === 'manual' && formState.errors.numberOfGuests.message?.includes('al menos 1 huésped')) {
+      clearErrors('numberOfGuests');
+    }
+  }, [numberOfAdultsValue, numberOfChildrenValue, numberOfInfantsValue, numberOfGuestsValue, setValue, setError, clearErrors, formState.errors.numberOfGuests]);
+
+  React.useEffect(() => {
+    if (!maxGuests) return;
+    if (numberOfGuestsValue > maxGuests) {
+      setError('numberOfGuests', { type: 'manual', message: `La habitación seleccionada admite máximo ${maxGuests} huéspedes.` });
+    } else if (formState.errors.numberOfGuests?.type === 'manual' && formState.errors.numberOfGuests.message?.includes('habitación seleccionada')) {
+      clearErrors('numberOfGuests');
+    }
+  }, [numberOfGuestsValue, maxGuests, setError, clearErrors, formState.errors.numberOfGuests]);
 
   const onSubmit = handleSubmit(async (values) => {
     if (values.checkInDate && values.checkOutDate) {
@@ -90,6 +143,9 @@ export const ReservationEditDialog: React.FC<ReservationEditDialogProps> = ({
       checkInDate: values.checkInDate,
       checkOutDate: values.checkOutDate,
       numberOfGuests: values.numberOfGuests,
+      numberOfAdults: values.numberOfAdults,
+      numberOfChildren: values.numberOfChildren,
+      numberOfInfants: values.numberOfInfants,
       roomType: values.roomType,
     };
 
@@ -158,7 +214,65 @@ export const ReservationEditDialog: React.FC<ReservationEditDialogProps> = ({
               <p className="mt-1 text-xs text-rose-600">{checkOutError}</p>
             )}
           </div>
+        </div>
 
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+          <div>
+            <label htmlFor="reservation-edit-adults" className="mb-1 block text-sm font-medium text-slate-700">
+              Adultos
+            </label>
+            <input
+              id="reservation-edit-adults"
+              type="number"
+              min={1}
+              className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 ${formState.errors.numberOfAdults ? 'border-rose-300 ring-rose-200 bg-rose-50' : 'border-slate-200'}`}
+              {...register('numberOfAdults', { valueAsNumber: true })}
+            />
+            {formState.errors.numberOfAdults ? (
+              <p className="mt-1 text-xs text-rose-600">{formState.errors.numberOfAdults.message}</p>
+            ) : (
+              <p className="mt-1 text-xs text-slate-500">Debe haber al menos un adulto responsable.</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="reservation-edit-children" className="mb-1 block text-sm font-medium text-slate-700">
+              Niños (3-12 años)
+            </label>
+            <input
+              id="reservation-edit-children"
+              type="number"
+              min={0}
+              className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 ${formState.errors.numberOfChildren ? 'border-rose-300 ring-rose-200 bg-rose-50' : 'border-slate-200'}`}
+              {...register('numberOfChildren', { valueAsNumber: true })}
+            />
+            {formState.errors.numberOfChildren ? (
+              <p className="mt-1 text-xs text-rose-600">{formState.errors.numberOfChildren.message}</p>
+            ) : (
+              <p className="mt-1 text-xs text-slate-500">Incluye menores que ocupan cama.</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="reservation-edit-infants" className="mb-1 block text-sm font-medium text-slate-700">
+              Bebés (0-2 años)
+            </label>
+            <input
+              id="reservation-edit-infants"
+              type="number"
+              min={0}
+              className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 ${formState.errors.numberOfInfants ? 'border-rose-300 ring-rose-200 bg-rose-50' : 'border-slate-200'}`}
+              {...register('numberOfInfants', { valueAsNumber: true })}
+            />
+            {formState.errors.numberOfInfants ? (
+              <p className="mt-1 text-xs text-rose-600">{formState.errors.numberOfInfants.message}</p>
+            ) : (
+              <p className="mt-1 text-xs text-slate-500">Considera cunas o corrales si aplica.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div>
             <label htmlFor="reservation-edit-room" className="mb-1 block text-sm font-medium text-slate-700">
               Tipo de habitación
@@ -183,14 +297,16 @@ export const ReservationEditDialog: React.FC<ReservationEditDialogProps> = ({
 
           <div>
             <label htmlFor="reservation-edit-pax" className="mb-1 block text-sm font-medium text-slate-700">
-              Huéspedes (PAX)
+              Huéspedes totales
             </label>
             <input
               id="reservation-edit-pax"
               type="number"
               min={1}
               max={maxGuests}
-              className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 ${formState.errors.numberOfGuests ? 'border-rose-300 ring-rose-200 bg-rose-50' : 'border-slate-200'}`}
+              readOnly
+              className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm bg-slate-50 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 ${formState.errors.numberOfGuests ? 'border-rose-300 ring-rose-200 bg-rose-50' : 'border-slate-200'}`}
+              value={Number.isFinite(numberOfGuestsValue) ? numberOfGuestsValue : ''}
               {...register('numberOfGuests', { valueAsNumber: true })}
             />
             <p className="mt-1 text-xs text-slate-500">

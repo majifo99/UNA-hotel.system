@@ -17,6 +17,10 @@ class ReservationService {
       await simulateApiCall(null, 1200);
       const reservation: Reservation = {
         ...reservationData,
+        numberOfAdults: reservationData.numberOfAdults ?? Math.max(1, Number(reservationData.numberOfGuests) || 1),
+        numberOfChildren: reservationData.numberOfChildren ?? 0,
+        numberOfInfants: reservationData.numberOfInfants ?? 0,
+        numberOfGuests: reservationData.numberOfGuests ?? ((reservationData.numberOfAdults ?? 0) + (reservationData.numberOfChildren ?? 0) + (reservationData.numberOfInfants ?? 0) || 1),
         id: `res-${Date.now()}`,
         status: 'pending',
         createdAt: new Date().toISOString(),
@@ -81,9 +85,13 @@ class ReservationService {
     try {
       const estadosRes = await apiClient.get('/estados-reserva');
       const list: any[] = estadosRes.data?.data || estadosRes.data || [];
-      // Prefer explicit id 2 or a name containing 'pend'
+      // Prefer explicit id 2 (Pendiente), then id 7 (En espera), then names containing 'pend' or 'esper'
+      // Avoid defaulting to id 1 (Cancelada) when possible.
       const preferred = list.find(e => Number(e.id_estado_res) === 2)
+        || list.find(e => Number(e.id_estado_res) === 7)
         || list.find(e => String(e.nombre || '').toLowerCase().includes('pend'))
+        || list.find(e => String(e.nombre || '').toLowerCase().includes('esper'))
+        || list.find(e => Number(e.id_estado_res) !== 1)
         || list[0];
       if (preferred) {
         // eslint-disable-next-line no-console
@@ -322,9 +330,20 @@ class ReservationService {
     if (reservationIndex === -1) return null;
 
     const existing = reservations[reservationIndex];
+
+    const mergedAdults = normalizedUpdates.numberOfAdults ?? existing.numberOfAdults ?? Math.max(1, existing.numberOfGuests || 1);
+    const mergedChildren = normalizedUpdates.numberOfChildren ?? existing.numberOfChildren ?? 0;
+    const mergedInfants = normalizedUpdates.numberOfInfants ?? existing.numberOfInfants ?? 0;
+    const mergedGuests = normalizedUpdates.numberOfGuests ?? existing.numberOfGuests;
+    const totalGuests = mergedAdults + mergedChildren + mergedInfants;
+
     const updatedReservation: Reservation = {
       ...existing,
       ...normalizedUpdates,
+      numberOfAdults: mergedAdults,
+      numberOfChildren: mergedChildren,
+      numberOfInfants: mergedInfants,
+      numberOfGuests: totalGuests > 0 ? totalGuests : Math.max(0, mergedGuests || 0),
       numberOfNights: normalizedUpdates.numberOfNights ?? existing.numberOfNights,
       updatedAt: new Date().toISOString(),
     };
@@ -337,8 +356,28 @@ class ReservationService {
     if (normalizedUpdates.specialRequests !== undefined) payload.notas = normalizedUpdates.specialRequests;
     if (normalizedUpdates.total !== undefined) payload.total_monto_reserva = normalizedUpdates.total;
     if (normalizedUpdates.status !== undefined) payload.id_estado_res = mapStatusToEstadoId(normalizedUpdates.status);
-    if (normalizedUpdates.numberOfGuests !== undefined) {
-      payload.adultos = Math.max(1, Math.round(normalizedUpdates.numberOfGuests));
+
+    const adults = normalizedUpdates.numberOfAdults;
+    const children = normalizedUpdates.numberOfChildren;
+    const infants = normalizedUpdates.numberOfInfants;
+
+    if (adults !== undefined || children !== undefined || infants !== undefined) {
+      const safeAdults = Math.max(0, Math.round(adults ?? 0));
+      const safeChildren = Math.max(0, Math.round(children ?? 0));
+      const safeInfants = Math.max(0, Math.round(infants ?? 0));
+      payload.adultos = safeAdults;
+      payload.ninos = safeChildren;
+      payload.bebes = safeInfants;
+      const totalPax = safeAdults + safeChildren + safeInfants;
+      if (totalPax > 0 && payload.adultos === 0) {
+        payload.adultos = Math.min(totalPax, Math.max(1, totalPax - safeChildren - safeInfants));
+      }
+      if (totalPax > 0) {
+        normalizedUpdates.numberOfGuests = totalPax;
+      }
+    } else if (normalizedUpdates.numberOfGuests !== undefined) {
+      const totalGuests = Math.max(0, Math.round(normalizedUpdates.numberOfGuests));
+      payload.adultos = totalGuests > 0 ? totalGuests : 0;
       payload.ninos = 0;
       payload.bebes = 0;
     }

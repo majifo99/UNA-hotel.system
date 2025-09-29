@@ -24,6 +24,7 @@ export const useCreateReservationForm = () => {
       checkOutDate: '',
       numberOfAdults: 1,
       numberOfChildren: 0,
+      numberOfInfants: 0,
       numberOfGuests: 1,
       numberOfNights: 0,
       roomIds: [],
@@ -48,17 +49,18 @@ export const useCreateReservationForm = () => {
   const checkOutDate = watch('checkOutDate');
   const numberOfAdults = watch('numberOfAdults');
   const numberOfChildren = watch('numberOfChildren');
+  const numberOfInfants = watch('numberOfInfants');
   const numberOfGuests = watch('numberOfGuests');
   const roomIds = watch('roomIds');
   const selectedServices = watch('additionalServices');
 
   // Calculate total guests when adults or children change
   useEffect(() => {
-    const totalGuests = (numberOfAdults || 0) + (numberOfChildren || 0);
+    const totalGuests = (numberOfAdults || 0) + (numberOfChildren || 0) + (numberOfInfants || 0);
     if (totalGuests !== numberOfGuests) {
       setValue('numberOfGuests', totalGuests);
     }
-    
+
     // Show alert for children (suggest cribs/additional accommodations)
     if (numberOfChildren && numberOfChildren > 0) {
       showAlert(
@@ -67,7 +69,15 @@ export const useCreateReservationForm = () => {
         'Huéspedes menores de edad'
       );
     }
-  }, [numberOfAdults, numberOfChildren, numberOfGuests, setValue, showAlert]);
+
+    if (numberOfInfants && numberOfInfants > 0) {
+      showAlert(
+        'info',
+        `Ha indicado ${numberOfInfants} bebé${numberOfInfants > 1 ? 's' : ''}. Confirme la disponibilidad de cunas o corrales con el hotel.`,
+        'Atención adicional para bebés'
+      );
+    }
+  }, [numberOfAdults, numberOfChildren, numberOfInfants, numberOfGuests, setValue, showAlert]);
 
   // Calculate nights when dates change
   useEffect(() => {
@@ -97,16 +107,16 @@ export const useCreateReservationForm = () => {
 
   // Additional validation for room capacity
   useEffect(() => {
-    const totalGuests = (numberOfAdults || 0) + (numberOfChildren || 0);
-    
+    const totalGuests = (numberOfAdults || 0) + (numberOfChildren || 0) + (numberOfInfants || 0);
+
     if (totalGuests > 0 && roomIds.length > 0 && availableRooms.length > 0) {
       const selectedRooms = availableRooms.filter(room => roomIds.includes(room.id));
       const totalCapacity = selectedRooms.reduce((sum, room) => sum + room.capacity, 0);
-      
+
       if (totalCapacity < totalGuests) {
         form.setError('numberOfGuests', {
           type: 'manual',
-          message: `Las habitaciones seleccionadas tienen capacidad para ${totalCapacity} huésped${totalCapacity > 1 ? 'es' : ''}. Total requerido: ${totalGuests} (${numberOfAdults || 0} adultos + ${numberOfChildren || 0} niños). Seleccione habitaciones adicionales.`
+          message: `Las habitaciones seleccionadas tienen capacidad para ${totalCapacity} huésped${totalCapacity > 1 ? 'es' : ''}. Total requerido: ${totalGuests} (${numberOfAdults || 0} adultos + ${numberOfChildren || 0} niños + ${numberOfInfants || 0} bebés). Seleccione habitaciones adicionales.`
         });
       } else {
         // Clear the error if validation passes
@@ -115,22 +125,22 @@ export const useCreateReservationForm = () => {
         }
       }
     }
-  }, [numberOfAdults, numberOfChildren, roomIds, availableRooms, form, errors.numberOfGuests]);
+  }, [numberOfAdults, numberOfChildren, numberOfInfants, roomIds, availableRooms, form, errors.numberOfGuests]);
 
   // Check for available rooms suitable for guest count
   useEffect(() => {
-    const totalGuests = (numberOfAdults || 0) + (numberOfChildren || 0);
-    
+    const totalGuests = (numberOfAdults || 0) + (numberOfChildren || 0) + (numberOfInfants || 0);
+
     if (availableRooms.length > 0 && totalGuests > 0) {
       const suitableRooms = availableRooms.filter(room => room.capacity >= totalGuests);
       if (suitableRooms.length === 0) {
         form.setError('numberOfGuests', {
           type: 'manual',
-          message: `No hay habitaciones disponibles con capacidad para ${totalGuests} huésped${totalGuests > 1 ? 'es' : ''} (${numberOfAdults || 0} adultos + ${numberOfChildren || 0} niños) en las fechas seleccionadas`
+          message: `No hay habitaciones disponibles con capacidad para ${totalGuests} huésped${totalGuests > 1 ? 'es' : ''} (${numberOfAdults || 0} adultos + ${numberOfChildren || 0} niños + ${numberOfInfants || 0} bebés) en las fechas seleccionadas`
         });
       }
     }
-  }, [availableRooms, numberOfAdults, numberOfChildren, form]);
+  }, [availableRooms, numberOfAdults, numberOfChildren, numberOfInfants, form]);
 
   const searchAvailableRooms = async () => {
     try {

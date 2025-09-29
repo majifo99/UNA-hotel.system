@@ -6,6 +6,7 @@ interface ReservationDetailsFormProps {
     checkOutDate: string;
     numberOfAdults: number;
     numberOfChildren: number;
+    numberOfInfants: number;
     numberOfGuests: number;
     numberOfNights: number;
   };
@@ -14,9 +15,10 @@ interface ReservationDetailsFormProps {
     checkOutDate?: string;
     numberOfAdults?: string;
     numberOfChildren?: string;
+    numberOfInfants?: string;
     numberOfGuests?: string;
   };
-  onFieldChange: (field: 'checkInDate' | 'checkOutDate' | 'numberOfAdults' | 'numberOfChildren' | 'numberOfGuests', value: string | number) => void;
+  onFieldChange: (field: 'checkInDate' | 'checkOutDate' | 'numberOfAdults' | 'numberOfChildren' | 'numberOfInfants' | 'numberOfGuests', value: string | number) => void;
 }
 
 export const ReservationDetailsForm: React.FC<ReservationDetailsFormProps> = ({
@@ -134,7 +136,7 @@ export const ReservationDetailsForm: React.FC<ReservationDetailsFormProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Niños
@@ -176,6 +178,45 @@ export const ReservationDetailsForm: React.FC<ReservationDetailsFormProps> = ({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
+            Bebés
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              min="0"
+              max="4"
+              value={formData.numberOfInfants || ''}
+              onChange={(e) => onFieldChange('numberOfInfants', parseInt(e.target.value) || 0)}
+              placeholder="Ej: 1"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors ${
+                errors.numberOfInfants 
+                  ? 'border-red-500 focus:ring-red-500 bg-red-50' 
+                  : 'border-gray-300 focus:ring-blue-500'
+              }`}
+              aria-describedby={errors.numberOfInfants ? 'infants-error' : 'infants-help'}
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+              <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m-5 8h6a2 2 0 002-2V9a7 7 0 10-14 0v7a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
+          {errors.numberOfInfants ? (
+            <p id="infants-error" className="mt-1 text-sm text-red-600 flex items-start">
+              <svg className="h-4 w-4 mt-0.5 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              {errors.numberOfInfants}
+            </p>
+          ) : (
+            <p id="infants-help" className="mt-1 text-sm text-gray-500">
+              Bebés (0-2). Confirme si requiere cuna.
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             Total de Huéspedes
           </label>
           <div className="relative">
@@ -201,7 +242,7 @@ export const ReservationDetailsForm: React.FC<ReservationDetailsFormProps> = ({
             </p>
           ) : (
             <p id="total-guests-help" className="mt-1 text-sm text-gray-500">
-              Se calcula automáticamente (adultos + niños)
+              Se calcula automáticamente (adultos + niños + bebés)
             </p>
           )}
         </div>

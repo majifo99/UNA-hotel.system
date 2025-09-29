@@ -48,6 +48,9 @@ export interface Reservation {
   checkInDate: string;
   checkOutDate: string;
   numberOfGuests: number;
+  numberOfAdults: number;
+  numberOfChildren: number;
+  numberOfInfants: number;
   numberOfNights: number;
   
   // Services & Pricing
@@ -204,7 +207,10 @@ export function mapApiReservationToReservation(
   habitaciones?: ApiReservaHabitacion[]
 ): Reservation {
   // Prefer pax information from habitaciones if present, otherwise from the reserva record
-  const numberOfGuestsFromApi = (api.adultos || 0) + (api.ninos || 0) + (api.bebes || 0);
+  const adultsFromApi = Number(api.adultos ?? 0);
+  const childrenFromApi = Number(api.ninos ?? 0);
+  const infantsFromApi = Number(api.bebes ?? 0);
+  const numberOfGuestsFromApi = adultsFromApi + childrenFromApi + infantsFromApi;
 
   let checkIn = '';
   let checkOut = '';
@@ -221,6 +227,13 @@ export function mapApiReservationToReservation(
     // If habitaciones provide pax_total, sum them as a fallback
     const totalPax = habitaciones.reduce((acc, h) => acc + (h.pax_total || 0), 0);
     if (totalPax > 0) numberOfGuests = totalPax;
+  }
+
+  numberOfGuests = Math.max(0, numberOfGuests);
+  let numberOfAdults = adultsFromApi;
+  if (numberOfAdults <= 0 && numberOfGuests > 0) {
+    const inferredAdults = numberOfGuests - childrenFromApi - infantsFromApi;
+    numberOfAdults = inferredAdults > 0 ? inferredAdults : numberOfGuests;
   }
 
   // Calculate nights if we have both dates
@@ -286,6 +299,9 @@ export function mapApiReservationToReservation(
     checkInDate: checkIn,
     checkOutDate: checkOut,
     numberOfGuests,
+    numberOfAdults,
+    numberOfChildren: Math.max(0, childrenFromApi),
+    numberOfInfants: Math.max(0, infantsFromApi),
     numberOfNights,
     additionalServices: [],
     subtotal: api.total_monto_reserva || 0,
@@ -360,6 +376,9 @@ export interface ReservationFormData {
   checkInDate: string;
   checkOutDate: string;
   numberOfGuests: number;
+  numberOfAdults: number;
+  numberOfChildren: number;
+  numberOfInfants: number;
   numberOfNights: number;
   
   // Room selection
@@ -394,6 +413,9 @@ export interface SimpleReservationFormData {
   checkInDate: string;
   checkOutDate: string;
   numberOfGuests: number;
+  numberOfAdults: number;
+  numberOfChildren: number;
+  numberOfInfants: number;
   numberOfNights: number;
   
   // Room selection
@@ -433,6 +455,9 @@ export interface ReservationValidationErrors {
   };
   checkInDate?: string;
   checkOutDate?: string;
+  numberOfAdults?: string;
+  numberOfChildren?: string;
+  numberOfInfants?: string;
   numberOfGuests?: string;
   roomType?: string;
   general?: string;
