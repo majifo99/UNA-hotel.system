@@ -11,6 +11,7 @@ import { CreateGuestPage } from '../modules/guests/pages/CreateGuestPage';
 import FrontDesk from '../modules/frontdesk/components/FrontDesk';
 import { default as CheckInPage } from '../modules/frontdesk/pages/CheckInPage';
 import { default as CheckOutPage } from '../modules/frontdesk/pages/CheckOutPage';
+import { default as RoomChange } from '../modules/frontdesk/components/RoomChange';
 import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
 import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
 
@@ -106,6 +107,10 @@ const router = createBrowserRouter([
           {
             path: 'checkout',
             element: <CheckOutPage />,
+          },
+          {
+            path: 'room-change',
+            element: <RoomChange />,
           },
           {
             path: 'register',

@@ -60,6 +60,10 @@ export const useCheckIn = () => {
         throw new Error('El número de identificación es requerido');
       }
       
+      if (!data.paymentMethod) {
+        throw new Error('El método de pago es requerido');
+      }
+      
       // Validación específica para reservas existentes
       if (!data.isWalkIn && (!data.reservationId || data.reservationId === '')) {
         throw new Error('El ID de reserva es requerido para reservas existentes');
