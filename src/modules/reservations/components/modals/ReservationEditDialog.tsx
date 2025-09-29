@@ -1,4 +1,4 @@
-import React from 'react';
+ï»¿import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,10 +11,12 @@ import { Alert } from '../../../../components/ui/Alert';
 const reservationEditSchema = z.object({
   checkInDate: z.string().min(1, 'La fecha de entrada es obligatoria'),
   checkOutDate: z.string().min(1, 'La fecha de salida es obligatoria'),
-  numberOfGuests: z.coerce.number({ invalid_type_error: 'Debes indicar la cantidad de huéspedes' })
+  numberOfGuests: z
+    .number()
+    .refine((value) => !Number.isNaN(value), 'Debes indicar la cantidad de huÃ©spedes')
     .int('Usa valores enteros')
-    .min(1, 'Al menos 1 huésped'),
-  roomType: z.string().min(1, 'Selecciona el tipo de habitación'),
+    .min(1, 'Al menos 1 huÃ©sped'),
+  roomType: z.string().min(1, 'Selecciona el tipo de habitaciÃ³n'),
 });
 
 type ReservationEditFormValues = z.infer<typeof reservationEditSchema>;
@@ -80,7 +82,7 @@ export const ReservationEditDialog: React.FC<ReservationEditDialogProps> = ({
     }
 
     if (values.numberOfGuests > maxGuests) {
-      setError('numberOfGuests', { type: 'manual', message: `La habitación seleccionada admite máximo ${maxGuests} huéspedes.` });
+      setError('numberOfGuests', { type: 'manual', message: `La habitaciÃ³n seleccionada admite mÃ¡ximo ${maxGuests} huÃ©spedes.` });
       return;
     }
 
@@ -122,7 +124,7 @@ export const ReservationEditDialog: React.FC<ReservationEditDialogProps> = ({
           <Alert
             type="error"
             title="No se pudo guardar los cambios"
-            message="Intenta nuevamente o verifica tu conexión."
+            message="Intenta nuevamente o verifica tu conexiÃ³n."
           />
         )}
 
@@ -159,7 +161,7 @@ export const ReservationEditDialog: React.FC<ReservationEditDialogProps> = ({
 
           <div>
             <label htmlFor="reservation-edit-room" className="mb-1 block text-sm font-medium text-slate-700">
-              Tipo de habitación
+              Tipo de habitaciÃ³n
             </label>
             <select
               id="reservation-edit-room"
@@ -167,10 +169,10 @@ export const ReservationEditDialog: React.FC<ReservationEditDialogProps> = ({
               disabled={isLoadingRoomTypes}
               {...register('roomType')}
             >
-              <option value="">Selecciona una opción</option>
+              <option value="">Selecciona una opciÃ³n</option>
               {roomTypes.map((type) => (
                 <option key={type.type} value={type.type}>
-                  {type.name} ({type.capacity ?? '—'} pax)
+                  {type.name} ({type.capacity ?? 'â€”'} pax)
                 </option>
               ))}
             </select>
@@ -181,7 +183,7 @@ export const ReservationEditDialog: React.FC<ReservationEditDialogProps> = ({
 
           <div>
             <label htmlFor="reservation-edit-pax" className="mb-1 block text-sm font-medium text-slate-700">
-              Huéspedes (PAX)
+              HuÃ©spedes (PAX)
             </label>
             <input
               id="reservation-edit-pax"
@@ -192,7 +194,7 @@ export const ReservationEditDialog: React.FC<ReservationEditDialogProps> = ({
               {...register('numberOfGuests', { valueAsNumber: true })}
             />
             <p className="mt-1 text-xs text-slate-500">
-              Máximo permitido: {maxGuests} huésped{maxGuests === 1 ? '' : 'es'} según el tipo de habitación.
+              MÃ¡ximo permitido: {maxGuests} huÃ©sped{maxGuests === 1 ? '' : 'es'} segÃºn el tipo de habitaciÃ³n.
             </p>
             {formState.errors.numberOfGuests && (
               <p className="mt-1 text-xs text-rose-600">{formState.errors.numberOfGuests.message}</p>
@@ -202,7 +204,7 @@ export const ReservationEditDialog: React.FC<ReservationEditDialogProps> = ({
 
         {nightsPreview && (
           <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-700">
-            Duración estimada: {nightsPreview} noche{nightsPreview === 1 ? '' : 's'}.
+            DuraciÃ³n estimada: {nightsPreview} noche{nightsPreview === 1 ? '' : 's'}.
           </div>
         )}
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Reservation Domain Types - Specific to Reservations Module
  * 
  * These types represent the reservation workflow and business logic
@@ -215,7 +215,7 @@ export function mapApiReservationToReservation(
     const sorted = habitaciones.slice().sort((a, b) => new Date(a.fecha_llegada).getTime() - new Date(b.fecha_llegada).getTime());
     const first = sorted[0];
     checkIn = first.fecha_llegada;
-    // If last habitación has fecha_salida, use it
+    // If last habitaciÃ³n has fecha_salida, use it
     const last = sorted[sorted.length - 1];
     checkOut = last.fecha_salida || first.fecha_salida;
     // If habitaciones provide pax_total, sum them as a fallback
@@ -245,7 +245,8 @@ export function mapApiReservationToReservation(
     mappedGuest = {
       id: String(apiCliente.id_cliente),
       firstName: apiCliente.nombre || '',
-      lastName: [apiCliente.apellido1 || '', apiCliente.apellido2 || ''].filter(Boolean).join(' ') || '',
+      firstLastName: (apiCliente.apellido1 || ''),
+      secondLastName: (apiCliente.apellido2 || ''),
       email: apiCliente.email || '',
       phone: apiCliente.telefono || '',
       documentType: 'id_card',
@@ -436,4 +437,5 @@ export interface ReservationValidationErrors {
   roomType?: string;
   general?: string;
 }
+
 

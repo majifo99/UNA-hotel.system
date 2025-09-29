@@ -1,4 +1,4 @@
-import type { SimpleReservationFormData, Reservation, ApiCreateReservaPayload, ApiReservation, ApiReservaHabitacion } from '../types/domain';
+﻿import type { SimpleReservationFormData, Reservation, ApiCreateReservaPayload, ApiReservation, ApiReservaHabitacion } from '../types/domain';
 import { mapSimpleFormToApiPayload, mapApiReservationToReservation, mapStatusToEstadoId } from '../types';
 import type { AdditionalService } from '../../../types/core/domain';
 import { simulateApiCall, cloneData } from '../utils/mockApi';
@@ -25,7 +25,7 @@ class ReservationService {
         guest: {
           id: reservationData.guestId,
           firstName: 'Pendiente',
-          lastName: 'Asignación',
+          firstLastName: 'Asignación',
           email: 'pending@example.com',
           phone: '',
           nationality: '',
@@ -449,3 +449,5 @@ class ReservationService {
 }
 
 export const reservationService = new ReservationService();
+
+
