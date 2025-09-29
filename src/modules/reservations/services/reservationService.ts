@@ -217,8 +217,14 @@ class ReservationService {
     }
 
     const res = await apiClient.get('/reservas');
-    const payload = res.data as { data?: ApiReservation[] };
-    const apiList = Array.isArray(payload?.data) ? payload.data! : (Array.isArray(res.data) ? res.data : []);
+    // Normalize response which may be either { data: [...] } or a plain array
+    const payload = res.data as { data?: ApiReservation[] } | ApiReservation[] | undefined;
+    let apiList: ApiReservation[] = [];
+    if (Array.isArray((payload as any)?.data)) {
+      apiList = (payload as any).data as ApiReservation[];
+    } else if (Array.isArray(payload)) {
+      apiList = payload as ApiReservation[];
+    }
 
     const reservations = await Promise.all((apiList as ApiReservation[]).map(async (apiReservation) => {
       let habitaciones: ApiReservaHabitacion[] | undefined;
@@ -228,9 +234,14 @@ class ReservationService {
       } else {
         try {
           const habitacionesRes = await apiClient.get(`/reservas/${apiReservation.id_reserva}/habitaciones`);
-          const habitacionesPayload = habitacionesRes.data as { data?: ApiReservaHabitacion[] };
-          const list = Array.isArray(habitacionesPayload?.data) ? habitacionesPayload.data! : (Array.isArray(habitacionesRes.data) ? habitacionesRes.data : []);
-          habitaciones = list as ApiReservaHabitacion[];
+          const habitacionesPayload = habitacionesRes.data as { data?: ApiReservaHabitacion[] } | ApiReservaHabitacion[] | undefined;
+          let habitacionesList: ApiReservaHabitacion[] = [];
+          if (Array.isArray((habitacionesPayload as any)?.data)) {
+            habitacionesList = (habitacionesPayload as any).data as ApiReservaHabitacion[];
+          } else if (Array.isArray(habitacionesPayload)) {
+            habitacionesList = habitacionesPayload as ApiReservaHabitacion[];
+          }
+          habitaciones = habitacionesList as ApiReservaHabitacion[];
         } catch (error: any) {
           console.warn(`[API] No se pudieron obtener las habitaciones para la reserva ${apiReservation.id_reserva}:`, error?.message || error);
         }
