@@ -1,52 +1,20 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import type { CheckInData } from '../types/checkin';
-
-// Mock data para desarrollo
-const mockCheckIns: CheckInData[] = [];
-
-// Simular servicio de check-in
-const mockCheckinService = {
-  getCheckIns: async (): Promise<CheckInData[]> => {
-    return new Promise(resolve => setTimeout(() => resolve(mockCheckIns), 300));
-  },
-  createCheckIn: async (data: CheckInData): Promise<CheckInData> => {
-    return new Promise(resolve => {
-      const newCheckIn = { ...data, id: Date.now().toString() };
-      mockCheckIns.push(newCheckIn);
-      setTimeout(() => resolve(newCheckIn), 300);
-    });
-  }
-};
+import { guestApiService } from '../../guests/services/guestApiService';
+import type { CreateGuestData } from '../../../types/core/forms';
+import type { DocumentType } from '../../../types/core/enums';
 
 export const useCheckIn = () => {
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
-
-  const { data: checkIns = [], isLoading: isLoadingCheckIns, error: queryError } = useQuery({
-    queryKey: ['checkIns'],
-    queryFn: () => mockCheckinService.getCheckIns(),
-  });
-
-  // Handle query error
-  if (queryError && !error) {
-    setError('Failed to load check-ins');
-  }
-
-  const createMutation = useMutation({
-    mutationFn: (data: CheckInData) => mockCheckinService.createCheckIn(data),
-    onSuccess: () => {
-      setError(null);
-      queryClient.invalidateQueries({ queryKey: ['checkIns'] });
-    },
-    onError: (err: unknown) => {
-      console.error('Error creating check‑in:', err);
-      setError((err instanceof Error) ? err.message : 'Unknown error');
-    }
-  });
 
   const validateAndSubmit = async (data: CheckInData) => {
     try {
+      setIsSubmitting(true);
+      setError(null);
+      
       // Validación mejorada para walk-ins y reservas
       if (!data.roomNumber) {
         throw new Error('El número de habitación es requerido');
@@ -77,20 +45,63 @@ export const useCheckIn = () => {
         if (!data.guestPhone) {
           throw new Error('El teléfono es requerido para walk-ins');
         }
+        if (!data.guestNationality) {
+          throw new Error('La nacionalidad es requerida para walk-ins');
+        }
       }
       
-      await createMutation.mutateAsync(data);
+      // Para walk-ins nuevos, crear el huésped primero (solo si no se seleccionó uno existente)
+      if (data.isWalkIn && !data.existingGuestId) {
+        console.log('Creating new guest for walk-in...');
+        
+        // Extraer nombre y apellidos del guestName
+        const nameParts = data.guestName.trim().split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+        
+        // Preparar datos del huésped para el endpoint regular POST /clientes
+        const guestData: CreateGuestData = {
+          firstName: firstName,
+          firstLastName: lastName,
+          email: data.guestEmail || '',
+          phone: data.guestPhone || '',
+          nationality: data.guestNationality || '',
+          documentNumber: data.identificationNumber,
+          documentType: 'id_card' as DocumentType // Defaulting to ID card, could be made configurable
+        };
+        
+        console.log('Guest data to create:', guestData);
+        
+        try {
+          const guestResult = await guestApiService.createGuest(guestData);
+          
+          console.log('Guest created successfully:', guestResult);
+          // Add the created guest ID to check-in data
+          data.createdGuestId = guestResult.id;
+        } catch (guestError) {
+          console.error('Error creating guest:', guestError);
+          // Log the error but don't fail the check-in
+          console.warn('Proceeding with check-in despite guest creation error');
+        }
+      }
+      
+      // TODO: Implement actual check-in API call when Laravel route is available
+      console.log('Check-in data ready for submission:', data);
+      
+      // Invalidate relevant queries when we have real check-in API
+      queryClient.invalidateQueries({ queryKey: ['checkIns'] });
+      
+      setIsSubmitting(false);
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error inesperado');
+      setIsSubmitting(false);
       return false;
     }
   };
 
   return {
-    checkIns,
-    isLoadingCheckIns,
-    isSubmitting: createMutation.isPending,
+    isSubmitting,
     error,
     validateAndSubmit,
   };

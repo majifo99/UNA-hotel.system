@@ -11,9 +11,11 @@ import { useRoomSelection } from '../hooks/useRoomSelection';
 import { useInputValidation } from '../../../hooks/useInputValidation';
 import { ChargeDistributionComponent } from './ChargeDistribution';
 import { ROUTES } from '../../../router/routes';
-import type { CheckInData, PaymentMethod } from '../types/checkin';
+import { DEFAULT_CURRENCY } from '../constants/currencies';
+import type { CheckInData, PaymentMethod, Currency } from '../types/checkin';
 import type { ChargeDistribution } from '../types/chargeDistribution';
 import type { Guest } from '../../../types/core/domain';
+import { CurrencySelector } from './CurrencySelector';
 
 type CheckInType = 'reservation' | 'walk-in';
 type WalkInGuestType = 'new' | 'existing';
@@ -32,6 +34,7 @@ type LocalState = {
   identificationNumber: string;
   paymentStatus: 'pending' | 'completed';
   paymentMethod: PaymentMethod | '';
+  currency: Currency;
   observacion_checkin: string;
   email: string;
   phone: string;
@@ -83,6 +86,7 @@ const CheckIn = () => {
     identificationNumber: '',
     paymentStatus: 'pending',
     paymentMethod: '',
+    currency: DEFAULT_CURRENCY,
     observacion_checkin: '',
     email: '',
     phone: '',
@@ -186,6 +190,7 @@ const CheckIn = () => {
       identificationNumber: formData.identificationNumber,
       paymentStatus: formData.paymentStatus,
       paymentMethod: formData.paymentMethod || undefined,
+      currency: formData.currency,
       observacion_checkin: formData.observacion_checkin || undefined,
       isWalkIn: checkInType === 'walk-in',
       guestEmail: formData.email,
@@ -622,6 +627,20 @@ const CheckIn = () => {
                     ))}
                   </select>
                 </div>
+
+                <div>
+                  <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-2">
+                    Divisa de Pago
+                  </label>
+                  <CurrencySelector
+                    value={formData.currency}
+                    onChange={(currency) => setFormData(prev => ({ 
+                      ...prev, 
+                      currency
+                    }))}
+                    className="w-full"
+                  />
+                </div>
               </div>
             </div>
 
@@ -636,7 +655,7 @@ const CheckIn = () => {
               {/* Campo para establecer el monto total */}
               <div className="mt-4 pt-4 border-t border-purple-200">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Monto Total de la Estancia (USD)
+                  Monto Total de la Estancia ({formData.currency})
                 </label>
                 <input
                   type="number"
