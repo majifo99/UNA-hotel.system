@@ -111,7 +111,7 @@ export const useGuestFullForm = () => {
     const fields = {
       nombre: { value: formData.nombre, rules: { required: true, minLength: 2, maxLength: 15 } },
       apellido1: { value: formData.apellido1, rules: { required: true, minLength: 2, maxLength: 15 } },
-      email: { value: formData.email, rules: { required: true, pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, maxLength: 40 } },
+      email: { value: formData.email, rules: { required: true, pattern: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, maxLength: 40 } },
       telefono: { value: formData.telefono, rules: { required: true } },
       nacionalidad: { value: formData.nacionalidad, rules: { required: true } },
       numero_doc: { value: formData.numero_doc, rules: { required: true } },

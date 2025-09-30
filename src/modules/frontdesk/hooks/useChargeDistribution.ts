@@ -77,9 +77,22 @@ export const useChargeDistribution = (totalGuests: number = 1, totalAmount: numb
     total: 0
   });
 
-  // Generar ID único para distribuciones
+  // Generar ID único para distribuciones usando método más seguro
   const generateId = useCallback(() => {
-    return `dist_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Usar crypto.randomUUID() si está disponible, sino fallback a método más seguro
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return `dist_${crypto.randomUUID()}`;
+    }
+    
+    // Fallback: usar múltiples fuentes de entropía
+    const timestamp = Date.now().toString(36);
+    const randomPart = Array.from(
+      { length: 12 }, 
+      () => Math.floor(Math.random() * 36).toString(36)
+    ).join('');
+    const performanceNow = performance.now().toString(36).replace('.', '');
+    
+    return `dist_${timestamp}_${performanceNow}_${randomPart}`;
   }, []);
 
   // Calcular si la distribución es válida

@@ -64,7 +64,7 @@ export const INPUT_PATTERNS = {
   ALPHANUMERIC: /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s]+$/,
   
   // Email básico
-  EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+  EMAIL: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
   
   // Teléfono (números, espacios, guiones, paréntesis, +)
   PHONE: /^[\d\s()+-]+$/,
