@@ -67,22 +67,22 @@ export const INPUT_PATTERNS = {
   EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
   
   // Teléfono (números, espacios, guiones, paréntesis, +)
-  PHONE: /^[\d\s\-\(\)\+]+$/,
+  PHONE: /^[\d\s()+-]+$/,
   
   // Código postal (alfanumérico)
-  POSTAL_CODE: /^[a-zA-Z0-9\-\s]+$/,
+  POSTAL_CODE: /^[a-zA-Z0-9\s-]+$/,
   
   // Número de habitación (números y letras)
-  ROOM_NUMBER: /^[a-zA-Z0-9\-]+$/,
+  ROOM_NUMBER: /^[a-zA-Z0-9-]+$/,
   
   // ID de documento (alfanumérico con guiones)
-  DOCUMENT_ID: /^[a-zA-Z0-9\-]+$/,
+  DOCUMENT_ID: /^[a-zA-Z0-9-]+$/,
   
   // Moneda (números con hasta 2 decimales)
   CURRENCY: /^\d+(\.\d{1,2})?$/,
   
   // Solo texto (letras, números, espacios y puntuación básica)
-  TEXT_WITH_PUNCTUATION: /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.,;:!?\-\(\)]+$/
+  TEXT_WITH_PUNCTUATION: /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,;:!?()-]+$/
 } as const;
 
 // Mensajes de error

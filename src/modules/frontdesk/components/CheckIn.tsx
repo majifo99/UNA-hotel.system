@@ -44,6 +44,62 @@ type LocalState = {
   guestSearchTerm: string;
 };
 
+// Helper functions to reduce complexity
+const getInputClasses = (hasError: boolean, isReadOnly?: boolean) => {
+  const baseClasses = 'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2';
+  const errorClasses = hasError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500';
+  const readOnlyClasses = isReadOnly ? 'bg-gray-50' : '';
+  return `${baseClasses} ${errorClasses} ${readOnlyClasses}`;
+};
+
+const getButtonClasses = (isActive: boolean, variant: 'blue' | 'green' | 'purple' = 'blue') => {
+  const colorMap = {
+    blue: isActive ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900',
+    green: isActive ? 'bg-white text-green-600 shadow-sm' : 'text-gray-600 hover:text-gray-900',
+    purple: isActive ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+  };
+  return `px-6 py-2 rounded-md text-sm font-medium transition-colors ${colorMap[variant]}`;
+};
+
+const isFieldReadOnly = (checkInType: CheckInType, walkInGuestType: WalkInGuestType, selectedGuestId: string) => {
+  return checkInType === 'walk-in' && walkInGuestType === 'existing' && selectedGuestId !== '';
+};
+
+// Helper function to get room input classes
+const getRoomInputClasses = (hasError: boolean, isEditable: boolean) => {
+  const baseClasses = 'w-20 px-3 py-2 border-2 rounded-md focus:outline-none text-center text-lg font-semibold transition-all';
+  
+  if (hasError) {
+    return `${baseClasses} border-red-500 ring-2 ring-red-200 bg-white`;
+  }
+  
+  if (isEditable) {
+    return `${baseClasses} border-blue-500 ring-2 ring-blue-200 bg-white`;
+  }
+  
+  return `${baseClasses} border-gray-300 bg-white hover:border-gray-400`;
+};
+
+// Helper function to get room status display
+const getRoomStatusDisplay = (status: string) => {
+  const getStatusColor = () => {
+    if (status === 'available') return 'text-green-600';
+    if (status === 'occupied') return 'text-red-600';
+    return 'text-yellow-600';
+  };
+  
+  const getStatusText = () => {
+    if (status === 'available') return 'Disponible';
+    if (status === 'occupied') return 'Ocupada';
+    return 'Mantenimiento';
+  };
+  
+  return {
+    color: getStatusColor(),
+    text: getStatusText()
+  };
+};
+
 const CheckIn = () => {
   const navigate = useNavigate();
   const { validateAndSubmit, isSubmitting, error } = useCheckIn();
@@ -260,11 +316,7 @@ const CheckIn = () => {
                 <button
                   type="button"
                   onClick={() => handleCheckInTypeChange('reservation')}
-                  className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                    checkInType === 'reservation'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                  className={getButtonClasses(checkInType === 'reservation')}
                 >
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
@@ -274,11 +326,7 @@ const CheckIn = () => {
                 <button
                   type="button"
                   onClick={() => handleCheckInTypeChange('walk-in')}
-                  className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                    checkInType === 'walk-in'
-                      ? 'bg-white text-green-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                  className={getButtonClasses(checkInType === 'walk-in', 'green')}
                 >
                   <div className="flex items-center gap-2">
                     <UserPlus className="w-4 h-4" />
@@ -314,7 +362,7 @@ const CheckIn = () => {
                     type="text"
                     value={formData.reservationId}
                     onChange={(e) => setFormData(prev => ({ ...prev, reservationId: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={getInputClasses(false, false)}
                     required={checkInType === 'reservation'}
                     placeholder="Ingrese el ID de la reserva"
                   />
@@ -341,11 +389,7 @@ const CheckIn = () => {
                       <button
                         type="button"
                         onClick={() => handleWalkInGuestTypeChange('new')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                          walkInGuestType === 'new'
-                            ? 'bg-white text-green-600 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900'
-                        }`}
+                        className={getButtonClasses(walkInGuestType === 'new', 'green')}
                       >
                         <div className="flex items-center gap-2">
                           <UserPlus className="w-4 h-4" />
@@ -355,11 +399,7 @@ const CheckIn = () => {
                       <button
                         type="button"
                         onClick={() => handleWalkInGuestTypeChange('existing')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                          walkInGuestType === 'existing'
-                            ? 'bg-white text-green-600 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900'
-                        }`}
+                        className={getButtonClasses(walkInGuestType === 'existing', 'green')}
                       >
                         <div className="flex items-center gap-2">
                           <Search className="w-4 h-4" />
@@ -372,7 +412,7 @@ const CheckIn = () => {
               )}
 
               {/* Búsqueda de huésped existente para Walk-In */}
-              {checkInType === 'walk-in' && walkInGuestType === 'existing' && (
+              {isFieldReadOnly(checkInType, walkInGuestType, '') && (
                 <div className="mb-6">
                   <label htmlFor="guestSearch" className="block text-sm font-medium text-gray-700 mb-2">
                     Buscar Huésped <span className="text-red-500">*</span>
@@ -441,13 +481,9 @@ const CheckIn = () => {
                       }
                     }}
                     onBlur={(e) => validate('firstName', e.target.value, getCommonRules('firstName'))}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                      errors.firstName 
-                        ? 'border-red-500 focus:ring-red-500' 
-                        : 'border-gray-300 focus:ring-blue-500'
-                    }`}
+                    className={getInputClasses(!!errors.firstName, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId))}
                     required
-                    readOnly={checkInType === 'walk-in' && walkInGuestType === 'existing' && formData.selectedGuestId !== ''}
+                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId)}
                     placeholder="Ej: Juan"
                   />
                   {errors.firstName && (
@@ -473,13 +509,9 @@ const CheckIn = () => {
                       }
                     }}
                     onBlur={(e) => validate('lastName', e.target.value, getCommonRules('lastName'))}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                      errors.lastName 
-                        ? 'border-red-500 focus:ring-red-500' 
-                        : 'border-gray-300 focus:ring-blue-500'
-                    }`}
+                    className={getInputClasses(!!errors.lastName, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId))}
                     required
-                    readOnly={checkInType === 'walk-in' && walkInGuestType === 'existing' && formData.selectedGuestId !== ''}
+                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId)}
                     placeholder="Ej: Pérez"
                   />
                   {errors.lastName && (
@@ -501,13 +533,9 @@ const CheckIn = () => {
                       clearError('email');
                     }}
                     onBlur={(e) => validate('email', e.target.value, getCommonRules('email'))}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                      errors.email 
-                        ? 'border-red-500 focus:ring-red-500' 
-                        : 'border-gray-300 focus:ring-blue-500'
-                    }`}
+                    className={getInputClasses(!!errors.email, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId))}
                     required
-                    readOnly={checkInType === 'walk-in' && walkInGuestType === 'existing' && formData.selectedGuestId !== ''}
+                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId)}
                     placeholder="Ej: juan@email.com"
                   />
                   {errors.email && (
@@ -527,7 +555,7 @@ const CheckIn = () => {
                       id: 'phone',
                       name: 'phone',
                       required: true,
-                      readOnly: checkInType === 'walk-in' && walkInGuestType === 'existing' && formData.selectedGuestId !== '',
+                      readOnly: isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId),
                     }}
                     inputClass="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -544,7 +572,7 @@ const CheckIn = () => {
                     selectButtonClassName="react-flags-select-button"
                     aria-labelledby="nationality-label"
                     aria-required="true"
-                    disabled={checkInType === 'walk-in' && walkInGuestType === 'existing' && formData.selectedGuestId !== ''}
+                    disabled={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId)}
                   />
                 </div>
 
@@ -566,13 +594,9 @@ const CheckIn = () => {
                       }
                     }}
                     onBlur={(e) => validate('identificationNumber', e.target.value, getCommonRules('identification'))}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                      errors.identificationNumber 
-                        ? 'border-red-500 focus:ring-red-500' 
-                        : 'border-gray-300 focus:ring-blue-500'
-                    }`}
+                    className={getInputClasses(!!errors.identificationNumber, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId))}
                     required
-                    readOnly={checkInType === 'walk-in' && walkInGuestType === 'existing' && formData.selectedGuestId !== ''}
+                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId)}
                     placeholder="Ej: 123456789 o AB123456"
                   />
                   {errors.identificationNumber && (
@@ -664,7 +688,7 @@ const CheckIn = () => {
                   step="0.01"
                   value={totalAmount}
                   onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
+                    const value = Number.parseFloat(e.target.value) || 0;
                     if (value >= 0 && value <= 999999.99) {
                       setTotalAmount(value);
                       clearError('totalAmount');
@@ -755,7 +779,7 @@ const CheckIn = () => {
                       max="20"
                       value={formData.adultos}
                       onChange={(e) => {
-                        const adults = parseInt(e.target.value) || 1;
+                        const adults = Number.parseInt(e.target.value) || 1;
                         if (adults >= 1 && adults <= 20) {
                           setFormData(prev => ({ 
                             ...prev, 
@@ -766,11 +790,7 @@ const CheckIn = () => {
                         }
                       }}
                       onBlur={(e) => validate('adultos', e.target.value, getCommonRules('adults'))}
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                        errors.adultos 
-                          ? 'border-red-500 focus:ring-red-500' 
-                          : 'border-gray-300 focus:ring-blue-500'
-                      }`}
+                      className={getInputClasses(!!errors.adultos, false)}
                       required
                     />
                     {errors.adultos && (
@@ -789,7 +809,7 @@ const CheckIn = () => {
                       max="15"
                       value={formData.ninos}
                       onChange={(e) => {
-                        const children = parseInt(e.target.value) || 0;
+                        const children = Number.parseInt(e.target.value) || 0;
                         if (children >= 0 && children <= 15) {
                           setFormData(prev => ({ 
                             ...prev, 
@@ -800,11 +820,7 @@ const CheckIn = () => {
                         }
                       }}
                       onBlur={(e) => validate('ninos', e.target.value, getCommonRules('children'))}
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                        errors.ninos 
-                          ? 'border-red-500 focus:ring-red-500' 
-                          : 'border-gray-300 focus:ring-blue-500'
-                      }`}
+                      className={getInputClasses(!!errors.ninos, false)}
                     />
                     {errors.ninos && (
                       <p className="mt-1 text-sm text-red-600">{errors.ninos}</p>
@@ -822,7 +838,7 @@ const CheckIn = () => {
                       max="10"
                       value={formData.bebes}
                       onChange={(e) => {
-                        const babies = parseInt(e.target.value) || 0;
+                        const babies = Number.parseInt(e.target.value) || 0;
                         if (babies >= 0 && babies <= 10) {
                           setFormData(prev => ({ 
                             ...prev, 
@@ -833,11 +849,7 @@ const CheckIn = () => {
                         }
                       }}
                       onBlur={(e) => validate('bebes', e.target.value, getCommonRules('babies'))}
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                        errors.bebes 
-                          ? 'border-red-500 focus:ring-red-500' 
-                          : 'border-gray-300 focus:ring-blue-500'
-                      }`}
+                      className={getInputClasses(!!errors.bebes, false)}
                     />
                     {errors.bebes && (
                       <p className="mt-1 text-sm text-red-600">{errors.bebes}</p>
@@ -874,13 +886,7 @@ const CheckIn = () => {
                           // Retrasar el cierre para permitir clicks en sugerencias
                           setTimeout(() => setIsRoomEditable(false), 200);
                         }}
-                        className={`w-20 px-3 py-2 border-2 rounded-md focus:outline-none text-center text-lg font-semibold transition-all ${
-                          errors.roomNumber
-                            ? 'border-red-500 ring-2 ring-red-200 bg-white'
-                            : isRoomEditable 
-                            ? 'border-blue-500 ring-2 ring-blue-200 bg-white' 
-                            : 'border-gray-300 bg-white hover:border-gray-400'
-                        }`}
+                        className={getRoomInputClasses(!!errors.roomNumber, isRoomEditable)}
                         required
                         placeholder="101"
                       />
@@ -961,12 +967,8 @@ const CheckIn = () => {
                         </div>
                         <div>
                           <span className="font-medium">Estado:</span> 
-                          <span className={`ml-1 ${
-                            roomInfo.status === 'available' ? 'text-green-600' : 
-                            roomInfo.status === 'occupied' ? 'text-red-600' : 'text-yellow-600'
-                          }`}>
-                            {roomInfo.status === 'available' ? 'Disponible' : 
-                             roomInfo.status === 'occupied' ? 'Ocupada' : 'Mantenimiento'}
+                          <span className={`ml-1 ${getRoomStatusDisplay(roomInfo.status).color}`}>
+                            {getRoomStatusDisplay(roomInfo.status).text}
                           </span>
                         </div>
                         <div>
@@ -984,9 +986,9 @@ const CheckIn = () => {
                       <div className="mt-2">
                         <span className="font-medium text-xs text-gray-600">Amenidades:</span>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {roomInfo.amenities.map((amenity, index) => (
+                          {roomInfo.amenities.map((amenity) => (
                             <span 
-                              key={index} 
+                              key={amenity} 
                               className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
                             >
                               {amenity}
@@ -1017,17 +1019,13 @@ const CheckIn = () => {
                   onChange={(e) => {
                     const value = e.target.value;
                     // Permitir texto con puntuación básica
-                    if (/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.,;:!?\-\(\)]*$/.test(value)) {
+                    if (/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,;:!?\-()]*$/.test(value)) {
                       setFormData(prev => ({ ...prev, observacion_checkin: value }));
                       clearError('observaciones');
                     }
                   }}
                   onBlur={(e) => validate('observaciones', e.target.value, getCommonRules('observations'))}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 resize-none ${
-                    errors.observaciones 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : 'border-gray-300 focus:ring-blue-500'
-                  }`}
+                  className={`${getInputClasses(!!errors.observaciones, false)} resize-none`}
                   rows={3}
                   placeholder="Observaciones adicionales sobre el check-in... (máx. 500 caracteres)"
                 />

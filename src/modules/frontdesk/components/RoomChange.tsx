@@ -121,21 +121,21 @@ const RoomChange = () => {
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Información Actual</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <span className="block text-sm font-medium text-gray-700 mb-1">
                     Huésped
-                  </label>
+                  </span>
                   <p className="text-gray-900 font-medium">{formData.guestName}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <span className="block text-sm font-medium text-gray-700 mb-1">
                     Reserva
-                  </label>
+                  </span>
                   <p className="text-gray-900 font-medium">{formData.reservationId}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <span className="block text-sm font-medium text-gray-700 mb-1">
                     Habitación Actual
-                  </label>
+                  </span>
                   <p className="text-gray-900 font-medium">#{formData.currentRoomNumber}</p>
                 </div>
               </div>
@@ -154,7 +154,7 @@ const RoomChange = () => {
                     value={formData.newRoomId}
                     onChange={(e) => setFormData(prev => ({ 
                       ...prev, 
-                      newRoomId: e.target.value ? parseInt(e.target.value) : '' 
+                      newRoomId: e.target.value ? Number.parseInt(e.target.value) : '' 
                     }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -218,7 +218,7 @@ const RoomChange = () => {
                     min="1"
                     max="10"
                     value={formData.adultos}
-                    onChange={(e) => setFormData(prev => ({ ...prev, adultos: parseInt(e.target.value) }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, adultos: Number.parseInt(e.target.value) }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
@@ -234,7 +234,7 @@ const RoomChange = () => {
                     min="0"
                     max="10"
                     value={formData.ninos}
-                    onChange={(e) => setFormData(prev => ({ ...prev, ninos: parseInt(e.target.value) }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, ninos: Number.parseInt(e.target.value) }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -249,7 +249,7 @@ const RoomChange = () => {
                     min="0"
                     max="5"
                     value={formData.bebes}
-                    onChange={(e) => setFormData(prev => ({ ...prev, bebes: parseInt(e.target.value) }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, bebes: Number.parseInt(e.target.value) }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>

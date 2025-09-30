@@ -16,10 +16,92 @@ export interface FieldValidation {
   error: string | null;
 }
 
+// Helper functions to reduce cognitive complexity
+
+const validateRequired = (value: string, isRequired: boolean): FieldValidation | null => {
+  if (isRequired && !value.trim()) {
+    return { isValid: false, error: VALIDATION_MESSAGES.REQUIRED };
+  }
+  return null;
+};
+
+const validateEmptyOptional = (value: string, isRequired: boolean): FieldValidation | null => {
+  if (!value.trim() && !isRequired) {
+    return { isValid: true, error: null };
+  }
+  return null;
+};
+
+const validateLength = (value: string, minLength?: number, maxLength?: number): FieldValidation | null => {
+  if (maxLength && value.length > maxLength) {
+    return { isValid: false, error: VALIDATION_MESSAGES.MAX_LENGTH(maxLength) };
+  }
+  
+  if (minLength && value.length < minLength) {
+    return { isValid: false, error: VALIDATION_MESSAGES.MIN_LENGTH(minLength) };
+  }
+  
+  return null;
+};
+
+const getPatternErrorMessage = (pattern: RegExp): string => {
+  const patternMap = new Map([
+    [INPUT_PATTERNS.LETTERS_ONLY, VALIDATION_MESSAGES.LETTERS_ONLY],
+    [INPUT_PATTERNS.NUMBERS_ONLY, VALIDATION_MESSAGES.NUMBERS_ONLY],
+    [INPUT_PATTERNS.EMAIL, VALIDATION_MESSAGES.INVALID_EMAIL],
+    [INPUT_PATTERNS.PHONE, VALIDATION_MESSAGES.INVALID_PHONE],
+    [INPUT_PATTERNS.ROOM_NUMBER, VALIDATION_MESSAGES.INVALID_ROOM],
+    [INPUT_PATTERNS.CURRENCY, VALIDATION_MESSAGES.INVALID_CURRENCY]
+  ]);
+  
+  return patternMap.get(pattern) || VALIDATION_MESSAGES.ALPHANUMERIC_ONLY;
+};
+
+const validatePattern = (value: string, pattern?: RegExp): FieldValidation | null => {
+  if (pattern && !pattern.test(value)) {
+    return { isValid: false, error: getPatternErrorMessage(pattern) };
+  }
+  return null;
+};
+
+const getNumericErrorMessage = (fieldName: string, limit: number, isMin: boolean): string => {
+  const isGuestField = fieldName.includes('guest') || fieldName.includes('adulto');
+  
+  if (isGuestField) {
+    return isMin ? VALIDATION_MESSAGES.MIN_GUESTS : VALIDATION_MESSAGES.MAX_GUESTS(limit);
+  }
+  
+  return `Valor ${isMin ? 'mínimo' : 'máximo'}: ${limit}`;
+};
+
+const validateNumericRange = (value: string, fieldName: string, min?: number, max?: number): FieldValidation | null => {
+  const numericValue = Number(value);
+  
+  if (min !== undefined && numericValue < min) {
+    return { isValid: false, error: getNumericErrorMessage(fieldName, min, true) };
+  }
+  
+  if (max !== undefined && numericValue > max) {
+    return { isValid: false, error: getNumericErrorMessage(fieldName, max, false) };
+  }
+  
+  return null;
+};
+
+const validateCustom = (value: string, customValidator?: (value: string) => string | null): FieldValidation | null => {
+  if (customValidator) {
+    const customError = customValidator(value);
+    if (customError) {
+      return { isValid: false, error: customError };
+    }
+  }
+  return null;
+};
+
 export const useInputValidation = () => {
   const [errors, setErrors] = useState<Record<string, string | null>>({});
 
-  // Validar un campo individual
+  // Validar un campo individual - Refactored to reduce cognitive complexity
   const validateField = useCallback((
     fieldName: string,
     value: string | number,
@@ -27,71 +109,20 @@ export const useInputValidation = () => {
   ): FieldValidation => {
     const stringValue = String(value);
     
-    // Campo requerido
-    if (rules.required && !stringValue.trim()) {
-      return { isValid: false, error: VALIDATION_MESSAGES.REQUIRED };
-    }
+    // Run validation checks in sequence
+    const validationChecks = [
+      () => validateRequired(stringValue, rules.required || false),
+      () => validateEmptyOptional(stringValue, rules.required || false),
+      () => validateLength(stringValue, rules.minLength, rules.maxLength),
+      () => validatePattern(stringValue, rules.pattern),
+      () => validateNumericRange(stringValue, fieldName, rules.min, rules.max),
+      () => validateCustom(stringValue, rules.customValidator)
+    ];
     
-    // Si está vacío y no es requerido, es válido
-    if (!stringValue.trim() && !rules.required) {
-      return { isValid: true, error: null };
-    }
-    
-    // Longitud máxima
-    if (rules.maxLength && stringValue.length > rules.maxLength) {
-      return { isValid: false, error: VALIDATION_MESSAGES.MAX_LENGTH(rules.maxLength) };
-    }
-    
-    // Longitud mínima
-    if (rules.minLength && stringValue.length < rules.minLength) {
-      return { isValid: false, error: VALIDATION_MESSAGES.MIN_LENGTH(rules.minLength) };
-    }
-    
-    // Patrón
-    if (rules.pattern && !rules.pattern.test(stringValue)) {
-      // Determinar mensaje según el patrón
-      if (rules.pattern === INPUT_PATTERNS.LETTERS_ONLY) {
-        return { isValid: false, error: VALIDATION_MESSAGES.LETTERS_ONLY };
-      }
-      if (rules.pattern === INPUT_PATTERNS.NUMBERS_ONLY) {
-        return { isValid: false, error: VALIDATION_MESSAGES.NUMBERS_ONLY };
-      }
-      if (rules.pattern === INPUT_PATTERNS.EMAIL) {
-        return { isValid: false, error: VALIDATION_MESSAGES.INVALID_EMAIL };
-      }
-      if (rules.pattern === INPUT_PATTERNS.PHONE) {
-        return { isValid: false, error: VALIDATION_MESSAGES.INVALID_PHONE };
-      }
-      if (rules.pattern === INPUT_PATTERNS.ROOM_NUMBER) {
-        return { isValid: false, error: VALIDATION_MESSAGES.INVALID_ROOM };
-      }
-      if (rules.pattern === INPUT_PATTERNS.CURRENCY) {
-        return { isValid: false, error: VALIDATION_MESSAGES.INVALID_CURRENCY };
-      }
-      return { isValid: false, error: VALIDATION_MESSAGES.ALPHANUMERIC_ONLY };
-    }
-    
-    // Valor mínimo (para números)
-    if (rules.min !== undefined && Number(stringValue) < rules.min) {
-      if (fieldName.includes('guest') || fieldName.includes('adulto')) {
-        return { isValid: false, error: VALIDATION_MESSAGES.MIN_GUESTS };
-      }
-      return { isValid: false, error: `Valor mínimo: ${rules.min}` };
-    }
-    
-    // Valor máximo (para números)
-    if (rules.max !== undefined && Number(stringValue) > rules.max) {
-      if (fieldName.includes('guest') || fieldName.includes('adulto')) {
-        return { isValid: false, error: VALIDATION_MESSAGES.MAX_GUESTS(rules.max) };
-      }
-      return { isValid: false, error: `Valor máximo: ${rules.max}` };
-    }
-    
-    // Validador personalizado
-    if (rules.customValidator) {
-      const customError = rules.customValidator(stringValue);
-      if (customError) {
-        return { isValid: false, error: customError };
+    for (const check of validationChecks) {
+      const result = check();
+      if (result) {
+        return result;
       }
     }
     
@@ -201,9 +232,9 @@ export const useInputValidation = () => {
   ) => {
     const results: Record<string, boolean> = {};
     
-    Object.entries(fields).forEach(([fieldName, { value, rules }]) => {
+    for (const [fieldName, { value, rules }] of Object.entries(fields)) {
       results[fieldName] = validate(fieldName, value, rules);
-    });
+    }
     
     return {
       isValid: Object.values(results).every(Boolean),
