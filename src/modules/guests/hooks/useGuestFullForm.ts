@@ -6,46 +6,48 @@ interface GuestFullFormData extends CreateGuestFullRequest {
   apellido2?: string; // Campo opcional adicional
 }
 
+// Default form data configuration to avoid duplication
+const createInitialFormData = (): GuestFullFormData => ({
+  nombre: '',
+  apellido1: '',
+  apellido2: '',
+  email: '',
+  telefono: '',
+  nacionalidad: 'Costa Rica',
+  id_tipo_doc: 1, // Por defecto cédula
+  numero_doc: '',
+  direccion: '',
+  fecha_nacimiento: '',
+  genero: 'M',
+  es_vip: false,
+  notas_personal: '',
+  roomPreferences: {
+    bedType: 'queen',
+    floor: 'middle',
+    view: 'city',
+    smokingAllowed: false
+  },
+  companions: {
+    typicalTravelGroup: 'family',
+    hasChildren: false,
+    childrenAgeRanges: [],
+    preferredOccupancy: 2,
+    needsConnectedRooms: false
+  },
+  allergies: [],
+  dietaryRestrictions: [],
+  medicalNotes: '',
+  emergencyContact: {
+    name: '',
+    relationship: '',
+    phone: '',
+    email: ''
+  }
+});
+
 export const useGuestFullForm = () => {
   const { errors, validateMultiple, clearError } = useInputValidation();
-  
-  const [formData, setFormData] = useState<GuestFullFormData>({
-    nombre: '',
-    apellido1: '',
-    apellido2: '',
-    email: '',
-    telefono: '',
-    nacionalidad: 'Costa Rica',
-    id_tipo_doc: 1, // Por defecto cédula
-    numero_doc: '',
-    direccion: '',
-    fecha_nacimiento: '',
-    genero: 'M',
-    es_vip: false,
-    notas_personal: '',
-    roomPreferences: {
-      bedType: 'queen',
-      floor: 'middle',
-      view: 'city',
-      smokingAllowed: false
-    },
-    companions: {
-      typicalTravelGroup: 'family',
-      hasChildren: false,
-      childrenAgeRanges: [],
-      preferredOccupancy: 2,
-      needsConnectedRooms: false
-    },
-    allergies: [],
-    dietaryRestrictions: [],
-    medicalNotes: '',
-    emergencyContact: {
-      name: '',
-      relationship: '',
-      phone: '',
-      email: ''
-    }
-  });
+  const [formData, setFormData] = useState<GuestFullFormData>(createInitialFormData);
 
   const handleInputChange = (field: keyof GuestFullFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -120,43 +122,7 @@ export const useGuestFullForm = () => {
   };
 
   const resetForm = () => {
-    setFormData({
-      nombre: '',
-      apellido1: '',
-      apellido2: '',
-      email: '',
-      telefono: '',
-      nacionalidad: 'Costa Rica',
-      id_tipo_doc: 1,
-      numero_doc: '',
-      direccion: '',
-      fecha_nacimiento: '',
-      genero: 'M',
-      es_vip: false,
-      notas_personal: '',
-      roomPreferences: {
-        bedType: 'queen',
-        floor: 'middle',
-        view: 'city',
-        smokingAllowed: false
-      },
-      companions: {
-        typicalTravelGroup: 'family',
-        hasChildren: false,
-        childrenAgeRanges: [],
-        preferredOccupancy: 2,
-        needsConnectedRooms: false
-      },
-      allergies: [],
-      dietaryRestrictions: [],
-      medicalNotes: '',
-      emergencyContact: {
-        name: '',
-        relationship: '',
-        phone: '',
-        email: ''
-      }
-    });
+    setFormData(createInitialFormData());
   };
 
   return {
