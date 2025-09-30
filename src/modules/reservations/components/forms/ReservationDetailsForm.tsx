@@ -22,20 +22,24 @@ interface ReservationDetailsFormProps {
 }
 
 // Presentational subcomponents hoisted to top-level to avoid nested component definitions
-const HelpOrError: React.FC<{ id?: string; error?: string; help?: string }> = ({ id, error, help }) => (
-  <>
-    {error ? (
+const HelpOrError: React.FC<{ id?: string; error?: string; help?: string }> = ({ id, error, help }) => {
+  if (error) {
+    return (
       <p id={id} className="mt-1 text-sm text-red-600 flex items-start">
         <svg className="h-4 w-4 mt-0.5 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
         </svg>
         {error}
       </p>
-    ) : (
-      help ? <p id={id} className="mt-1 text-sm text-gray-500">{help}</p> : null
-    )}
-  </>
-);
+    );
+  }
+
+  if (help) {
+    return <p id={id} className="mt-1 text-sm text-gray-500">{help}</p>;
+  }
+
+  return null;
+};
 
 const DateField: React.FC<{
   label: string;
@@ -138,16 +142,16 @@ export const ReservationDetailsForm: React.FC<ReservationDetailsFormProps> = ({ 
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Total de Huéspedes</label>
+          <label htmlFor="total-guests" className="block text-sm font-medium text-gray-700 mb-2">Total de Huéspedes</label>
           <div className="relative">
-            <input type="number" value={formData.numberOfGuests} readOnly className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed" aria-describedby="total-guests-help" />
+              <input id="total-guests" type="number" value={formData.numberOfGuests} readOnly className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed" aria-describedby="total-guests-help" />
             <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
               <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </div>
           </div>
-          <HelpOrError error={errors.numberOfGuests} help={"Se calcula automáticamente (adultos + niños + bebés)"} />
+          <HelpOrError id="total-guests-help" error={errors.numberOfGuests} help={"Se calcula automáticamente (adultos + niños + bebés)"} />
         </div>
       </div>
 
