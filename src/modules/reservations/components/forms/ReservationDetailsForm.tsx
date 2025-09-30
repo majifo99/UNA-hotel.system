@@ -21,6 +21,93 @@ interface ReservationDetailsFormProps {
   onFieldChange: (field: 'checkInDate' | 'checkOutDate' | 'numberOfAdults' | 'numberOfChildren' | 'numberOfInfants' | 'numberOfGuests', value: string | number) => void;
 }
 
+// Presentational subcomponents hoisted to top-level to avoid nested component definitions
+const HelpOrError: React.FC<{ id?: string; error?: string; help?: string }> = ({ id, error, help }) => (
+  <>
+    {error ? (
+      <p id={id} className="mt-1 text-sm text-red-600 flex items-start">
+        <svg className="h-4 w-4 mt-0.5 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+        </svg>
+        {error}
+      </p>
+    ) : (
+      help ? <p id={id} className="mt-1 text-sm text-gray-500">{help}</p> : null
+    )}
+  </>
+);
+
+const DateField: React.FC<{
+  label: string;
+  value: string;
+  min?: string;
+  max?: string;
+  error?: string;
+  id?: string;
+  onChange: (v: string) => void;
+}> = ({ label, value, min, max, error, onChange, id }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+    <input
+      type="date"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      min={min}
+      max={max}
+      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors ${
+        error ? 'border-red-500 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:ring-blue-500'
+      }`}
+      aria-describedby={error ? id : undefined}
+    />
+    <HelpOrError id={id} error={error} />
+  </div>
+);
+
+const NumberField: React.FC<{
+  label: string;
+  min?: number;
+  max?: number;
+  value: number | undefined;
+  placeholder?: string;
+  error?: string;
+  help?: string;
+  onChange: (v: number) => void;
+}> = ({ label, min, max, value, placeholder, error, help, onChange }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+    <div className="relative">
+      <input
+        type="number"
+        min={min}
+        max={max}
+        value={value ?? ''}
+        onChange={(e) => onChange(Number.parseInt(e.target.value) || 0)}
+        placeholder={placeholder}
+        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors ${
+          error ? 'border-red-500 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:ring-blue-500'
+        }`}
+      />
+    </div>
+    <HelpOrError id={undefined} error={error} help={help} />
+  </div>
+);
+
+const NightInfo: React.FC<{ numberOfNights: number }> = ({ numberOfNights }) => (
+  <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+    <div className="flex items-center">
+      <svg className="h-5 w-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+      <p className="text-sm text-blue-700">
+        <span className="font-medium">Duración de estadía:</span> {numberOfNights} noche{numberOfNights !== 1 ? 's' : ''}
+      </p>
+      {numberOfNights > 7 && (
+        <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">Estadía extendida</span>
+      )}
+    </div>
+  </div>
+);
+
 export const ReservationDetailsForm: React.FC<ReservationDetailsFormProps> = ({ formData, errors, onFieldChange }) => {
   // Helpers: dates
   const today = new Date().toISOString().split('T')[0];
@@ -30,93 +117,6 @@ export const ReservationDetailsForm: React.FC<ReservationDetailsFormProps> = ({ 
   const minCheckOutDate = formData.checkInDate
     ? new Date(new Date(formData.checkInDate).getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     : today;
-
-  // Small presentational subcomponents to reduce complexity
-  const HelpOrError: React.FC<{ id?: string; error?: string; help?: string }> = ({ id, error, help }) => (
-    <>
-      {error ? (
-        <p id={id} className="mt-1 text-sm text-red-600 flex items-start">
-          <svg className="h-4 w-4 mt-0.5 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-          {error}
-        </p>
-      ) : (
-        help ? <p id={id} className="mt-1 text-sm text-gray-500">{help}</p> : null
-      )}
-    </>
-  );
-
-  const DateField: React.FC<{
-    label: string;
-    value: string;
-    min?: string;
-    max?: string;
-    error?: string;
-    id?: string;
-    onChange: (v: string) => void;
-  }> = ({ label, value, min, max, error, onChange, id }) => (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
-      <input
-        type="date"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        min={min}
-        max={max}
-        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors ${
-          error ? 'border-red-500 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:ring-blue-500'
-        }`}
-        aria-describedby={error ? id : undefined}
-      />
-      <HelpOrError id={id} error={error} />
-    </div>
-  );
-
-  const NumberField: React.FC<{
-    label: string;
-    min?: number;
-    max?: number;
-    value: number | undefined;
-    placeholder?: string;
-    error?: string;
-    help?: string;
-    onChange: (v: number) => void;
-  }> = ({ label, min, max, value, placeholder, error, help, onChange }) => (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
-      <div className="relative">
-        <input
-          type="number"
-          min={min}
-          max={max}
-          value={value ?? ''}
-          onChange={(e) => onChange(Number.parseInt(e.target.value) || 0)}
-          placeholder={placeholder}
-          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors ${
-            error ? 'border-red-500 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:ring-blue-500'
-          }`}
-        />
-      </div>
-      <HelpOrError id={undefined} error={error} help={help} />
-    </div>
-  );
-
-  const NightInfo: React.FC = () => (
-    <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-      <div className="flex items-center">
-        <svg className="h-5 w-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-        <p className="text-sm text-blue-700">
-          <span className="font-medium">Duración de estadía:</span> {formData.numberOfNights} noche{formData.numberOfNights !== 1 ? 's' : ''}
-        </p>
-        {formData.numberOfNights > 7 && (
-          <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">Estadía extendida</span>
-        )}
-      </div>
-    </div>
-  );
 
   return (
     <>
@@ -151,7 +151,7 @@ export const ReservationDetailsForm: React.FC<ReservationDetailsFormProps> = ({ 
         </div>
       </div>
 
-      {formData.numberOfNights > 0 && <NightInfo />}
+  {formData.numberOfNights > 0 && <NightInfo numberOfNights={formData.numberOfNights} />}
 
       {!errors.checkInDate && !errors.checkOutDate && !errors.numberOfAdults && !errors.numberOfChildren && !errors.numberOfGuests && (
         <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
