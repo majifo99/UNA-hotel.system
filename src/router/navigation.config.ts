@@ -36,6 +36,7 @@ import {
   CheckSquare,
   LogIn,
   LogOut,
+  ArrowLeftRight,
   ClipboardList,
   DollarSign,
   TrendingUp,
@@ -168,13 +169,22 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
         shortcut: [2, 2], // ALT+2, luego 2
       },
       {
+        id: 'frontdesk-room-change',
+        label: 'Cambio de Habitación',
+        path: ROUTES.FRONTDESK.ROOM_CHANGE,
+        icon: ArrowLeftRight,
+        description: 'Gestión de cambios de habitación',
+        category: 'operations',
+        shortcut: [2, 3], // ALT+2, luego 3
+      },
+      {
         id: 'frontdesk-calendar',
         label: 'Calendario',
         path: ROUTES.FRONTDESK.BASE,
         icon: Calendar,
         description: 'Vista calendario de ocupación',
         category: 'operations',
-        shortcut: [2, 3], // ALT+2, luego 3
+        shortcut: [2, 4], // ALT+2, luego 4
       },
       {
         id: 'frontdesk-reports',
@@ -183,7 +193,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
         icon: BarChart3,
         description: 'Reportes de recepción',
         category: 'operations',
-        shortcut: [2, 4], // ALT+2, luego 4
+        shortcut: [2, 5], // ALT+2, luego 5
       },
     ],
   },

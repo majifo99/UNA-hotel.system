@@ -24,6 +24,11 @@ module.exports = {
           300: '#D3E2D2',
           400: '#BAD9B1',
         }
+      },
+      fontFamily: {
+        'primary': ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        'heading': ['Playfair Display', 'Georgia', 'Times New Roman', 'serif'],
+        'mono': ['JetBrains Mono', 'SF Mono', 'Monaco', 'Inconsolata', 'monospace'],
       }
     },
   },

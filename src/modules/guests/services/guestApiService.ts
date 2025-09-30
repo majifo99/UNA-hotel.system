@@ -5,6 +5,10 @@ import type {
   GuestSearchFilters,
   GuestListResponse 
 } from '../types';
+import type { 
+  CreateGuestFullRequest, 
+  CreateGuestFullResponse 
+} from '../types/guestFull';
 
 /**
  * Guest API Service - Laravel Backend Integration
@@ -14,7 +18,7 @@ class GuestApiService {
   private apiBaseUrl: string;
 
   constructor() {
-    this.baseUrl = '/clientes';
+    this.baseUrl = '/clientes';  // Use the working GET endpoint for listing
     this.apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
   }
 
@@ -23,6 +27,8 @@ class GuestApiService {
    */
   private async request(endpoint: string, options: RequestInit = {}) {
     const url = `${this.apiBaseUrl}${endpoint}`;
+    
+    console.log(`Making ${options.method || 'GET'} request to:`, url);
     
     const config: RequestInit = {
       headers: {
@@ -36,14 +42,23 @@ class GuestApiService {
     try {
       const response = await fetch(url, config);
       
+      console.log(`Response status: ${response.status} ${response.statusText}`);
+      
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Log response body for debugging
+        const errorText = await response.text();
+        console.error('Error response body:', errorText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}\nResponse: ${errorText}`);
       }
       
       const data = await response.json();
+      console.log('Response data:', data);
       return { success: true, data };
     } catch (error) {
       console.error('Request failed:', error);
+      if (error instanceof Error && error.message.includes('fetch')) {
+        throw new Error(`No se puede conectar al servidor en ${this.apiBaseUrl}. Verifique que Laravel esté ejecutándose.`);
+      }
       throw error;
     }
   }
@@ -68,60 +83,158 @@ class GuestApiService {
   }
 
   /**
-   * Create a new guest
+   * Create a new guest using the full endpoint (single POST)
+   */
+  async createGuestFull(guestData: CreateGuestFullRequest): Promise<CreateGuestFullResponse> {
+    try {
+      console.log('Creating guest with data:', guestData);
+      
+      // Transform the data to match the EXACT Laravel backend expectations
+      // Based on the specification provided, Laravel expects this structure:
+      const backendData: Record<string, any> = {
+        // Basic guest information
+        nombre: guestData.nombre,
+        apellido1: guestData.apellido1,
+        email: guestData.email,
+        telefono: guestData.telefono,
+        nacionalidad: guestData.nacionalidad,
+        id_tipo_doc: guestData.id_tipo_doc,
+        numero_doc: guestData.numero_doc,
+        direccion: guestData.direccion || null,
+        fecha_nacimiento: guestData.fecha_nacimiento || null,
+        genero: guestData.genero || null,
+        es_vip: guestData.es_vip || false,
+        notas_personal: guestData.notas_personal || null,
+      };
+
+      // Add roomPreferences if provided (Laravel expects "roomPreferences" key)
+      if (guestData.roomPreferences) {
+        backendData.roomPreferences = {
+          bedType: guestData.roomPreferences.bedType,
+          floor: guestData.roomPreferences.floor,
+          view: guestData.roomPreferences.view,
+          smokingAllowed: guestData.roomPreferences.smokingAllowed
+        };
+      }
+
+      // Add companions if provided (Laravel expects "companions" key)
+      if (guestData.companions) {
+        backendData.companions = {
+          typicalTravelGroup: guestData.companions.typicalTravelGroup,
+          hasChildren: guestData.companions.hasChildren,
+          childrenAgeRanges: guestData.companions.childrenAgeRanges || [],
+          preferredOccupancy: guestData.companions.preferredOccupancy,
+          needsConnectedRooms: guestData.companions.needsConnectedRooms
+        };
+      }
+
+      // Add health information if provided (Laravel expects separate keys)
+      if (guestData.allergies && guestData.allergies.length > 0) {
+        backendData.allergies = guestData.allergies;
+      }
+      
+      if (guestData.dietaryRestrictions && guestData.dietaryRestrictions.length > 0) {
+        backendData.dietaryRestrictions = guestData.dietaryRestrictions;
+      }
+      
+      if (guestData.medicalNotes) {
+        backendData.medicalNotes = guestData.medicalNotes;
+      }
+
+      // Add emergency contact if provided (Laravel expects "emergencyContact" key)
+      if (guestData.emergencyContact) {
+        backendData.emergencyContact = {
+          name: guestData.emergencyContact.name,
+          relationship: guestData.emergencyContact.relationship,
+          phone: guestData.emergencyContact.phone,
+          email: guestData.emergencyContact.email
+        };
+      }
+      
+      console.log('Transformed backend data (matching Laravel spec):', backendData);
+      
+      const response = await this.post('/clientes/full', backendData);
+      
+      if (!response.data) {
+        throw new Error('No data received from server');
+      }
+      
+      // Log the actual response to help with debugging
+      console.log('Laravel response:', response.data);
+      
+      return {
+        success: true,
+        data: response.data,
+        message: 'Huésped creado exitosamente con todos los datos'
+      };
+    } catch (error) {
+      console.error('Error creating guest (full):', error);
+      
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error al crear el huésped completo'
+      };
+    }
+  }
+
+  /**
+   * Create a new guest using the Laravel API
    */
   async createGuest(guestData: CreateGuestData): Promise<Guest> {
     try {
-      // Transform frontend data to backend format
+      // Transform frontend data to Laravel backend format
       const backendData: Record<string, any> = {
         nombre: guestData.firstName,
         apellido1: guestData.firstLastName,
         apellido2: guestData.secondLastName || null,
         email: guestData.email,
         telefono: guestData.phone,
-        id_tipo_doc: this.mapDocumentTypeToId(guestData.documentType),
-        numero_doc: guestData.documentNumber,
         nacionalidad: guestData.nationality,
+        numero_doc: guestData.documentNumber,
+        id_tipo_doc: this.mapDocumentTypeToId(guestData.documentType), // Ensure this is a number
         
-        // Campos opcionales - incluimos si están disponibles
+        // Optional fields
         direccion: guestData.address?.street || null,
         fecha_nacimiento: guestData.dateOfBirth || guestData.birthDate || null,
         genero: this.mapGenderToBackend(guestData.gender),
         es_vip: guestData.vipStatus || false,
-        notas_personal: guestData.notes || null,
-        
-        // Campos adicionales
-        ciudad: guestData.city || guestData.address?.city || null,
-        pais: guestData.country || guestData.address?.country || null,
-        codigo_postal: guestData.address?.postalCode || null,
-        estado_provincia: guestData.address?.state || null,
-        idioma_preferido: guestData.preferredLanguage || null,
-        
-        // Información como JSON
-        alergias: guestData.allergies?.length ? JSON.stringify(guestData.allergies) : null,
-        restricciones_dieteticas: guestData.dietaryRestrictions?.length ? JSON.stringify(guestData.dietaryRestrictions) : null,
-        notas_medicas: guestData.medicalNotes || null,
-        contacto_emergencia: guestData.emergencyContact?.name ? JSON.stringify(guestData.emergencyContact) : null,
-        preferencias_comunicacion: guestData.communicationPreferences ? JSON.stringify(guestData.communicationPreferences) : null,
-        programa_lealtad: guestData.loyaltyProgram?.memberId ? JSON.stringify(guestData.loyaltyProgram) : null,
-        preferencias_habitacion: guestData.roomPreferences ? JSON.stringify(guestData.roomPreferences) : null
+        notas_personal: guestData.notes || null
       };
       
-      const response = await this.post(this.baseUrl, backendData);
+      // Explicit validation to ensure id_tipo_doc is a valid number
+      if (typeof backendData.id_tipo_doc !== 'number' || backendData.id_tipo_doc < 1) {
+        console.error('Invalid id_tipo_doc:', backendData.id_tipo_doc);
+        backendData.id_tipo_doc = 1; // Fallback to default
+      }
+      
+      console.log('Creating guest with backend data:', backendData);
+      console.log('Document type mapping details:', {
+        originalDocumentType: guestData.documentType,
+        mappedId: this.mapDocumentTypeToId(guestData.documentType),
+        mappedIdType: typeof this.mapDocumentTypeToId(guestData.documentType)
+      });
+      
+      // Use only the working /clientes/full endpoint
+      // The /clientes endpoint doesn't support POST according to Laravel error
+      const response = await this.post('/clientes/full', backendData);
+      
+      if (response.data && typeof response.data === 'string' && response.data.includes('<!DOCTYPE html>')) {
+        throw new Error('Servidor devolvió HTML en lugar de JSON. Verifique la configuración de rutas de Laravel.');
+      }
       
       if (!response.data) {
-        throw new Error('No data received from server');
+        throw new Error('No se recibieron datos del servidor');
       }
       
       return this.transformGuestFromBackend(response.data);
     } catch (error) {
       console.error('Error creating guest:', error);
-      throw new Error('Error al crear el huésped');
+      throw new Error('Error al crear el huésped: ' + (error instanceof Error ? error.message : 'Error desconocido'));
     }
   }
 
   /**
-   * List all guests with optional filters
+   * List all guests with optional filters - using real Laravel API
    */
   async getGuests(filters?: GuestSearchFilters): Promise<GuestListResponse> {
     try {
@@ -182,15 +295,15 @@ class GuestApiService {
       };
     } catch (error) {
       console.error('Error fetching guests:', error);
-      throw new Error('Error al obtener la lista de huéspedes');
+      throw new Error('Error al obtener los huéspedes: ' + (error instanceof Error ? error.message : 'Error desconocido'));
     }
   }
 
   /**
-   * Search guests with filters
+   * Search guests with filters - using real Laravel API
    */
   async searchGuests(filters: GuestSearchFilters): Promise<GuestListResponse> {
-    return this.getGuests(filters);
+    return await this.getGuests(filters);
   }
 
   /**
@@ -319,6 +432,11 @@ class GuestApiService {
    * Map frontend document type to Laravel tipo_doc ID
    */
   private mapDocumentTypeToId(documentType?: string): number {
+    console.log('Mapping document type:', { 
+      input: documentType, 
+      type: typeof documentType 
+    });
+    
     const documentTypeMap: Record<string, number> = {
       'id_card': 1,    // Cédula de identidad
       'passport': 2,   // Pasaporte
@@ -326,7 +444,14 @@ class GuestApiService {
       'otros': 4       // Otros documentos
     };
     
-    return documentTypeMap[documentType || 'id_card'] || 1;
+    const mappedValue = documentTypeMap[documentType || 'id_card'] || 1;
+    console.log('Mapped value:', { 
+      from: documentType, 
+      to: mappedValue, 
+      type: typeof mappedValue 
+    });
+    
+    return mappedValue;
   }
 
   /**
@@ -457,6 +582,7 @@ function createGuestApiService(): GuestApiService {
   
   // Bind all methods to preserve `this` context
   instance.createGuest = instance.createGuest.bind(instance);
+  instance.createGuestFull = instance.createGuestFull.bind(instance);
   instance.updateGuest = instance.updateGuest.bind(instance);
   instance.getGuests = instance.getGuests.bind(instance);
   instance.searchGuests = instance.searchGuests.bind(instance);

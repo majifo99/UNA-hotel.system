@@ -25,6 +25,21 @@ export const useGuests = () => {
     enabled: true
   });
 
+  // Mutation para crear huésped completo (nuevo endpoint)
+  const createGuestFullMutation = useMutation({
+    mutationFn: activeGuestService.createGuestFull,
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      if (response.success && response.data) {
+        toast.success(`Huésped ${response.data.nombre} ${response.data.apellido1} creado exitosamente`);
+      }
+    },
+    onError: (error) => {
+      console.error('Error creating guest (full):', error);
+      toast.error('Error al crear huésped completo');
+    }
+  });
+
   // Mutation para crear huésped
   const createGuestMutation = useMutation({
     mutationFn: activeGuestService.createGuest,
@@ -66,16 +81,19 @@ export const useGuests = () => {
     // Loading states
     isSearching,
     isCreating: createGuestMutation.isPending,
+    isCreatingFull: createGuestFullMutation.isPending,
     isUpdating: updateGuestMutation.isPending,
     
     // Error states
     searchError,
     createError: createGuestMutation.error,
+    createFullError: createGuestFullMutation.error,
     updateError: updateGuestMutation.error,
     
     // Actions
     searchGuests: (filters: GuestSearchFilters) => setSearchFilters(filters),
     createGuest: createGuestMutation.mutateAsync,
+    createGuestFull: createGuestFullMutation.mutateAsync,
     updateGuest: (id: string, data: UpdateGuestData) => 
       updateGuestMutation.mutateAsync({ id, data }),
     // Additional utilities

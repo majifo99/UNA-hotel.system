@@ -9,8 +9,9 @@ import HousekeepingDashboard from '../modules/housekeeping/pages/HousekeepingDas
 import { GuestsPage } from '../modules/guests/pages/GuestsPage';
 import { CreateGuestPage } from '../modules/guests/pages/CreateGuestPage';
 import FrontDesk from '../modules/frontdesk/components/FrontDesk';
-import { default as CheckInPage } from '../modules/frontdesk/pages/CheckInPage';
-import { default as CheckOutPage } from '../modules/frontdesk/pages/CheckOutPage';
+import CheckInPage from '../modules/frontdesk/pages/CheckInPage';
+import CheckOutPage from '../modules/frontdesk/pages/CheckOutPage';
+import RoomChange from '../modules/frontdesk/components/RoomChange';
 import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
 import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
 
@@ -101,6 +102,10 @@ const router = createBrowserRouter([
           {
             path: 'checkout',
             element: <CheckOutPage />,
+          },
+          {
+            path: 'room-change',
+            element: <RoomChange />,
           },
           {
             path: 'register',
