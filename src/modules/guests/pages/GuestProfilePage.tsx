@@ -108,6 +108,56 @@ export const GuestProfilePage: React.FC = () => {
     }
   }, [guest, updateEditValues]);
 
+  // Helper functions to check if sections have content
+  const hasAddressInfo = (address: any) => {
+    return address && (
+      address.street || 
+      address.city || 
+      address.state || 
+      address.country || 
+      address.postalCode
+    );
+  };
+
+  const hasMedicalInfo = (guest: any) => {
+    return (
+      (guest.allergies && guest.allergies.length > 0) ||
+      (guest.dietaryRestrictions && guest.dietaryRestrictions.length > 0) ||
+      guest.medicalNotes
+    );
+  };
+
+  const hasEmergencyContact = (emergencyContact: any) => {
+    return emergencyContact && (
+      emergencyContact.name || 
+      emergencyContact.relationship || 
+      emergencyContact.phone || 
+      emergencyContact.email
+    );
+  };
+
+  const hasRoomPreferences = (roomPreferences: any) => {
+    return roomPreferences && (
+      roomPreferences.floor || 
+      roomPreferences.view || 
+      roomPreferences.bedType || 
+      roomPreferences.smokingAllowed !== undefined
+    );
+  };
+
+  const hasLoyaltyProgram = (loyaltyProgram: any) => {
+    return loyaltyProgram && (
+      loyaltyProgram.memberId || 
+      loyaltyProgram.tier || 
+      loyaltyProgram.points !== undefined
+    );
+  };
+
+  const hasCommunicationPreferences = (communicationPreferences: any) => {
+    return communicationPreferences && 
+      Object.values(communicationPreferences).some(v => v === true);
+  };
+
 
 
   if (isLoading) {
@@ -275,18 +325,20 @@ export const GuestProfilePage: React.FC = () => {
                     editValue={editValues.firstLastName || ''}
                     onChange={(value: string) => handleInputChange('firstLastName', value)}
                   />
-                  <InlineEditField 
-                    label="Segundo Apellido"
-                    value={guest.secondLastName || ''}
-                    isEditing={isEditing('secondLastName')}
-                    onEdit={() => handleEdit('secondLastName')}
-                    onSave={handleSave}
-                    onCancel={handleCancel}
-                    isUpdating={isUpdating}
-                    type="text"
-                    editValue={editValues.secondLastName || ''}
-                    onChange={(value: string) => handleInputChange('secondLastName', value)}
-                  />
+                  {guest.secondLastName && (
+                    <InlineEditField 
+                      label="Segundo Apellido"
+                      value={guest.secondLastName || ''}
+                      isEditing={isEditing('secondLastName')}
+                      onEdit={() => handleEdit('secondLastName')}
+                      onSave={handleSave}
+                      onCancel={handleCancel}
+                      isUpdating={isUpdating}
+                      type="text"
+                      editValue={editValues.secondLastName || ''}
+                      onChange={(value: string) => handleInputChange('secondLastName', value)}
+                    />
+                  )}
                   <InlineEditField 
                     label="Email"
                     value={guest.email}
@@ -311,36 +363,40 @@ export const GuestProfilePage: React.FC = () => {
                     editValue={editValues.phone || ''}
                     onChange={(value: string) => handleInputChange('phone', value)}
                   />
-                  <InlineEditField 
-                    label="Fecha de Nacimiento"
-                    value={guest.dateOfBirth}
-                    isEditing={isEditing('dateOfBirth')}
-                    onEdit={() => handleEdit('dateOfBirth')}
-                    onSave={handleSave}
-                    onCancel={handleCancel}
-                    isUpdating={isUpdating}
-                    type="text"
-                    editValue={editValues.dateOfBirth || ''}
-                    onChange={(value: string) => handleInputChange('dateOfBirth', value)}
-                  />
-                  <InlineEditField 
-                    label="Género"
-                    value={guest.gender}
-                    isEditing={isEditing('gender')}
-                    onEdit={() => handleEdit('gender')}
-                    onSave={handleSave}
-                    onCancel={handleCancel}
-                    isUpdating={isUpdating}
-                    type="select"
-                    editValue={editValues.gender || ''}
-                    onChange={(value: string) => handleInputChange('gender', value)}
-                    options={[
-                      { value: 'male', label: 'Masculino' },
-                      { value: 'female', label: 'Femenino' },
-                      { value: 'other', label: 'Otro' },
-                      { value: 'prefer_not_to_say', label: 'Prefiero no decir' }
-                    ]}
-                  />
+                  {guest.dateOfBirth && (
+                    <InlineEditField 
+                      label="Fecha de Nacimiento"
+                      value={guest.dateOfBirth}
+                      isEditing={isEditing('dateOfBirth')}
+                      onEdit={() => handleEdit('dateOfBirth')}
+                      onSave={handleSave}
+                      onCancel={handleCancel}
+                      isUpdating={isUpdating}
+                      type="text"
+                      editValue={editValues.dateOfBirth || ''}
+                      onChange={(value: string) => handleInputChange('dateOfBirth', value)}
+                    />
+                  )}
+                  {guest.gender && (
+                    <InlineEditField 
+                      label="Género"
+                      value={guest.gender}
+                      isEditing={isEditing('gender')}
+                      onEdit={() => handleEdit('gender')}
+                      onSave={handleSave}
+                      onCancel={handleCancel}
+                      isUpdating={isUpdating}
+                      type="select"
+                      editValue={editValues.gender || ''}
+                      onChange={(value: string) => handleInputChange('gender', value)}
+                      options={[
+                        { value: 'male', label: 'Masculino' },
+                        { value: 'female', label: 'Femenino' },
+                        { value: 'other', label: 'Otro' },
+                        { value: 'prefer_not_to_say', label: 'Prefiero no decir' }
+                      ]}
+                    />
+                  )}
                   <InlineEditField 
                     label="Nacionalidad"
                     value={guest.nationality}
@@ -353,18 +409,20 @@ export const GuestProfilePage: React.FC = () => {
                     editValue={editValues.nationality || ''}
                     onChange={(value: string) => handleInputChange('nationality', value)}
                   />
-                  <InlineEditField 
-                    label="Idioma Preferido"
-                    value={guest.preferredLanguage}
-                    isEditing={isEditing('preferredLanguage')}
-                    onEdit={() => handleEdit('preferredLanguage')}
-                    onSave={handleSave}
-                    onCancel={handleCancel}
-                    isUpdating={isUpdating}
-                    type="text"
-                    editValue={editValues.preferredLanguage || ''}
-                    onChange={(value: string) => handleInputChange('preferredLanguage', value)}
-                  />
+                  {guest.preferredLanguage && (
+                    <InlineEditField 
+                      label="Idioma Preferido"
+                      value={guest.preferredLanguage}
+                      isEditing={isEditing('preferredLanguage')}
+                      onEdit={() => handleEdit('preferredLanguage')}
+                      onSave={handleSave}
+                      onCancel={handleCancel}
+                      isUpdating={isUpdating}
+                      type="text"
+                      editValue={editValues.preferredLanguage || ''}
+                      onChange={(value: string) => handleInputChange('preferredLanguage', value)}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -414,343 +472,381 @@ export const GuestProfilePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Address */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-purple-50 rounded-lg">
-                    <MapPin className="h-5 w-5 text-purple-600" />
+            {/* Address - Solo mostrar si tiene información */}
+            {hasAddressInfo(guest.address) && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-purple-50 rounded-lg">
+                      <MapPin className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-gray-900">Dirección</h2>
                   </div>
-                  <h2 className="text-lg font-semibold text-gray-900">Dirección</h2>
+                </div>
+                <div className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {guest.address?.street && (
+                      <InlineEditNestedField 
+                        label="Calle"
+                        value={{ street: guest.address?.street }}
+                        isEditing={isEditing('address.street')}
+                        onEdit={() => handleEdit('address.street')}
+                        onSave={handleSave}
+                        onCancel={handleCancel}
+                        isUpdating={isUpdating}
+                        editValue={{ street: (editValues.address as any)?.street || '' }}
+                        onChange={(key: string, value: string) => handleNestedInputChange('address', key, value)}
+                        fields={[{ key: 'street', label: 'Calle', type: 'text', placeholder: 'Ingrese la calle' }]}
+                        displayFormat={(data) => data.street || ''}
+                      />
+                    )}
+                    {guest.address?.city && (
+                      <InlineEditNestedField 
+                        label="Ciudad"
+                        value={{ city: guest.address?.city }}
+                        isEditing={isEditing('address.city')}
+                        onEdit={() => handleEdit('address.city')}
+                        onSave={handleSave}
+                        onCancel={handleCancel}
+                        isUpdating={isUpdating}
+                        editValue={{ city: (editValues.address as any)?.city || '' }}
+                        onChange={(key: string, value: string) => handleNestedInputChange('address', key, value)}
+                        fields={[{ key: 'city', label: 'Ciudad', type: 'text', placeholder: 'Ingrese la ciudad' }]}
+                        displayFormat={(data) => data.city || ''}
+                      />
+                    )}
+                    {guest.address?.state && (
+                      <InlineEditNestedField 
+                        label="Provincia/Estado"
+                        value={{ state: guest.address?.state }}
+                        isEditing={isEditing('address.state')}
+                        onEdit={() => handleEdit('address.state')}
+                        onSave={handleSave}
+                        onCancel={handleCancel}
+                        isUpdating={isUpdating}
+                        editValue={{ state: (editValues.address as any)?.state || '' }}
+                        onChange={(key: string, value: string) => handleNestedInputChange('address', key, value)}
+                        fields={[{ key: 'state', label: 'Provincia/Estado', type: 'text', placeholder: 'Ingrese la provincia o estado' }]}
+                        displayFormat={(data) => data.state || ''}
+                      />
+                    )}
+                    {guest.address?.country && (
+                      <InlineEditField 
+                        label="País"
+                        value={guest.address?.country}
+                        isEditing={isEditing('address.country')}
+                        onEdit={() => handleEdit('address.country')}
+                        onSave={handleSave}
+                        onCancel={handleCancel}
+                        isUpdating={isUpdating}
+                        type="country"
+                        editValue={(editValues.address as any)?.country || ''}
+                        onChange={(value: string) => handleNestedInputChange('address', 'country', value)}
+                      />
+                    )}
+                    {guest.address?.postalCode && (
+                      <InlineEditNestedField 
+                        label="Código Postal"
+                        value={{ postalCode: guest.address?.postalCode }}
+                        isEditing={isEditing('address.postalCode')}
+                        onEdit={() => handleEdit('address.postalCode')}
+                        onSave={handleSave}
+                        onCancel={handleCancel}
+                        isUpdating={isUpdating}
+                        editValue={{ postalCode: (editValues.address as any)?.postalCode || '' }}
+                        onChange={(key: string, value: string) => handleNestedInputChange('address', key, value)}
+                        fields={[{ key: 'postalCode', label: 'Código Postal', type: 'text', placeholder: 'Ingrese el código postal' }]}
+                        displayFormat={(data) => data.postalCode || ''}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <InlineEditNestedField 
-                    label="Calle"
-                    value={{ street: guest.address?.street }}
-                    isEditing={isEditing('address.street')}
-                    onEdit={() => handleEdit('address.street')}
-                    onSave={handleSave}
-                    onCancel={handleCancel}
-                    isUpdating={isUpdating}
-                    editValue={{ street: (editValues.address as any)?.street || '' }}
-                    onChange={(key: string, value: string) => handleNestedInputChange('address', key, value)}
-                    fields={[{ key: 'street', label: 'Calle', type: 'text', placeholder: 'Ingrese la calle' }]}
-                    displayFormat={(data) => data.street || ''}
-                  />
-                  <InlineEditNestedField 
-                    label="Ciudad"
-                    value={{ city: guest.address?.city }}
-                    isEditing={isEditing('address.city')}
-                    onEdit={() => handleEdit('address.city')}
-                    onSave={handleSave}
-                    onCancel={handleCancel}
-                    isUpdating={isUpdating}
-                    editValue={{ city: (editValues.address as any)?.city || '' }}
-                    onChange={(key: string, value: string) => handleNestedInputChange('address', key, value)}
-                    fields={[{ key: 'city', label: 'Ciudad', type: 'text', placeholder: 'Ingrese la ciudad' }]}
-                    displayFormat={(data) => data.city || ''}
-                  />
-                  <InlineEditNestedField 
-                    label="Provincia/Estado"
-                    value={{ state: guest.address?.state }}
-                    isEditing={isEditing('address.state')}
-                    onEdit={() => handleEdit('address.state')}
-                    onSave={handleSave}
-                    onCancel={handleCancel}
-                    isUpdating={isUpdating}
-                    editValue={{ state: (editValues.address as any)?.state || '' }}
-                    onChange={(key: string, value: string) => handleNestedInputChange('address', key, value)}
-                    fields={[{ key: 'state', label: 'Provincia/Estado', type: 'text', placeholder: 'Ingrese la provincia o estado' }]}
-                    displayFormat={(data) => data.state || ''}
-                  />
-                  <InlineEditField 
-                    label="País"
-                    value={guest.address?.country}
-                    isEditing={isEditing('address.country')}
-                    onEdit={() => handleEdit('address.country')}
-                    onSave={handleSave}
-                    onCancel={handleCancel}
-                    isUpdating={isUpdating}
-                    type="country"
-                    editValue={(editValues.address as any)?.country || ''}
-                    onChange={(value: string) => handleNestedInputChange('address', 'country', value)}
-                  />
-                  <InlineEditNestedField 
-                    label="Código Postal"
-                    value={{ postalCode: guest.address?.postalCode }}
-                    isEditing={isEditing('address.postalCode')}
-                    onEdit={() => handleEdit('address.postalCode')}
-                    onSave={handleSave}
-                    onCancel={handleCancel}
-                    isUpdating={isUpdating}
-                    editValue={{ postalCode: (editValues.address as any)?.postalCode || '' }}
-                    onChange={(key: string, value: string) => handleNestedInputChange('address', key, value)}
-                    fields={[{ key: 'postalCode', label: 'Código Postal', type: 'text', placeholder: 'Ingrese el código postal' }]}
-                    displayFormat={(data) => data.postalCode || ''}
-                  />
-                </div>
-              </div>
-            </div>
+            )}
 
-            {/* Medical Information */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-red-50 rounded-lg">
-                    <Heart className="h-5 w-5 text-red-600" />
+            {/* Medical Information - Solo mostrar si tiene información */}
+            {hasMedicalInfo(guest) && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-red-50 rounded-lg">
+                      <Heart className="h-5 w-5 text-red-600" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-gray-900">Información Médica</h2>
+                    <AlertTriangle className="h-4 w-4 text-amber-500" />
                   </div>
-                  <h2 className="text-lg font-semibold text-gray-900">Información Médica</h2>
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                </div>
+                <div className="p-6 space-y-6">
+                  {guest.allergies && guest.allergies.length > 0 && (
+                    <SimpleArrayField 
+                      label="Alergias"
+                      value={guest.allergies || []}
+                      isEditing={isEditing('allergies')}
+                      onEdit={() => handleEdit('allergies')}
+                      onSave={handleSave}
+                      onCancel={handleCancel}
+                      isUpdating={isUpdating}
+                      editValue={editValues.allergies as string[] || []}
+                      onChange={(value: string) => {
+                        const arrayValue = value.split(',').map(item => item.trim()).filter(item => item.length > 0);
+                        handleInputChange('allergies', arrayValue);
+                      }}
+                      emptyText="No hay alergias registradas"
+                      placeholder="Separar alergias con comas"
+                    />
+                  )}
+                  {guest.dietaryRestrictions && guest.dietaryRestrictions.length > 0 && (
+                    <SimpleArrayField 
+                      label="Restricciones Dietéticas"
+                      value={guest.dietaryRestrictions || []}
+                      isEditing={isEditing('dietaryRestrictions')}
+                      onEdit={() => handleEdit('dietaryRestrictions')}
+                      onSave={handleSave}
+                      onCancel={handleCancel}
+                      isUpdating={isUpdating}
+                      editValue={editValues.dietaryRestrictions as string[] || []}
+                      onChange={(value: string) => {
+                        const arrayValue = value.split(',').map(item => item.trim()).filter(item => item.length > 0);
+                        handleInputChange('dietaryRestrictions', arrayValue);
+                      }}
+                      emptyText="No hay restricciones dietéticas registradas"
+                      placeholder="Separar restricciones con comas"
+                    />
+                  )}
+                  {guest.medicalNotes && (
+                    <InlineEditField 
+                      label="Notas Médicas"
+                      value={guest.medicalNotes}
+                      isEditing={isEditing('medicalNotes')}
+                      onEdit={() => handleEdit('medicalNotes')}
+                      onSave={handleSave}
+                      onCancel={handleCancel}
+                      isUpdating={isUpdating}
+                      type="textarea"
+                      editValue={editValues.medicalNotes || ''}
+                      onChange={(value: string) => handleInputChange('medicalNotes', value)}
+                    />
+                  )}
                 </div>
               </div>
-              <div className="p-6 space-y-6">
-                <SimpleArrayField 
-                  label="Alergias"
-                  value={guest.allergies || []}
-                  isEditing={isEditing('allergies')}
-                  onEdit={() => handleEdit('allergies')}
-                  onSave={handleSave}
-                  onCancel={handleCancel}
-                  isUpdating={isUpdating}
-                  editValue={editValues.allergies as string[] || []}
-                  onChange={(value: string) => {
-                    const arrayValue = value.split(',').map(item => item.trim()).filter(item => item.length > 0);
-                    handleInputChange('allergies', arrayValue);
-                  }}
-                  emptyText="No hay alergias registradas"
-                  placeholder="Separar alergias con comas"
-                />
-                <SimpleArrayField 
-                  label="Restricciones Dietéticas"
-                  value={guest.dietaryRestrictions || []}
-                  isEditing={isEditing('dietaryRestrictions')}
-                  onEdit={() => handleEdit('dietaryRestrictions')}
-                  onSave={handleSave}
-                  onCancel={handleCancel}
-                  isUpdating={isUpdating}
-                  editValue={editValues.dietaryRestrictions as string[] || []}
-                  onChange={(value: string) => {
-                    const arrayValue = value.split(',').map(item => item.trim()).filter(item => item.length > 0);
-                    handleInputChange('dietaryRestrictions', arrayValue);
-                  }}
-                  emptyText="No hay restricciones dietéticas registradas"
-                  placeholder="Separar restricciones con comas"
-                />
-                <InlineEditField 
-                  label="Notas Médicas"
-                  value={guest.medicalNotes}
-                  isEditing={isEditing('medicalNotes')}
-                  onEdit={() => handleEdit('medicalNotes')}
-                  onSave={handleSave}
-                  onCancel={handleCancel}
-                  isUpdating={isUpdating}
-                  type="textarea"
-                  editValue={editValues.medicalNotes || ''}
-                  onChange={(value: string) => handleInputChange('medicalNotes', value)}
-                />
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Sidebar */}
           <div className="space-y-8">
-            {/* Emergency Contact */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-orange-50 rounded-lg">
-                    <Shield className="h-5 w-5 text-orange-600" />
+            {/* Emergency Contact - Solo mostrar si tiene información */}
+            {hasEmergencyContact(guest.emergencyContact) && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-orange-50 rounded-lg">
+                      <Shield className="h-5 w-5 text-orange-600" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-gray-900">Contacto de Emergencia</h2>
                   </div>
-                  <h2 className="text-lg font-semibold text-gray-900">Contacto de Emergencia</h2>
+                </div>
+                <div className="p-6 space-y-4">
+                  {guest.emergencyContact?.name && (
+                    <InlineEditNestedField 
+                      label="Nombre"
+                      value={{ name: guest.emergencyContact?.name }}
+                      isEditing={isEditing('emergencyContact.name')}
+                      onEdit={() => handleEdit('emergencyContact.name')}
+                      onSave={handleSave}
+                      onCancel={handleCancel}
+                      isUpdating={isUpdating}
+                      editValue={{ name: (editValues.emergencyContact as any)?.name || '' }}
+                      onChange={(key: string, value: string) => handleNestedInputChange('emergencyContact', key, value)}
+                      fields={[{ key: 'name', label: 'Nombre', type: 'text', placeholder: 'Ingrese el nombre del contacto' }]}
+                      displayFormat={(data) => data.name || ''}
+                    />
+                  )}
+                  {guest.emergencyContact?.relationship && (
+                    <InlineEditNestedField 
+                      label="Relación"
+                      value={{ relationship: guest.emergencyContact?.relationship }}
+                      isEditing={isEditing('emergencyContact.relationship')}
+                      onEdit={() => handleEdit('emergencyContact.relationship')}
+                      onSave={handleSave}
+                      onCancel={handleCancel}
+                      isUpdating={isUpdating}
+                      editValue={{ relationship: (editValues.emergencyContact as any)?.relationship || '' }}
+                      onChange={(key: string, value: string) => handleNestedInputChange('emergencyContact', key, value)}
+                      fields={[{ key: 'relationship', label: 'Relación', type: 'text', placeholder: 'Ej: Hermano, Madre, Amigo' }]}
+                      displayFormat={(data) => data.relationship || ''}
+                    />
+                  )}
+                  {guest.emergencyContact?.phone && (
+                    <InlineEditNestedField 
+                      label="Teléfono"
+                      value={{ phone: guest.emergencyContact?.phone }}
+                      isEditing={isEditing('emergencyContact.phone')}
+                      onEdit={() => handleEdit('emergencyContact.phone')}
+                      onSave={handleSave}
+                      onCancel={handleCancel}
+                      isUpdating={isUpdating}
+                      editValue={{ phone: (editValues.emergencyContact as any)?.phone || '' }}
+                      onChange={(key: string, value: string) => handleNestedInputChange('emergencyContact', key, value)}
+                      fields={[{ key: 'phone', label: 'Teléfono', type: 'tel', placeholder: 'Ingrese el teléfono' }]}
+                      displayFormat={(data) => data.phone || ''}
+                    />
+                  )}
+                  {guest.emergencyContact?.email && (
+                    <InlineEditNestedField 
+                      label="Email"
+                      value={{ email: guest.emergencyContact?.email }}
+                      isEditing={isEditing('emergencyContact.email')}
+                      onEdit={() => handleEdit('emergencyContact.email')}
+                      onSave={handleSave}
+                      onCancel={handleCancel}
+                      isUpdating={isUpdating}
+                      editValue={{ email: (editValues.emergencyContact as any)?.email || '' }}
+                      onChange={(key: string, value: string) => handleNestedInputChange('emergencyContact', key, value)}
+                      fields={[{ key: 'email', label: 'Email', type: 'email', placeholder: 'Ingrese el email' }]}
+                      displayFormat={(data) => data.email || ''}
+                    />
+                  )}
                 </div>
               </div>
-              <div className="p-6 space-y-4">
-                <InlineEditNestedField 
-                  label="Nombre"
-                  value={{ name: guest.emergencyContact?.name }}
-                  isEditing={isEditing('emergencyContact.name')}
-                  onEdit={() => handleEdit('emergencyContact.name')}
-                  onSave={handleSave}
-                  onCancel={handleCancel}
-                  isUpdating={isUpdating}
-                  editValue={{ name: (editValues.emergencyContact as any)?.name || '' }}
-                  onChange={(key: string, value: string) => handleNestedInputChange('emergencyContact', key, value)}
-                  fields={[{ key: 'name', label: 'Nombre', type: 'text', placeholder: 'Ingrese el nombre del contacto' }]}
-                  displayFormat={(data) => data.name || ''}
-                />
-                <InlineEditNestedField 
-                  label="Relación"
-                  value={{ relationship: guest.emergencyContact?.relationship }}
-                  isEditing={isEditing('emergencyContact.relationship')}
-                  onEdit={() => handleEdit('emergencyContact.relationship')}
-                  onSave={handleSave}
-                  onCancel={handleCancel}
-                  isUpdating={isUpdating}
-                  editValue={{ relationship: (editValues.emergencyContact as any)?.relationship || '' }}
-                  onChange={(key: string, value: string) => handleNestedInputChange('emergencyContact', key, value)}
-                  fields={[{ key: 'relationship', label: 'Relación', type: 'text', placeholder: 'Ej: Hermano, Madre, Amigo' }]}
-                  displayFormat={(data) => data.relationship || ''}
-                />
-                <InlineEditNestedField 
-                  label="Teléfono"
-                  value={{ phone: guest.emergencyContact?.phone }}
-                  isEditing={isEditing('emergencyContact.phone')}
-                  onEdit={() => handleEdit('emergencyContact.phone')}
-                  onSave={handleSave}
-                  onCancel={handleCancel}
-                  isUpdating={isUpdating}
-                  editValue={{ phone: (editValues.emergencyContact as any)?.phone || '' }}
-                  onChange={(key: string, value: string) => handleNestedInputChange('emergencyContact', key, value)}
-                  fields={[{ key: 'phone', label: 'Teléfono', type: 'tel', placeholder: 'Ingrese el teléfono' }]}
-                  displayFormat={(data) => data.phone || ''}
-                />
-                <InlineEditNestedField 
-                  label="Email"
-                  value={{ email: guest.emergencyContact?.email }}
-                  isEditing={isEditing('emergencyContact.email')}
-                  onEdit={() => handleEdit('emergencyContact.email')}
-                  onSave={handleSave}
-                  onCancel={handleCancel}
-                  isUpdating={isUpdating}
-                  editValue={{ email: (editValues.emergencyContact as any)?.email || '' }}
-                  onChange={(key: string, value: string) => handleNestedInputChange('emergencyContact', key, value)}
-                  fields={[{ key: 'email', label: 'Email', type: 'email', placeholder: 'Ingrese el email' }]}
-                  displayFormat={(data) => data.email || ''}
-                />
-              </div>
-            </div>
+            )}
 
-            {/* Room Preferences */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-indigo-50 rounded-lg">
-                    <Bed className="h-5 w-5 text-indigo-600" />
+            {/* Room Preferences - Solo mostrar si tiene información */}
+            {hasRoomPreferences(guest.roomPreferences) && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-indigo-50 rounded-lg">
+                      <Bed className="h-5 w-5 text-indigo-600" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-gray-900">Preferencias de Habitación</h2>
                   </div>
-                  <h2 className="text-lg font-semibold text-gray-900">Preferencias de Habitación</h2>
+                </div>
+                <div className="p-6">
+                  <div className="space-y-3">
+                    {guest.roomPreferences?.floor && (
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-sm text-gray-600">Piso</span>
+                        <span className="text-sm font-medium text-gray-900">{guest.roomPreferences.floor}</span>
+                      </div>
+                    )}
+                    {guest.roomPreferences?.view && (
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-sm text-gray-600">Vista</span>
+                        <span className="text-sm font-medium text-gray-900">{guest.roomPreferences.view}</span>
+                      </div>
+                    )}
+                    {guest.roomPreferences?.bedType && (
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-sm text-gray-600">Tipo de Cama</span>
+                        <span className="text-sm font-medium text-gray-900">{guest.roomPreferences.bedType}</span>
+                      </div>
+                    )}
+                    {guest.roomPreferences?.smokingAllowed !== undefined && (
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-sm text-gray-600">Permite Fumar</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {guest.roomPreferences.smokingAllowed ? 'Sí' : 'No'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div className="p-6">
-                <div className="space-y-3">
-                  {guest.roomPreferences?.floor && (
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                      <span className="text-sm text-gray-600">Piso</span>
-                      <span className="text-sm font-medium text-gray-900">{guest.roomPreferences.floor}</span>
-                    </div>
-                  )}
-                  {guest.roomPreferences?.view && (
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                      <span className="text-sm text-gray-600">Vista</span>
-                      <span className="text-sm font-medium text-gray-900">{guest.roomPreferences.view}</span>
-                    </div>
-                  )}
-                  {guest.roomPreferences?.bedType && (
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                      <span className="text-sm text-gray-600">Tipo de Cama</span>
-                      <span className="text-sm font-medium text-gray-900">{guest.roomPreferences.bedType}</span>
-                    </div>
-                  )}
-                  {guest.roomPreferences?.smokingAllowed !== undefined && (
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                      <span className="text-sm text-gray-600">Permite Fumar</span>
-                      <span className="text-sm font-medium text-gray-900">
-                        {guest.roomPreferences.smokingAllowed ? 'Sí' : 'No'}
-                      </span>
-                    </div>
-                  )}
-                  {!(guest.roomPreferences?.floor || guest.roomPreferences?.view || guest.roomPreferences?.bedType) && (
-                    <p className="text-sm text-gray-500 italic">Sin preferencias especificadas</p>
-                  )}
-                </div>
-              </div>
-            </div>
+            )}
 
-            {/* Loyalty Program */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-yellow-50 rounded-lg">
-                    <CreditCard className="h-5 w-5 text-yellow-600" />
-                  </div>
-                  <h2 className="text-lg font-semibold text-gray-900">Programa de Lealtad</h2>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">ID de Membresía</span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {guest.loyaltyProgram?.memberId || '—'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Nivel</span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {guest.loyaltyProgram?.tier || '—'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-sm text-gray-600">Puntos</span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {guest.loyaltyProgram?.points ?? '—'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Communication Preferences */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-teal-50 rounded-lg">
-                    <Settings className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <h2 className="text-lg font-semibold text-gray-900">Preferencias de Comunicación</h2>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="space-y-2">
-                  {Object.entries(guest.communicationPreferences || {}).filter(([, v]) => v).map(([key]) => (
-                    <div key={key} className="flex items-center space-x-2">
-                      <div className="h-2 w-2 bg-green-400 rounded-full"></div>
-                      <span className="text-sm text-gray-700 capitalize">{key}</span>
+            {/* Loyalty Program - Solo mostrar si tiene información */}
+            {hasLoyaltyProgram(guest.loyaltyProgram) && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-yellow-50 rounded-lg">
+                      <CreditCard className="h-5 w-5 text-yellow-600" />
                     </div>
-                  ))}
-                  {Object.values(guest.communicationPreferences || {}).every(v => !v) && (
-                    <p className="text-sm text-gray-500 italic">Sin preferencias especificadas</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-gray-50 rounded-lg">
-                    <FileText className="h-5 w-5 text-gray-600" />
+                    <h2 className="text-lg font-semibold text-gray-900">Programa de Lealtad</h2>
                   </div>
-                  <h2 className="text-lg font-semibold text-gray-900">Notas del Personal</h2>
+                </div>
+                <div className="p-6">
+                  <div className="space-y-3">
+                    {guest.loyaltyProgram?.memberId && (
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-sm text-gray-600">ID de Membresía</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {guest.loyaltyProgram.memberId}
+                        </span>
+                      </div>
+                    )}
+                    {guest.loyaltyProgram?.tier && (
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-sm text-gray-600">Nivel</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {guest.loyaltyProgram.tier}
+                        </span>
+                      </div>
+                    )}
+                    {guest.loyaltyProgram?.points !== undefined && (
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-sm text-gray-600">Puntos</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {guest.loyaltyProgram.points}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div className="p-6">
-                <InlineEditField 
-                  label="Notas"
-                  value={guest.notes}
-                  isEditing={isEditing('notes')}
-                  onEdit={() => handleEdit('notes')}
-                  onSave={handleSave}
-                  onCancel={handleCancel}
-                  isUpdating={isUpdating}
-                  type="textarea"
-                  editValue={editValues.notes || ''}
-                  onChange={(value: string) => handleInputChange('notes', value)}
-                />
+            )}
+
+            {/* Communication Preferences - Solo mostrar si tiene información */}
+            {hasCommunicationPreferences(guest.communicationPreferences) && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-teal-50 rounded-lg">
+                      <Settings className="h-5 w-5 text-teal-600" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-gray-900">Preferencias de Comunicación</h2>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <div className="space-y-2">
+                    {Object.entries(guest.communicationPreferences || {}).filter(([, v]) => v).map(([key]) => (
+                      <div key={key} className="flex items-center space-x-2">
+                        <div className="h-2 w-2 bg-green-400 rounded-full"></div>
+                        <span className="text-sm text-gray-700 capitalize">{key}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Notes - Solo mostrar si tiene información */}
+            {guest.notes && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-gray-50 rounded-lg">
+                      <FileText className="h-5 w-5 text-gray-600" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-gray-900">Notas del Personal</h2>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <InlineEditField 
+                    label="Notas"
+                    value={guest.notes}
+                    isEditing={isEditing('notes')}
+                    onEdit={() => handleEdit('notes')}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    isUpdating={isUpdating}
+                    type="textarea"
+                    editValue={editValues.notes || ''}
+                    onChange={(value: string) => handleInputChange('notes', value)}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

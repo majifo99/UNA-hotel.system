@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { Currency } from '../types/checkin';
 import { CURRENCIES, DEFAULT_CURRENCY } from '../constants/currencies';
@@ -16,78 +16,47 @@ export const CurrencySelector: React.FC<CurrencySelectorProps> = ({
   disabled = false,
   className = ''
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
   const selectedCurrency = CURRENCIES.find(c => c.code === value);
 
-  const handleSelect = (currency: Currency) => {
-    onChange(currency);
-    setIsOpen(false);
+  const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    onChange(event.target.value as Currency);
   };
 
   return (
     <div className={`relative ${className}`}>
-      {/* Display del valor seleccionado */}
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
+      {/* Native select element for accessibility */}
+      <select
+        value={value}
+        onChange={handleSelectChange}
         disabled={disabled}
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
-        aria-label={`Selector de moneda, seleccionado: ${selectedCurrency?.name || 'Ninguno'}`}
+        aria-label="Selector de moneda"
         className={`
-          w-full px-3 py-2 border border-gray-300 rounded-lg bg-white 
-          flex items-center justify-between cursor-pointer
+          w-full pl-16 pr-10 py-2 border border-gray-300 rounded-lg bg-white 
           focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20
           disabled:bg-gray-100 disabled:cursor-not-allowed
           ${disabled ? 'text-gray-500' : 'text-gray-900'}
+          appearance-none cursor-pointer
         `}
       >
+        {CURRENCIES.map((currency) => (
+          <option key={currency.code} value={currency.code}>
+            {currency.flag} {currency.symbol} {currency.code} - {currency.name}
+          </option>
+        ))}
+      </select>
+      
+      {/* Custom dropdown icon */}
+      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+        <ChevronDown className="h-4 w-4 text-gray-400" />
+      </div>
+      
+      {/* Currency display for better UX */}
+      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
         <div className="flex items-center gap-2">
           <span className="text-lg">{selectedCurrency?.flag}</span>
-          <span className="font-medium">{selectedCurrency?.symbol} {selectedCurrency?.code}</span>
-          <span className="text-gray-600 text-sm">- {selectedCurrency?.name}</span>
+          <span className="font-medium text-sm">{selectedCurrency?.symbol}</span>
         </div>
-        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
-      
-      {/* Dropdown options */}
-      {isOpen && (
-        <div 
-          role="listbox"
-          aria-label="Opciones de moneda"
-          className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto"
-        >
-          {CURRENCIES.map((currency) => (
-            <button
-              key={currency.code}
-              type="button"
-              role="option"
-              aria-selected={currency.code === value}
-              onClick={() => handleSelect(currency.code)}
-              className={`
-                w-full px-3 py-2 text-left hover:bg-gray-50 
-                flex items-center gap-2 transition-colors
-                ${currency.code === value ? 'bg-blue-50 text-blue-700' : 'text-gray-900'}
-              `}
-            >
-              <span className="text-lg">{currency.flag}</span>
-              <span className="font-medium">{currency.symbol} {currency.code}</span>
-              <span className="text-gray-600 text-sm">- {currency.name}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      
-      {/* Overlay para cerrar el dropdown */}
-      {isOpen && (
-        <button
-          type="button"
-          className="fixed inset-0 z-40 bg-transparent cursor-default"
-          onClick={() => setIsOpen(false)}
-          aria-label="Cerrar selector de moneda"
-          tabIndex={-1}
-        />
-      )}
+      </div>
     </div>
   );
 };
