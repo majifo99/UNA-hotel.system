@@ -9,9 +9,9 @@ import { SelectServicesPage } from '../modules/reservations/pages/SelectServices
 import { GuestsPage } from '../modules/guests/pages/GuestsPage';
 import { CreateGuestPage } from '../modules/guests/pages/CreateGuestPage';
 import FrontDesk from '../modules/frontdesk/components/FrontDesk';
-import { default as CheckInPage } from '../modules/frontdesk/pages/CheckInPage';
-import { default as CheckOutPage } from '../modules/frontdesk/pages/CheckOutPage';
-import { default as RoomChange } from '../modules/frontdesk/components/RoomChange';
+import CheckInPage from '../modules/frontdesk/pages/CheckInPage';
+import CheckOutPage from '../modules/frontdesk/pages/CheckOutPage';
+import RoomChange from '../modules/frontdesk/components/RoomChange';
 import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
 import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
 

@@ -76,14 +76,18 @@ export const ChargeDistributionComponent: React.FC<ChargeDistributionComponentPr
             </p>
           </div>
         </div>
-        <label className="flex items-center">
+        <div className="flex items-center">
           <input
+            id="charge-distribution-toggle"
             type="checkbox"
             checked={isEnabled}
             onChange={(e) => setIsEnabled(e.target.checked)}
             className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
           />
-        </label>
+          <label htmlFor="charge-distribution-toggle" className="sr-only">
+            Habilitar división de cargos
+          </label>
+        </div>
       </div>
 
       {isEnabled && (
@@ -198,10 +202,11 @@ export const ChargeDistributionComponent: React.FC<ChargeDistributionComponentPr
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     {/* Nombre del responsable */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label htmlFor={`guest-name-${distribution.id}`} className="block text-xs font-medium text-gray-700 mb-1">
                         Responsable
                       </label>
                       <input
+                        id={`guest-name-${distribution.id}`}
                         type="text"
                         value={distribution.guestName}
                         onChange={(e) => updateDistribution(distribution.id, { guestName: e.target.value })}
@@ -212,10 +217,11 @@ export const ChargeDistributionComponent: React.FC<ChargeDistributionComponentPr
 
                     {/* Método de pago */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label htmlFor={`payment-method-${distribution.id}`} className="block text-xs font-medium text-gray-700 mb-1">
                         Método de Pago
                       </label>
                       <select
+                        id={`payment-method-${distribution.id}`}
                         value={distribution.paymentMethod}
                         onChange={(e) => updateDistribution(distribution.id, { paymentMethod: e.target.value as PaymentMethod })}
                         className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -230,17 +236,18 @@ export const ChargeDistributionComponent: React.FC<ChargeDistributionComponentPr
 
                     {/* Monto/Porcentaje */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label htmlFor={`amount-${distribution.id}`} className="block text-xs font-medium text-gray-700 mb-1">
                         {distributionType === 'percentage' ? 'Porcentaje (%)' : 'Monto ($)'}
                       </label>
                       <input
+                        id={`amount-${distribution.id}`}
                         type="number"
                         min="0"
                         step={distributionType === 'percentage' ? '0.1' : '0.01'}
                         max={distributionType === 'percentage' ? '100' : totalAmount}
                         value={distributionType === 'percentage' ? (distribution.percentage || 0) : distribution.amount}
                         onChange={(e) => {
-                          const value = parseFloat(e.target.value) || 0;
+                          const value = Number.parseFloat(e.target.value) || 0;
                           if (distributionType === 'percentage') {
                             updateDistribution(distribution.id, { 
                               percentage: value,

@@ -31,6 +31,9 @@ export const CurrencySelector: React.FC<CurrencySelectorProps> = ({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled}
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-label={`Selector de moneda, seleccionado: ${selectedCurrency?.name || 'Ninguno'}`}
         className={`
           w-full px-3 py-2 border border-gray-300 rounded-lg bg-white 
           flex items-center justify-between cursor-pointer
@@ -49,11 +52,17 @@ export const CurrencySelector: React.FC<CurrencySelectorProps> = ({
       
       {/* Dropdown options */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+        <div 
+          role="listbox"
+          aria-label="Opciones de moneda"
+          className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto"
+        >
           {CURRENCIES.map((currency) => (
             <button
               key={currency.code}
               type="button"
+              role="option"
+              aria-selected={currency.code === value}
               onClick={() => handleSelect(currency.code)}
               className={`
                 w-full px-3 py-2 text-left hover:bg-gray-50 
@@ -71,9 +80,12 @@ export const CurrencySelector: React.FC<CurrencySelectorProps> = ({
       
       {/* Overlay para cerrar el dropdown */}
       {isOpen && (
-        <div 
-          className="fixed inset-0 z-40" 
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-transparent cursor-default"
           onClick={() => setIsOpen(false)}
+          aria-label="Cerrar selector de moneda"
+          tabIndex={-1}
         />
       )}
     </div>

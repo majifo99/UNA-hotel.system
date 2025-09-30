@@ -232,6 +232,13 @@ export const CreateGuestPage: React.FC = () => {
     }
   };
 
+  // Helper function to get gender value for API
+  const getGenderValue = (gender: string | undefined): 'M' | 'F' | 'O' | undefined => {
+    if (gender === 'male') return 'M';
+    if (gender === 'female') return 'F';
+    return undefined;
+  };
+
   const handleSubmit = async () => {
     if (!validateCurrentStep()) {
       return;
@@ -259,7 +266,7 @@ export const CreateGuestPage: React.FC = () => {
         numero_doc: formData.documentNumber || '',
         direccion: formData.address?.street || undefined,
         fecha_nacimiento: formData.dateOfBirth || undefined,
-        genero: formData.gender === 'male' ? 'M' : formData.gender === 'female' ? 'F' : undefined,
+        genero: getGenderValue(formData.gender),
         es_vip: formData.vipStatus || false,
         notas_personal: formData.notes || undefined,
 
