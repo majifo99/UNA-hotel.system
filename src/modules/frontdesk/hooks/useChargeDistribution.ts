@@ -84,15 +84,23 @@ export const useChargeDistribution = (totalGuests: number = 1, totalAmount: numb
       return `dist_${crypto.randomUUID()}`;
     }
     
-    // Fallback: usar múltiples fuentes de entropía
-    const timestamp = Date.now().toString(36);
-    const randomPart = Array.from(
-      { length: 12 }, 
-      () => Math.floor(Math.random() * 36).toString(36)
-    ).join('');
-    const performanceNow = performance.now().toString(36).replace('.', '');
+    // Fallback seguro: usar crypto.getRandomValues() si está disponible
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      const array = new Uint8Array(16);
+      crypto.getRandomValues(array);
+      const randomString = Array.from(array, byte => byte.toString(36)).join('');
+      const timestamp = Date.now().toString(36);
+      const performanceNow = performance.now().toString(36).replace('.', '');
+      
+      return `dist_${timestamp}_${performanceNow}_${randomString}`;
+    }
     
-    return `dist_${timestamp}_${performanceNow}_${randomPart}`;
+    // Último fallback: usar solo timestamp y performance para máxima unicidad
+    const timestamp = Date.now().toString(36);
+    const performanceNow = performance.now().toString(36).replace('.', '');
+    const counter = Math.floor(performance.now() * 1000) % 1000000;
+    
+    return `dist_${timestamp}_${performanceNow}_${counter.toString(36)}`;
   }, []);
 
   // Calcular si la distribución es válida
