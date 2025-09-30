@@ -2,24 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { limpiezaService } from "../services/limpiezaService";
 import type { LimpiezaFilters, LimpiezaPaginatedResponse } from "../types/limpieza";
 import type { SortKey } from "../types/table";
+import { ESTADO_HAB } from "../types/limpieza";
 
-export type UseLimpiezasTableProps = {
-  initialFilters?: LimpiezaFilters;
-};
-
+export type UseLimpiezasTableProps = { initialFilters?: LimpiezaFilters };
 type SortState = { key: SortKey; dir: "asc" | "desc" };
+export type LimpiezasTableController = ReturnType<typeof useLimpiezasTable>;
 
 export function useLimpiezasTable({ initialFilters }: Readonly<UseLimpiezasTableProps> = {}) {
-  const [filters, setFilters] = useState<LimpiezaFilters>({
-    per_page: 10,
-    ...initialFilters,
-  });
+  const [filters, setFilters] = useState<LimpiezaFilters>({ per_page: 10, ...initialFilters });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pageData, setPageData] = useState<LimpiezaPaginatedResponse | null>(null);
-
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-
   const [sort, setSort] = useState<SortState>({ key: "fecha_inicio", dir: "desc" });
 
   const fetchData = useCallback(async () => {
@@ -53,21 +47,15 @@ export function useLimpiezasTable({ initialFilters }: Readonly<UseLimpiezasTable
   const sortedItems = useMemo(() => {
     const copy = [...items];
     const dir = sort.dir === "asc" ? 1 : -1;
-
     copy.sort((a, b) => {
       const valA: any = getSortableValue(a, sort.key);
       const valB: any = getSortableValue(b, sort.key);
-
       if (valA == null && valB == null) return 0;
       if (valA == null) return -1 * dir;
       if (valB == null) return 1 * dir;
-
-      if (typeof valA === "number" && typeof valB === "number") {
-        return (valA - valB) * dir;
-      }
+      if (typeof valA === "number" && typeof valB === "number") return (valA - valB) * dir;
       return String(valA).localeCompare(String(valB)) * dir;
     });
-
     return copy;
   }, [items, sort, getSortableValue]);
 
@@ -77,13 +65,7 @@ export function useLimpiezasTable({ initialFilters }: Readonly<UseLimpiezasTable
   const toggleAllPage = () => {
     const ids = items.map((x) => x.id_limpieza);
     const all = ids.every((id) => selectedIds.includes(id));
-
-    setSelectedIds((prev) => {
-      if (all) {
-        return prev.filter((id) => !ids.includes(id));
-      }
-      return Array.from(new Set([...prev, ...ids]));
-    });
+    setSelectedIds((prev) => (all ? prev.filter((id) => !ids.includes(id)) : Array.from(new Set([...prev, ...ids]))));
   };
 
   const gotoPage = (page: number) => {
@@ -95,17 +77,66 @@ export function useLimpiezasTable({ initialFilters }: Readonly<UseLimpiezasTable
   };
 
   const setPerPage = (per_page: number) => setFilters((f) => ({ ...f, per_page, page: 1 }));
-  const applyFilters = (patch: Partial<LimpiezaFilters>) =>
-    setFilters((f) => ({ ...f, ...patch, page: 1 }));
-
+  const applyFilters = (patch: Partial<LimpiezaFilters>) => setFilters((f) => ({ ...f, ...patch, page: 1 }));
   const handleSort = (key: SortKey) =>
     setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
-  const finalizarLimpieza = async (
-    _id_limpieza: number,
-    _payload: { fecha_final: string; notas: string | null }
-  ) => {
-    setError("Acción no disponible: modo solo lectura (aún no implementamos finalizar).");
+  const patchItemOptimistic = useCallback((id_limpieza: number, patch: Partial<any>) => {
+    setPageData((prev) => {
+      if (!prev) return prev;
+      const data = prev.data.map((it) =>
+        it.id_limpieza === id_limpieza
+          ? {
+              ...it,
+              ...patch,
+              estadoHabitacion: {
+                ...(it.estadoHabitacion ?? {}),
+                id_estado_hab: patch.id_estado_hab ?? it.estadoHabitacion?.id_estado_hab,
+                nombre: patch.id_estado_hab === ESTADO_HAB.LIMPIA ? "Limpia" : "Sucia",
+              },
+            }
+          : it
+      );
+      return { ...prev, data };
+    });
+  }, []);
+
+  const finalizarLimpieza = async (id_limpieza: number, payload: { fecha_final: string; notas: string | null }) => {
+    const snapshot = pageData;
+    patchItemOptimistic(id_limpieza, {
+      id_estado_hab: ESTADO_HAB.LIMPIA,
+      fecha_final: payload.fecha_final,
+      notas: payload.notas ?? null,
+    });
+    try {
+      await limpiezaService.updateLimpieza(id_limpieza, {
+        id_estado_hab: ESTADO_HAB.LIMPIA,
+        fecha_final: payload.fecha_final,
+        notas: payload.notas ?? null,
+      });
+    } catch (e: any) {
+      setPageData(snapshot ?? null);
+      setError(e?.message ?? "No se pudo marcar como LIMPIA");
+      throw e;
+    }
+  };
+
+  const reabrirLimpieza = async (id_limpieza: number) => {
+    const snapshot = pageData;
+    patchItemOptimistic(id_limpieza, {
+      id_estado_hab: ESTADO_HAB.SUCIA,
+      fecha_final: null,
+    });
+    try {
+      await limpiezaService.updateLimpieza(id_limpieza, {
+        id_estado_hab: ESTADO_HAB.SUCIA,
+        fecha_final: null,
+      });
+    } catch (e: any) {
+      setPageData(snapshot ?? null);
+      setError(e?.message ?? "No se pudo marcar como SUCIA");
+      throw e;
+    }
   };
 
   return {
@@ -130,6 +161,7 @@ export function useLimpiezasTable({ initialFilters }: Readonly<UseLimpiezasTable
     sort,
     handleSort,
     finalizarLimpieza,
+    reabrirLimpieza,
     refetch: fetchData,
     setFilters,
     filters,

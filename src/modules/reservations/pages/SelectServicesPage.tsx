@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Save, X } from 'lucide-react';
 import { ServicesSelection } from '../components';
 import type { SimpleReservationFormData } from '../types';
+import { reservationService } from '../services';
 
 interface LocationState {
   reservationData?: SimpleReservationFormData;
@@ -23,18 +24,35 @@ export const SelectServicesPage: React.FC = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  // Mock services data - esto debería venir de un hook
-  const additionalServices = [
-    { id: '1', name: 'Desayuno', description: 'Desayuno continental', price: 15, category: 'Comidas' },
-    { id: '2', name: 'Almuerzo', description: 'Almuerzo buffet', price: 25, category: 'Comidas' },
-    { id: '3', name: 'Cena', description: 'Cena a la carta', price: 35, category: 'Comidas' },
-    { id: '4', name: 'Wifi Premium', description: 'Internet de alta velocidad', price: 10, category: 'Tecnología' },
-    { id: '5', name: 'TV Premium', description: 'Canales premium y streaming', price: 15, category: 'Tecnología' },
-    { id: '6', name: 'Spa', description: 'Acceso al spa del hotel', price: 50, category: 'Bienestar' },
-    { id: '7', name: 'Masajes', description: 'Sesión de masajes relajantes', price: 80, category: 'Bienestar' },
-    { id: '8', name: 'Piscina', description: 'Acceso a la piscina', price: 20, category: 'Recreación' },
-    { id: '9', name: 'Gimnasio', description: 'Acceso al gimnasio 24/7', price: 25, category: 'Recreación' },
-  ];
+  const [additionalServices, setAdditionalServices] = React.useState<Array<{id:string;name:string;description:string;price:number;category:string;}>>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    reservationService.getAdditionalServices()
+      .then((list) => {
+        // Map backend service objects to UI shape if needed
+        const mapped = (list || []).map((s: any) => ({
+          id: String(s.id_servicio || s.id || s.uuid || s.id_service || ''),
+          name: s.nombre || s.name || 'Servicio',
+          description: s.descripcion || s.description || '',
+          price: Number(s.precio ?? s.price ?? 0),
+          category: s.categoria || s.category || 'General',
+        }));
+        // eslint-disable-next-line no-console
+        console.debug('[UI] loaded servicios:', mapped);
+        if (mounted) setAdditionalServices(mapped);
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error('[UI] Error loading servicios:', err);
+        if (mounted) setError(String(err?.message || err));
+      })
+      .finally(() => { if (mounted) setLoading(false); });
+    return () => { mounted = false; };
+  }, []);
 
   const handleServiceToggle = (serviceId: string) => {
     setSelectedServices(prev => 
@@ -58,9 +76,7 @@ export const SelectServicesPage: React.FC = () => {
     navigate('/reservations/create');
   };
 
-  const selectedServicesData = additionalServices.filter(service => 
-    selectedServices.includes(service.id)
-  );
+  const selectedServicesData = additionalServices.filter(service => selectedServices.includes(service.id));
 
   const totalServicesPrice = selectedServicesData.reduce((total, service) => 
     total + service.price, 0
@@ -102,11 +118,15 @@ export const SelectServicesPage: React.FC = () => {
             Servicios Disponibles
           </h2>
           
-          <ServicesSelection
-            services={additionalServices}
-            selectedServices={selectedServices}
-            onServiceToggle={handleServiceToggle}
-          />
+          {loading && <div className="py-6">Cargando servicios...</div>}
+          {error && <div className="py-6 text-red-600">Error cargando servicios: {error}</div>}
+          {!loading && !error && (
+            <ServicesSelection
+              services={additionalServices}
+              selectedServices={selectedServices}
+              onServiceToggle={handleServiceToggle}
+            />
+          )}
         </div>
 
         {/* Summary and Actions */}

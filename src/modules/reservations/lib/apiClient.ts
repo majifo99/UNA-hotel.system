@@ -9,6 +9,10 @@ export const apiClient = axios.create({
   },
 });
 
+// Debug baseURL once at startup
+// eslint-disable-next-line no-console
+console.debug('[API INIT] baseURL =', apiClient.defaults.baseURL);
+
 // Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
@@ -17,6 +21,9 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // eslint-disable-next-line no-console
+    const fullUrl = `${config.baseURL || ''}${config.url || ''}`;
+    console.debug('[API REQUEST]', (config.method || 'GET').toUpperCase(), fullUrl);
     return config;
   },
   (error) => {

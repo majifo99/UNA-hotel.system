@@ -1,11 +1,11 @@
-
-import { createBrowserRouter, RouterProvider, Outlet, Navigate } from 'react-router-dom';
+﻿import { createBrowserRouter, RouterProvider, Outlet, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MainLayout } from '../layouts/MainLayout';
 import { Home } from '../pages/Home';
-import { CreateReservationPage } from '../modules/reservations/pages/CreateReservationPage'; 
-import HousekeepingDashboard from '../modules/housekeeping/pages/HousekeepingDashboard';
+import { ReservationsListPage } from '../modules/reservations/pages/ReservationsListPage';
+import { CreateReservationPage } from '../modules/reservations/pages/CreateReservationPage';
 import { SelectServicesPage } from '../modules/reservations/pages/SelectServicesPage';
+import HousekeepingDashboard from '../modules/housekeeping/pages/HousekeepingDashboard';
 import { GuestsPage } from '../modules/guests/pages/GuestsPage';
 import { CreateGuestPage } from '../modules/guests/pages/CreateGuestPage';
 import FrontDesk from '../modules/frontdesk/components/FrontDesk';
@@ -17,7 +17,7 @@ import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
 
 /**
  * TanStack Query Client Configuration
- * 
+ *
  * Global configuration for server state management:
  * - staleTime: 5 minutes (data considered fresh for 5 minutes)
  * - retry: 1 (retry failed requests once)
@@ -38,11 +38,11 @@ const queryClient = new QueryClient({
 
 /**
  * Root Layout Component
- * 
+ *
  * Wraps all routes with:
  * - TanStack Query Provider (for server state management)
  * - Main Layout (sidebar, header, main content area)
- * 
+ *
  * The Outlet component renders the matched child route
  */
 function RootLayout() {
@@ -57,20 +57,15 @@ function RootLayout() {
 
 /**
  * Application Router Configuration
- * 
+ *
  * Route Structure:
  * /                          - Dashboard/Home page
+ * /reservations              - Reservations list and management
  * /reservations/create       - Create new reservation form
- * 
- * Future routes to implement:
- * /reservations              - List all reservations
- * /reservations/:id          - View/edit specific reservation
- * /rooms                     - Room management
- * /guests                    - Guest management
- * /payments                  - Payment management
- * /reports                   - Reports and analytics
- * /settings                  - System configuration
- * 
+ * /reservations/create/services - Select services flow
+ *
+ * Additional routes include FrontDesk, Housekeeping, Guests, and utilities.
+ *
  * To add a new route:
  * 1. Import the page component
  * 2. Add a new route object to the children array
@@ -123,6 +118,10 @@ const router = createBrowserRouter([
         path: 'reservations',
         children: [
           {
+            index: true,
+            element: <ReservationsListPage />,
+          },
+          {
             // Create new reservation
             path: 'create',
             element: <CreateReservationPage />,
@@ -132,32 +131,17 @@ const router = createBrowserRouter([
             path: 'create/services',
             element: <SelectServicesPage />,
           },
-          // Add more reservation routes here:
-          // {
-          //   path: '', // /reservations (list)
-          //   element: <ReservationsListPage />,
-          // },
-          // {
-          //   path: ':id', // /reservations/123 (view/edit)
-          //   element: <ReservationDetailPage />,
-          // },
+          // Future detail routes can be added here, e.g. /reservations/:id
         ],
       },
       {
-  path: 'housekeeping',
-  element: <HousekeepingDashboard />,
-},
-
-{
-  path: 'Mantenimiento',
-  element: <Mantenimiento/>,
-},
-
-      // Add more top-level routes here:
-      // {
-      //   path: 'rooms',
-      //   element: <RoomsPage />,
-      // },
+        path: 'housekeeping',
+        element: <HousekeepingDashboard />,
+      },
+      {
+        path: 'mantenimiento',
+        element: <Mantenimiento />,
+      },
       {
         path: 'guests',
         children: [
@@ -171,8 +155,8 @@ const router = createBrowserRouter([
           },
           {
             path: ':id',
-            element: <GuestProfilePage />, 
-          }
+            element: <GuestProfilePage />,
+          },
         ],
       },
     ],
@@ -181,7 +165,7 @@ const router = createBrowserRouter([
 
 /**
  * Main App Router Component
- * 
+ *
  * Entry point for the application routing system.
  * Uses React Router v6 with createBrowserRouter for better performance
  * and nested routing capabilities.

@@ -36,7 +36,7 @@ export const ROUTES = {
     // Create new reservation
     CREATE: '/reservations/create',
     
-    // List all reservations (future implementation)
+    // List all reservations
     LIST: '/reservations',
     
     // View/Edit specific reservation (future implementation)

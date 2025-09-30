@@ -96,6 +96,7 @@ export const CreateReservationForm: React.FC = () => {
               checkOutDate: formData.checkOutDate,
               numberOfAdults: formData.numberOfAdults,
               numberOfChildren: formData.numberOfChildren,
+              numberOfInfants: formData.numberOfInfants,
               numberOfGuests: formData.numberOfGuests,
               numberOfNights: formData.numberOfNights,
             }}
@@ -104,6 +105,7 @@ export const CreateReservationForm: React.FC = () => {
               checkOutDate: getErrorMessage(errors.checkOutDate),
               numberOfAdults: getErrorMessage(errors.numberOfAdults),
               numberOfChildren: getErrorMessage(errors.numberOfChildren),
+              numberOfInfants: getErrorMessage(errors.numberOfInfants),
               numberOfGuests: getErrorMessage(errors.numberOfGuests),
             }}
             onFieldChange={(field, value) => setValue(field, value)}
