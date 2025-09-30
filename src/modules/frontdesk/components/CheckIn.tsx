@@ -588,7 +588,7 @@ const CheckIn = () => {
                     onChange={(e) => {
                       const value = e.target.value;
                       // Solo permitir alfanumérico y guiones
-                      if (/^[a-zA-Z0-9\-]*$/.test(value)) {
+                      if (/^[a-zA-Z0-9-]*$/.test(value)) {
                         setFormData(prev => ({ ...prev, identificationNumber: value }));
                         clearError('identificationNumber');
                       }
@@ -874,7 +874,7 @@ const CheckIn = () => {
                         onChange={(e) => {
                           const value = e.target.value;
                           // Solo permitir alfanumérico y guiones
-                          if (/^[a-zA-Z0-9\-]*$/.test(value)) {
+                          if (/^[a-zA-Z0-9-]*$/.test(value)) {
                             setFormData(prev => ({ ...prev, roomNumber: value }));
                             searchRoomSuggestions(value);
                             clearError('roomNumber');
@@ -943,7 +943,7 @@ const CheckIn = () => {
                       type="button"
                       onClick={() => {
                         // Aquí se podría integrar con el sistema de reservas
-                        console.log('Confirmando habitación:', formData.roomNumber);
+                        // Confirmar habitación seleccionada
                       }}
                       disabled={!formData.roomNumber}
                       className="px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
@@ -1019,7 +1019,7 @@ const CheckIn = () => {
                   onChange={(e) => {
                     const value = e.target.value;
                     // Permitir texto con puntuación básica
-                    if (/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,;:!?\-()]*$/.test(value)) {
+                    if (/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,;:!?()-]*$/.test(value)) {
                       setFormData(prev => ({ ...prev, observacion_checkin: value }));
                       clearError('observaciones');
                     }
