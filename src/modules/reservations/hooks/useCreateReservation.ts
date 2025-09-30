@@ -14,6 +14,9 @@ export const useCreateReservation = () => {
     guestId: '',
     checkInDate: '',
     checkOutDate: '',
+    numberOfAdults: 1,
+    numberOfChildren: 0,
+    numberOfInfants: 0,
     numberOfGuests: 1,
     numberOfNights: 0,
     roomType: 'single',
@@ -29,6 +32,13 @@ export const useCreateReservation = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
   const [additionalServices, setAdditionalServices] = useState<AdditionalService[]>([]);
+
+  useEffect(() => {
+    const totalGuests = (formData.numberOfAdults || 0) + (formData.numberOfChildren || 0) + (formData.numberOfInfants || 0);
+    if (totalGuests !== formData.numberOfGuests) {
+      setFormData(prev => ({ ...prev, numberOfGuests: totalGuests }));
+    }
+  }, [formData.numberOfAdults, formData.numberOfChildren, formData.numberOfInfants, formData.numberOfGuests]);
 
   // Calculate nights when dates change
   useEffect(() => {

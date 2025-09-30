@@ -190,7 +190,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
   {
     id: 'reservations',
     label: 'Reservaciones',
-    path: ROUTES.RESERVATIONS.CREATE,
+    path: ROUTES.RESERVATIONS.BASE,
     icon: Calendar,
     description: 'Sistema de reservaciones',
     category: 'operations',

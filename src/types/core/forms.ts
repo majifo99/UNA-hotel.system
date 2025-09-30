@@ -96,6 +96,9 @@ export interface SimpleReservationFormData {
   checkInDate: string;
   checkOutDate: string;
   numberOfGuests: number;
+  numberOfAdults: number;
+  numberOfChildren: number;
+  numberOfInfants: number;
   numberOfNights: number;
   roomType: RoomType;
   additionalServices: string[];
@@ -118,6 +121,9 @@ export interface ReservationFormData {
   checkInDate: string;
   checkOutDate: string;
   numberOfGuests: number;
+  numberOfAdults: number;
+  numberOfChildren: number;
+  numberOfInfants: number;
   numberOfNights: number;
   
   // Room selection

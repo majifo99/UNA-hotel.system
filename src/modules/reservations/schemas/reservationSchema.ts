@@ -65,6 +65,9 @@ export const simpleReservationSchema = z.object({
   numberOfChildren: z.number()
     .min(0, 'El número de niños no puede ser negativo')
     .max(6, 'Máximo 6 niños por reserva'),
+  numberOfInfants: z.number()
+    .min(0, 'El número de bebés no puede ser negativo')
+    .max(4, 'Máximo 4 bebés por reserva'),
   numberOfGuests: z.number().min(1, 'No se puede hacer una reserva con 0 huéspedes'),
   numberOfNights: z.number().min(1, 'Debe ser al menos 1 noche').max(30, 'La estadía máxima permitida es de 30 noches'),
   roomIds: z.array(z.string()).min(1, 'Debe seleccionar al menos una habitación'),
@@ -82,7 +85,7 @@ export const simpleReservationSchema = z.object({
   depositRequired: z.number().min(0, 'El depósito no puede ser negativo'),
 }).superRefine((data, ctx) => {
   // Calcular total de huéspedes
-  const totalGuests = data.numberOfAdults + data.numberOfChildren;
+  const totalGuests = data.numberOfAdults + data.numberOfChildren + data.numberOfInfants;
   
   // Validar que coincida con numberOfGuests
   if (totalGuests !== data.numberOfGuests) {
@@ -149,7 +152,7 @@ export const simpleReservationSchema = z.object({
   if (totalGuests > 12) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'El número máximo total de huéspedes es 12 (adultos + niños)',
+      message: 'El número máximo total de huéspedes es 12 (adultos + niños + bebés)',
       path: ['numberOfChildren'],
     });
   }
