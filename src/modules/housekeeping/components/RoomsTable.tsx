@@ -1,15 +1,27 @@
-"use client";
+// src/modules/housekeeping/components/RoomsTable.tsx
 
 import { useMemo, useEffect, useState, useCallback } from "react";
-import { UserCheck, MoreHorizontal, Eye, RefreshCw, AlertTriangle, Pencil } from "lucide-react";
+import { UserCheck, MoreHorizontal, Eye, RefreshCw } from "lucide-react";
 import type { Prioridad, LimpiezaItem } from "../types/limpieza";
-import { useLimpiezasTable } from "../hooks/useLimpiezasTable";
+import { useLimpiezasTable, type LimpiezasTableController } from "../hooks/useLimpiezasTable";
 import type { ColumnKey, SortKey } from "../types/table";
-
 import LimpiezaDetailModal from "./Modals/LimpiezaDetailModal";
 import CleanToggle, { type FinalizePayload } from "./CleanToggle";
+import type { RoomFilters } from "./FilterBar"; // 👈 importamos el tipo
 
 const cn = (...xs: Array<string | false | null | undefined>) => xs.filter(Boolean).join(" ");
+const PRIORIDAD_CLEAN_MODE: "dash" | "finishedAt" = "dash";
+
+function formatFinishedAt(iso?: string | null) {
+  if (!iso) return "Finalizada";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "Finalizada";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `Finalizada ${dd}/${mm} ${hh}:${mi}`;
+}
 
 function Pill({
   children,
@@ -33,7 +45,11 @@ function PrioridadBadge({ prioridad }: Readonly<{ prioridad?: Prioridad | null }
     alta: "orange",
     urgente: "rose",
   };
-  return <Pill tone={tone[prioridad]}>{prioridad.toUpperCase()}</Pill>;
+  return (
+    <Pill tone={tone[prioridad]}>
+      <span className="capitalize">{prioridad}</span>
+    </Pill>
+  );
 }
 
 function EstadoBadge({ clean }: Readonly<{ clean: boolean }>) {
@@ -48,8 +64,11 @@ export type SelectedRoom = {
 };
 
 type Props = {
+  controller?: LimpiezasTableController;
   onEdit?: (item: LimpiezaItem) => void;
   onSelectionChange?: (room: SelectedRoom | null) => void;
+  /** 👉 filtros provenientes de FilterBar (opcional para no romper llamadas existentes) */
+  filters?: RoomFilters;
 };
 
 const SORT_MAP: Record<ColumnKey | "descripcion" | "notas" | "habitacion", SortKey | null> = {
@@ -69,11 +88,44 @@ const SORT_MAP: Record<ColumnKey | "descripcion" | "notas" | "habitacion", SortK
 function getRowId(item: any): number {
   return item.id_limpieza ?? item.id;
 }
+
 function getEstado(item: any): { nombre?: string } | undefined {
   return item.estadoHabitacion ?? item.estado;
 }
 
-export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<Props>) {
+/** Helpers para leer campos usados por los filtros (sin alterar estructura original) */
+function getNumero(item: any): string {
+  return String(item?.habitacion?.numero ?? "").trim();
+}
+function getTipo(item: any): string {
+  return String(item?.habitacion?.tipo?.nombre ?? "").trim();
+}
+function getPiso(item: any): string {
+  const piso = item?.habitacion?.piso;
+  if (piso === undefined || piso === null) return "";
+  return String(piso).trim();
+}
+
+/** Helper para S3358: evita ternarios anidados en la celda de Prioridad */
+function renderPrioridadCell(clean: boolean, fechaFinal?: string | null, prioridad?: Prioridad | null) {
+  if (clean) {
+    if (PRIORIDAD_CLEAN_MODE === "dash") {
+      return (
+        <span className="text-slate-400 text-sm" aria-label="Sin prioridad por estar limpia">
+          —
+        </span>
+      );
+    }
+    return <span className="text-slate-600 text-sm">{formatFinishedAt(fechaFinal ?? undefined)}</span>;
+  }
+  return <PrioridadBadge prioridad={prioridad ?? null} />;
+}
+
+export default function LimpiezasTable({ controller, onEdit, onSelectionChange, filters }: Readonly<Props>) {
+  // ✅ S6440: el hook se llama SIEMPRE y luego resolvemos qué controller usar
+  const internalCtrl = useLimpiezasTable({ initialFilters: { per_page: 10, pendientes: false } });
+  const ctrl = controller ?? internalCtrl;
+
   const {
     loading,
     error,
@@ -83,14 +135,17 @@ export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<P
     toggleOne,
     toggleAllPage,
     gotoPage,
-    handleSort,
     finalizarLimpieza,
-  } = useLimpiezasTable({ initialFilters: { per_page: 10, pendientes: false } });
+    reabrirLimpieza,
+  } = ctrl;
 
   const totalPages = pagination.last_page;
 
   const columns = useMemo<
-    ReadonlyArray<{ key: ColumnKey | "descripcion" | "notas" | "habitacion"; label: string }>
+    ReadonlyArray<{
+      key: ColumnKey | "descripcion" | "notas" | "habitacion";
+      label: string;
+    }>
   >(
     () => [
       { key: "habitacion", label: "Habitación" },
@@ -103,25 +158,50 @@ export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<P
     []
   );
 
-  // UI optimista para LIMPIA/SUCIA
+  // UI optimista local por fila (visual)
   const [optimisticCleanIds, setOptimisticCleanIds] = useState<Set<number>>(new Set());
-  const addOptimistic = (id: number) => setOptimisticCleanIds((prev) => new Set(prev).add(id));
-  const removeOptimistic = (id: number) =>
+
+  const addOptimistic = useCallback((id: number) => {
+    setOptimisticCleanIds((prev) => new Set(prev).add(id));
+  }, []);
+
+  const removeOptimistic = useCallback((id: number) => {
     setOptimisticCleanIds((prev) => {
       const next = new Set(prev);
       next.delete(id);
       return next;
     });
+  }, []);
 
-  // wrapper para compatibilizar firma con CleanToggle (notas opcional)
+  // Wrappers para CleanToggle con manejo de errores (S2737)
   const handleFinalizeForToggle = useCallback(
     async (id: number, payload: FinalizePayload) => {
-      await finalizarLimpieza(id, {
-        fecha_final: payload.fecha_final,
-        notas: payload.notas ?? null,
-      });
+      addOptimistic(id);
+      try {
+        await finalizarLimpieza(id, { fecha_final: payload.fecha_final, notas: payload.notas ?? null });
+        // opcional: removeOptimistic(id);
+      } catch (e) {
+        // ✅ lógica en catch (log + rollback + rethrow si deseas)
+        console.error("[RoomsTable] Error al finalizar limpieza", e);
+        removeOptimistic(id);
+        throw e;
+      }
     },
-    [finalizarLimpieza]
+    [finalizarLimpieza, addOptimistic, removeOptimistic]
+  );
+
+  const handleReopenForToggle = useCallback(
+    async (id: number) => {
+      removeOptimistic(id);
+      try {
+        await reabrirLimpieza(id);
+      } catch (e) {
+        // ✅ lógica en catch (log); no es necesario revertir optimista adicional
+        console.error("[RoomsTable] Error al reabrir limpieza", e);
+        throw e;
+      }
+    },
+    [reabrirLimpieza, removeOptimistic]
   );
 
   // menú por fila
@@ -148,10 +228,8 @@ export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<P
       (r) => typeof r?.habitacion?.id === "number" || typeof r?.habitacion?.id === "string"
     );
     if (!firstWithRoom) return onSelectionChange(null);
-
     const rawId = firstWithRoom.habitacion!.id;
     const numericId = typeof rawId === "number" ? rawId : Number(rawId);
-
     const room: SelectedRoom = {
       id: numericId,
       numero: firstWithRoom.habitacion?.numero,
@@ -161,9 +239,34 @@ export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<P
     onSelectionChange(room);
   }, [selectedIds, items, onSelectionChange]);
 
+  /** ---------- 👇 AÑADIDO: filtrado en cliente según RoomFilters sin modificar el resto ---------- */
+  const viewItems = useMemo(() => {
+    if (!filters) return items;
+    const fSearch = (filters.search || "").toLowerCase().trim();
+    const fStatus = (filters.status || "").toLowerCase().trim(); // "sucia" | "limpia" | ""
+    const fType = (filters.type || "").toLowerCase().trim(); // "sencilla" | "doble" | "suite" | "king" | ""
+    const fFloor = (filters.floor || "").toLowerCase().trim(); // "1" | "2" | ""
+
+    return (items || []).filter((it) => {
+      const numero = getNumero(it).toLowerCase();
+      const tipo = getTipo(it).toLowerCase();
+      const piso = getPiso(it).toLowerCase();
+      const estadoNombre = String(getEstado(it)?.nombre ?? "").toLowerCase();
+
+      if (fSearch && !numero.includes(fSearch)) return false;
+      if (fStatus && estadoNombre !== fStatus) return false;
+      if (fType && tipo !== fType) return false;
+      if (fFloor && piso !== fFloor) return false;
+
+      return true;
+    });
+  }, [items, filters]);
+  /** ---------- 👆 FIN AÑADIDO ---------- */
+
   if (loading && items.length === 0) return <div className="text-center text-slate-500 py-10 text-sm">Cargando…</div>;
   if (error) return <div className="text-center text-rose-600 py-10 text-sm">Error: {error}</div>;
-  if (items.length === 0) return <div className="text-center text-slate-500 py-10 text-sm">No hay limpiezas para mostrar.</div>;
+  if ((viewItems ?? items).length === 0)
+    return <div className="text-center text-slate-500 py-10 text-sm">No hay limpiezas para mostrar{filters ? " con los filtros aplicados." : "."}</div>;
 
   const HEAD_BASE = "p-4 font-medium text-gray-700 capitalize text-left";
 
@@ -181,18 +284,16 @@ export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<P
             <col className="w-[16%]" />
             <col className="w-[110px]" />
           </colgroup>
-
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
               <th className="px-4 py-3">
                 <input
                   type="checkbox"
-                  checked={items.length > 0 && items.every((r) => selectedIds.includes(getRowId(r)))}
-                  onChange={toggleAllPage}
+                  checked={(viewItems.length > 0) && viewItems.every((r) => selectedIds.includes(getRowId(r)))}
+                  onChange={toggleAllPage /* mantenemos comportamiento original */}
                   className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                 />
               </th>
-
               {columns.map((c) => {
                 const sortKey = SORT_MAP[c.key];
                 const isSortable = Boolean(sortKey);
@@ -201,7 +302,7 @@ export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<P
                     {isSortable ? (
                       <button
                         type="button"
-                        onClick={() => handleSort(sortKey as SortKey)}
+                        onClick={() => ctrl.handleSort(sortKey as SortKey)}
                         className="flex items-center gap-1 hover:text-slate-900 transition-colors"
                       >
                         {c.label}
@@ -212,29 +313,22 @@ export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<P
                   </th>
                 );
               })}
-
               <th className={HEAD_BASE + " text-right"}>Acciones</th>
             </tr>
           </thead>
-
           <tbody className="bg-white divide-y divide-slate-100">
-            {items.map((raw) => {
+            {(viewItems as any[]).map((raw) => {
               const item: any = raw;
               const id = getRowId(item);
               const isSelected = selectedIds.includes(id);
-
               const numero = item.habitacion?.numero ?? "—";
               const tipo = item.habitacion?.tipo?.nombre ?? "—";
               const pisoVal = item.habitacion?.piso ?? "—";
               const pisoFmt = pisoVal === "—" ? "—" : `Piso ${String(pisoVal)}`;
-
               const estado = getEstado(item);
               const estadoNombre = estado?.nombre;
-
               const clean =
-                optimisticCleanIds.has(id) ||
-                Boolean(item.fecha_final) ||
-                (estadoNombre ?? "").toLowerCase() === "limpia";
+                optimisticCleanIds.has(id) || Boolean(item.fecha_final) || (estadoNombre ?? "").toLowerCase() === "limpia";
 
               return (
                 <tr key={id} className={cn("hover:bg-slate-50/50 transition-colors", isSelected && "bg-teal-50/30")}>
@@ -247,7 +341,6 @@ export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<P
                       className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                     />
                   </td>
-
                   {/* Habitación */}
                   <td className="p-4">
                     <div className="flex flex-col">
@@ -257,17 +350,12 @@ export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<P
                       </span>
                     </div>
                   </td>
-
                   {/* Estado */}
                   <td className="p-4">
                     <EstadoBadge clean={clean} />
                   </td>
-
                   {/* Prioridad */}
-                  <td className="p-4">
-                    <PrioridadBadge prioridad={item.prioridad ?? null} />
-                  </td>
-
+                  <td className="p-4">{renderPrioridadCell(clean, item.fecha_final, item.prioridad ?? null)}</td>
                   {/* Asignador */}
                   <td className="px-4 py-3 text-sm text-slate-600">
                     {item.asignador ? (
@@ -279,18 +367,15 @@ export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<P
                       <span className="text-slate-400 text-sm">—</span>
                     )}
                   </td>
-
                   {/* Notas */}
                   <td className="px-4 py-3 text-sm text-slate-700 truncate" title={item.notas ?? ""}>
                     {item.notas ?? <span className="text-slate-400">—</span>}
                   </td>
-
                   {/* Descripción */}
                   <td className="px-4 py-3 text-sm text-slate-700 truncate" title={item.descripcion ?? ""}>
                     {item.descripcion ?? <span className="text-slate-400">—</span>}
                   </td>
-
-                  {/* Acciones: toggle + menú */}
+                  {/* Acciones */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 justify-end">
                       <CleanToggle
@@ -298,10 +383,10 @@ export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<P
                         clean={clean}
                         notas={item.notas ?? null}
                         onFinalize={handleFinalizeForToggle}
+                        onReopen={handleReopenForToggle}
                         onOptimisticAdd={addOptimistic}
                         onOptimisticRemove={removeOptimistic}
                       />
-
                       {/* Menú tres puntos */}
                       <div className="relative">
                         <button
@@ -317,7 +402,6 @@ export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<P
                         >
                           <MoreHorizontal className="w-4 h-4" />
                         </button>
-
                         {openMenuId === id && (
                           <div
                             role="menu"
@@ -341,17 +425,7 @@ export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<P
                               <Eye className="w-4 h-4 text-slate-600" />
                               Ver detalles
                             </button>
-                            <button
-                              role="menuitem"
-                              className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
-                              onClick={() => {
-                                setOpenMenuId(null);
-                                onEdit?.(item);
-                              }}
-                            >
-                              <Pencil className="w-4 h-4 text-slate-600" />
-                              Editar
-                            </button>
+
                             <button
                               role="menuitem"
                               className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
@@ -362,17 +436,6 @@ export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<P
                             >
                               <RefreshCw className="w-4 h-4 text-slate-600" />
                               Reasignar
-                            </button>
-                            <button
-                              role="menuitem"
-                              className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
-                              onClick={() => {
-                                setOpenMenuId(null);
-                                alert(`Reportar problema en la habitación ${numero}`);
-                              }}
-                            >
-                              <AlertTriangle className="w-4 h-4 text-rose-600" />
-                              Reportar problema
                             </button>
                           </div>
                         )}
@@ -385,7 +448,6 @@ export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<P
           </tbody>
         </table>
       </div>
-
       {/* Paginación */}
       <div className="flex justify-center items-center gap-1 py-5 bg-white border-t border-slate-100">
         <button
@@ -417,7 +479,6 @@ export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<P
           →
         </button>
       </div>
-
       {/* Modal de detalles */}
       <LimpiezaDetailModal
         open={detailOpen}
@@ -428,7 +489,12 @@ export default function LimpiezasTable({ onEdit, onSelectionChange }: Readonly<P
           onEdit?.(itm);
         }}
         onMarkCompleted={async (id) => {
-          await finalizarLimpieza(id, { fecha_final: new Date().toISOString(), notas: null });
+          try {
+            await finalizarLimpieza(id, { fecha_final: new Date().toISOString(), notas: null });
+          } catch (e) {
+            console.error("[RoomsTable] Error al marcar como completada desde modal", e);
+            throw e;
+          }
         }}
       />
     </div>

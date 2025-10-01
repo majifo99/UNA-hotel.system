@@ -1,10 +1,38 @@
 import { useEffect, useMemo, useState } from "react";
-import { X, BadgeCheck, Clock, UserCheck, DoorOpen } from "lucide-react";
+import { X, BadgeCheck,  UserCheck, DoorOpen } from "lucide-react";
 import type { LimpiezaItem } from "../../types/limpieza";
 import { limpiezaService } from "../../services/limpiezaService";
 
 const cn = (...xs: Array<string | false | null | undefined>) =>
   xs.filter(Boolean).join(" ");
+
+// ---------------- Helper para descripción ----------------
+const getRoomDescription = (item: any): string => {
+  if (!item?.habitacion) return "—";
+
+  // 1) Campo directo
+  const direct =
+    item.habitacion.descripcion ??
+    item.habitacion.descripcion_habitacion ??
+    item.habitacion.desc ??
+    item.habitacion.detalle ??
+    item.habitacion.detalles ??
+    item.habitacion.caracteristicas;
+  if (direct && typeof direct === "string" && direct.trim()) return direct;
+
+  // 2) Desde tipo de habitación
+  const fromTipo = item.habitacion.tipo?.descripcion;
+  if (fromTipo && typeof fromTipo === "string" && fromTipo.trim()) return fromTipo;
+
+  // 3) Variantes con mayúsculas
+  const weird =
+    item.habitacion.Descripcion ??
+    item.habitacion.DescripcionHabitacion ??
+    item.habitacion.DESCRIPCION;
+  if (weird && typeof weird === "string" && weird.trim()) return weird;
+
+  return "—";
+};
 
 interface Props {
   readonly open: boolean;
@@ -40,18 +68,15 @@ function Pill({
   );
 }
 
-function PrioridadBadge({
-  prioridad,
-}: Readonly<{ prioridad?: "baja" | "media" | "alta" | "urgente" | null }>) {
-  if (!prioridad) return <Pill>—</Pill>;
-  const tones = {
-    baja: "slate",
-    media: "blue",
-    alta: "orange",
-    urgente: "rose",
-  } as const;
-  return <Pill tone={tones[prioridad]}>{prioridad.toUpperCase()}</Pill>;
-}
+
+// Helper para formatear fechas en es-CR
+const fmtDateTime = (iso?: string | null) =>
+  iso
+    ? new Date(iso).toLocaleString("es-CR", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : "—";
 
 export default function LimpiezaDetailModal({
   open,
@@ -64,10 +89,7 @@ export default function LimpiezaDetailModal({
   const [item, setItem] = useState<LimpiezaItem | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Datos quemados (placeholder)
-  const specialRequests =
-    "Cliente alérgico al polen – usar productos hipoalergénicos";
-  const roomFeatures = ["Balcón", "Jacuzzi", "Minibar", "Caja fuerte"];
+  // Datos de ejemplo
   const history = [
     {
       fecha: "22/9/2025",
@@ -127,7 +149,7 @@ export default function LimpiezaDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4">
-      {/* Overlay como <button> accesible */}
+      {/* Overlay */}
       <button
         type="button"
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
@@ -142,7 +164,7 @@ export default function LimpiezaDetailModal({
         className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-slate-200">
           <div className="flex items-center gap-2">
             <DoorOpen className="w-5 h-5 text-teal-600" />
             <h2
@@ -152,14 +174,27 @@ export default function LimpiezaDetailModal({
               {titulo}
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-slate-100 text-slate-600"
-            aria-label="Cerrar"
-          >
-            <X className="w-5 h-5" />
-          </button>
+
+          <div className="flex items-center gap-3">
+            {item?.fecha_final && (
+              <Pill tone="teal">
+                <span className="inline-flex items-center gap-1">
+                  <BadgeCheck className="w-3 h-3" />
+                  <span className="font-medium">
+                    Finalizada: {fmtDateTime(item.fecha_final)}
+                  </span>
+                </span>
+              </Pill>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-lg hover:bg-slate-100 text-slate-600"
+              aria-label="Cerrar"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Body */}
@@ -208,45 +243,21 @@ export default function LimpiezaDetailModal({
 
                 <div className="rounded-xl border border-slate-200 p-4">
                   <div className="text-sm text-slate-500 mb-1">Programación</div>
-                  <div className="text-sm">
+                  <div className="text-sm space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-slate-600" />
+                     
                       <span>
-                        Inicio:{" "}
-                        <strong>
-                          {item.fecha_inicio
-                            ? new Date(
-                                item.fecha_inicio
-                              ).toLocaleString()
-                            : "—"}
-                        </strong>
+                        Inicio: <strong>{fmtDateTime(item.fecha_inicio)}</strong>
                       </span>
                     </div>
-                    <div className="mt-1">
-                      <span className="text-slate-500">Duración: </span>
-                      <strong>
-                        {item.fecha_inicio && item.fecha_final
-                          ? Math.max(
-                              1,
-                              Math.round(
-                                (new Date(
-                                  item.fecha_final
-                                ).getTime() -
-                                  new Date(
-                                    item.fecha_inicio
-                                  ).getTime()) /
-                                  60000
-                              )
-                            ) + " minutos"
-                          : "45 minutos"}
-                      </strong>
+                    <div>
+                      <span className="text-slate-500">Fin: </span>
+                      <strong>{fmtDateTime(item.fecha_final)}</strong>
                     </div>
-                    <div className="mt-1">
-                      <span className="text-slate-500">Prioridad: </span>
-                      <PrioridadBadge
-                        prioridad={(item.prioridad as any) ?? null}
-                      />
+                    <div>
+                     
                     </div>
+                    
                   </div>
                 </div>
 
@@ -260,14 +271,8 @@ export default function LimpiezaDetailModal({
                       </span>
                     </div>
                     <div className="mt-1">
-                      <span className="text-slate-500">
-                        Última limpieza:{" "}
-                      </span>
-                      <strong>
-                        {item.fecha_final
-                          ? new Date(item.fecha_final).toLocaleString()
-                          : "—"}
-                      </strong>
+                      <span className="text-slate-500">Última limpieza: </span>
+                      <strong>{fmtDateTime(item.fecha_final)}</strong>
                     </div>
                   </div>
                 </div>
@@ -296,29 +301,16 @@ export default function LimpiezaDetailModal({
                 </div>
               </div>
 
-              {/* Solicitudes especiales */}
+              {/* Descripción Habitación */}
               <div className="rounded-xl border border-slate-200 p-4 mb-6">
                 <div className="flex items-center gap-2 mb-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-600" />
                   <span className="text-slate-700 font-medium">
-                    Solicitudes especiales
+                    Descripción de la habitación
                   </span>
                 </div>
-                <div className="text-sm text-slate-700">
-                  {specialRequests}
-                </div>
-              </div>
-
-              {/* Características */}
-              <div className="mb-6">
-                <div className="text-slate-700 font-medium mb-2">
-                  Características de la habitación
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {roomFeatures.map((f) => (
-                    <Pill key={f}>{f}</Pill>
-                  ))}
-                </div>
+                <p className="text-sm text-slate-700">
+                  {getRoomDescription(item)}
+                </p>
               </div>
 
               {/* Historial */}
@@ -397,32 +389,5 @@ export default function LimpiezaDetailModal({
         </div>
       </dialog>
     </div>
-  );
-}
-
-function AlertTriangle(
-  props: Readonly<React.SVGProps<SVGSVGElement>>
-) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="w-4 h-4"
-      fill="none"
-      stroke="currentColor"
-      {...props}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-        d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
-      />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-        d="M12 9v4m0 4h.01"
-      />
-    </svg>
   );
 }

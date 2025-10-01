@@ -118,19 +118,22 @@ export const useAlert = () => {
     message: string;
   } | null>(null);
 
-  const showAlert = (type: AlertType, message: string, title?: string) => {
-    setAlert({ type, message, title });
-  };
+  // Local state mutators (internal helpers are memoized below)
 
-  const hideAlert = () => {
+  // Memoize callbacks so references are stable between renders
+  const memoizedShowAlert = React.useCallback((type: AlertType, message: string, title?: string) => {
+    setAlert({ type, message, title });
+  }, []);
+
+  const memoizedHideAlert = React.useCallback(() => {
     setAlert(null);
-  };
+  }, []);
 
   // Auto-hide success and info alerts after 5 seconds
   React.useEffect(() => {
     if (alert && (alert.type === 'success' || alert.type === 'info')) {
       const timer = setTimeout(() => {
-        hideAlert();
+        memoizedHideAlert();
       }, 5000);
       return () => clearTimeout(timer);
     }
@@ -138,7 +141,7 @@ export const useAlert = () => {
 
   return {
     alert,
-    showAlert,
-    hideAlert,
+    showAlert: memoizedShowAlert,
+    hideAlert: memoizedHideAlert,
   };
 };
