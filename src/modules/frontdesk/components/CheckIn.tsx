@@ -1,4 +1,3 @@
-// CheckIn.tsx — Simplificado para migración
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, LogIn, UserPlus, Calendar, Search, User } from 'lucide-react';
@@ -10,6 +9,7 @@ import { useGuests } from '../../guests/hooks/useGuests';
 import { useRoomSelection } from '../hooks/useRoomSelection';
 import { useInputValidation } from '../../../hooks/useInputValidation';
 import { ChargeDistributionComponent } from './ChargeDistribution';
+import { FolioManager } from './FolioManager';
 import { ROUTES } from '../../../router/routes';
 import { DEFAULT_CURRENCY } from '../constants/currencies';
 import type { CheckInData, PaymentMethod, Currency } from '../types/checkin';
@@ -670,14 +670,14 @@ const CheckIn = () => {
 
             {/* División de Cargos */}
             <div className="border border-purple-200 bg-purple-50 rounded-lg p-6">
-              <ChargeDistributionComponent
-                totalAmount={totalAmount}
-                guestCount={formData.numberOfGuests}
-                onDistributionChange={setChargeDistribution}
-              />
-              
-              {/* Campo para establecer el monto total */}
-              <div className="mt-4 pt-4 border-t border-purple-200">
+              <div className="mb-4">
+                <h3 className="font-medium text-lg text-gray-900">División de Cargos</h3>
+                <p className="text-sm text-gray-500">
+                  Puedes dividir los cargos entre múltiples responsables de pago o utilizar el nuevo sistema de distribución.
+                </p>
+              </div>
+
+              <div className="mb-4 pb-4 border-b border-purple-200">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Monto Total de la Estancia ({formData.currency})
                 </label>
@@ -705,9 +705,41 @@ const CheckIn = () => {
                 {errors.totalAmount && (
                   <p className="mt-1 text-sm text-red-600">{errors.totalAmount}</p>
                 )}
-                <p className="text-xs text-gray-500 mt-1">
-                  Ingrese el monto total para habilitar la división de cargos (máx. $999,999.99)
-                </p>
+              </div>
+
+              {/* Sistema anterior */}
+              <div className="mb-6">
+                <h4 className="font-medium text-gray-900 mb-2">Método de Distribución Anterior</h4>
+                <ChargeDistributionComponent
+                  totalAmount={totalAmount}
+                  guestCount={formData.numberOfGuests}
+                  onDistributionChange={setChargeDistribution}
+                />
+              </div>
+
+              {/* Nuevo sistema de distribución */}
+              <div className="mt-6 pt-6 border-t border-purple-200">
+                <h4 className="font-medium text-gray-900 mb-2">💫 Nuevo Sistema de Distribución</h4>
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-200">
+                  <p className="text-sm text-gray-700 mb-3">
+                    <strong>Sistema mejorado disponible después del check-in:</strong>
+                  </p>
+                  <ul className="text-sm text-gray-600 space-y-1 mb-4">
+                    <li>• ✅ Distribución por estrategias: único, equitativo, porcentajes, montos fijos</li>
+                    <li>• ✅ Validación automática de montos y porcentajes</li>
+                    <li>• ✅ Registro de pagos por cliente o general</li>
+                    <li>• ✅ Seguimiento en tiempo real del estado del folio</li>
+                    <li>• ✅ Idempotencia para evitar duplicados</li>
+                  </ul>
+                  
+                  <div className="bg-blue-100 border border-blue-300 rounded-md p-3">
+                    <p className="text-sm text-blue-800">
+                      <strong>🚀 Próximos pasos:</strong> Una vez completado el check-in, 
+                      podrás acceder al sistema completo de distribución de cargos y pagos 
+                      desde la gestión del folio generado.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
