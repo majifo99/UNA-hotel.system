@@ -20,11 +20,11 @@
  */
 
 import React from 'react';
-import { AlertTriangle, Loader2, X } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import type { Reservation } from '../../types';
 import { useCancelReservation } from '../../hooks/useReservationQueries';
-import { Alert } from '../../../../components/ui/Alert';
 import { ReservationStatusBadge } from '../ReservationStatusBadge';
+import { ReservationPanelBase, colonFormatter } from './shared';
 
 /**
  * Regla de penalidad con rangos de tiempo y porcentajes
@@ -67,15 +67,6 @@ const PENALTY_RULES: ReadonlyArray<PenaltyRule> = [
 ] as const;
 
 const DEFAULT_PENALTY_RULE = PENALTY_RULES[PENALTY_RULES.length - 1];
-
-/**
- * Formateador para moneda costarricense (Colones)
- */
-const colonFormatter = new Intl.NumberFormat('es-CR', {
-  style: 'currency',
-  currency: 'CRC',
-  maximumFractionDigits: 0,
-});
 
 /**
  * Resultado del cálculo de penalidad
@@ -195,34 +186,16 @@ export const ReservationCancelPanel: React.FC<ReservationCancelPanelProps> = ({
     : 'Sin penalidad';
 
   return (
-    <div className="mb-6 rounded-2xl border-2 border-rose-500 bg-white shadow-xl">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-200 bg-rose-50 px-6 py-4">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">🚫 Cancelar reserva</h2>
-          <p className="text-sm text-rose-600 font-medium">⚠️ Esta acción no se puede deshacer</p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-          aria-label="Cerrar panel"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
-
-      {/* Body */}
-      <div className="space-y-6 px-6 py-6">
-            {cancelReservation.isError && (
-              <Alert
-                type="error"
-                title="No se pudo cancelar la reserva"
-                message="Intenta de nuevo o verifica que la reserva no haya sido cerrada previamente."
-              />
-            )}
-
-            {/* Resumen de la reserva */}
+    <ReservationPanelBase
+      variant="cancel"
+      title="Cancelar reserva"
+      subtitle="⚠️ Esta acción no se puede deshacer"
+      reservation={reservation}
+      onClose={onClose}
+      mutationError={cancelReservation.isError}
+      errorMessage="Intenta de nuevo o verifica que la reserva no haya sido cerrada previamente."
+    >
+      {/* Resumen de la reserva */}
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
@@ -295,27 +268,26 @@ export const ReservationCancelPanel: React.FC<ReservationCancelPanelProps> = ({
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-                disabled={cancelReservation.isPending}
-              >
-                Mantener reserva
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirm}
-                disabled={!canConfirm || cancelReservation.isPending}
-                className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-rose-300"
-              >
-                {cancelReservation.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-                Confirmar cancelación
-              </button>
-            </div>
-          </div>
-    </div>
+      {/* Actions */}
+      <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+          disabled={cancelReservation.isPending}
+        >
+          Mantener reserva
+        </button>
+        <button
+          type="button"
+          onClick={handleConfirm}
+          disabled={!canConfirm || cancelReservation.isPending}
+          className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-rose-300"
+        >
+          {cancelReservation.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+          Confirmar cancelación
+        </button>
+      </div>
+    </ReservationPanelBase>
   );
 };

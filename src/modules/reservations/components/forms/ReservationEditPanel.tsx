@@ -18,10 +18,17 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, X, AlertCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import type { Reservation } from '../../types';
 import { useRoomTypes, useUpdateReservation } from '../../hooks/useReservationQueries';
-import { Alert } from '../../../../components/ui/Alert';
+import {
+  ReservationPanelBase,
+  FormInput,
+  FormSelect,
+  FormTextarea,
+  formatDateForInput,
+  calculateNights,
+} from './shared';
 
 /**
  * Schema de validación con Zod para edición de reservas.
@@ -129,20 +136,6 @@ export const ReservationEditPanel: React.FC<ReservationEditPanelProps> = ({
 }) => {
   const { data: roomTypes = [], isLoading: isLoadingRoomTypes } = useRoomTypes();
   const updateReservation = useUpdateReservation();
-
-  /**
-   * Helper: convierte fecha ISO completa a formato YYYY-MM-DD para input[type="date"]
-   */
-  const formatDateForInput = (isoDate: string | undefined): string => {
-    if (!isoDate) return '';
-    try {
-      const date = new Date(isoDate);
-      if (!Number.isFinite(date.getTime())) return '';
-      return date.toISOString().split('T')[0];
-    } catch {
-      return '';
-    }
-  };
 
   const form = useForm<ReservationEditFormValues>({
     resolver: zodResolver(reservationEditSchema),
@@ -260,254 +253,143 @@ export const ReservationEditPanel: React.FC<ReservationEditPanelProps> = ({
   /**
    * Calcula y muestra el preview de noches de estadía
    */
-  const nightsPreview = React.useMemo(() => {
-    if (!checkInValue || !checkOutValue) return null;
-    try {
-      const checkIn = new Date(checkInValue);
-      const checkOut = new Date(checkOutValue);
-      const diff = Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
-      return diff > 0 ? diff : null;
-    } catch {
-      return null;
-    }
-  }, [checkInValue, checkOutValue]);
+  const nightsPreview = React.useMemo(() => 
+    calculateNights(checkInValue, checkOutValue),
+    [checkInValue, checkOutValue]
+  );
+
+  const roomOptions = roomTypes.map((type) => ({
+    value: type.type,
+    label: `${type.name} (Capacidad: ${type.capacity ?? '—'})`,
+  }));
 
   return (
-    <div className="mb-6 rounded-2xl border-2 border-emerald-500 bg-white shadow-xl">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-200 bg-emerald-50 px-6 py-4">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">✏️ Editar reserva</h2>
-          <p className="text-sm text-slate-600">Confirmación: <span className="font-mono font-semibold">{reservation.confirmationNumber}</span></p>
+    <ReservationPanelBase
+      variant="edit"
+      title="Editar reserva"
+      reservation={reservation}
+      onClose={onClose}
+      mutationError={updateReservation.isError}
+    >
+      <form onSubmit={onSubmit} className="space-y-6" noValidate>
+
+        {/* Fechas */}
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <FormInput
+            id="edit-checkin"
+            label="Fecha de entrada"
+            type="date"
+            required
+            error={formState.errors.checkInDate?.message}
+            register={register('checkInDate')}
+          />
+          <FormInput
+            id="edit-checkout"
+            label="Fecha de salida"
+            type="date"
+            required
+            error={formState.errors.checkOutDate?.message}
+            register={register('checkOutDate')}
+          />
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-          aria-label="Cerrar panel"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
 
-      {/* Body */}
-      <form onSubmit={onSubmit} className="space-y-6 px-6 py-6" noValidate>
-            {updateReservation.isError && (
-              <Alert
-                type="error"
-                title="No se pudo guardar los cambios"
-                message="Intenta nuevamente o verifica tu conexión."
-              />
-            )}
+        {/* Huéspedes */}
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+          <FormInput
+            id="edit-adults"
+            label="Adultos"
+            type="number"
+            required
+            min={1}
+            max={8}
+            error={formState.errors.numberOfAdults?.message}
+            helperText="Mín: 1, Máx: 8"
+            register={register('numberOfAdults', { valueAsNumber: true })}
+          />
+          <FormInput
+            id="edit-children"
+            label="Niños (3-12 años)"
+            type="number"
+            min={0}
+            max={6}
+            error={formState.errors.numberOfChildren?.message}
+            helperText="Máx: 6"
+            register={register('numberOfChildren', { valueAsNumber: true })}
+          />
+          <FormInput
+            id="edit-infants"
+            label="Bebés (0-2 años)"
+            type="number"
+            min={0}
+            max={4}
+            error={formState.errors.numberOfInfants?.message}
+            helperText="Máx: 4"
+            register={register('numberOfInfants', { valueAsNumber: true })}
+          />
+        </div>
 
-            {/* Fechas */}
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <div>
-                <label htmlFor="edit-checkin" className="mb-1 block text-sm font-medium text-slate-700">
-                  Fecha de entrada <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  id="edit-checkin"
-                  type="date"
-                  className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 ${formState.errors.checkInDate ? 'border-rose-300 bg-rose-50' : 'border-slate-200'}`}
-                  {...register('checkInDate')}
-                />
-                {formState.errors.checkInDate && (
-                  <p className="mt-1 flex items-center gap-1 text-xs text-rose-600">
-                    <AlertCircle className="h-3 w-3" />
-                    {formState.errors.checkInDate.message}
-                  </p>
-                )}
-              </div>
+        {/* Habitación y Total */}
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <FormSelect
+            id="edit-room"
+            label="Tipo de habitación"
+            required
+            error={formState.errors.roomType?.message}
+            disabled={isLoadingRoomTypes}
+            options={roomOptions}
+            register={register('roomType')}
+          />
+          <FormInput
+            id="edit-pax"
+            label="Huéspedes totales"
+            type="number"
+            readOnly
+            value={Number.isFinite(numberOfGuestsValue) ? numberOfGuestsValue : ''}
+            error={formState.errors.numberOfGuests?.message}
+            helperText={`Máximo: ${maxGuests} según tipo de habitación`}
+            register={register('numberOfGuests', { valueAsNumber: true })}
+          />
+        </div>
 
-              <div>
-                <label htmlFor="edit-checkout" className="mb-1 block text-sm font-medium text-slate-700">
-                  Fecha de salida <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  id="edit-checkout"
-                  type="date"
-                  className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 ${formState.errors.checkOutDate ? 'border-rose-300 bg-rose-50' : 'border-slate-200'}`}
-                  {...register('checkOutDate')}
-                />
-                {formState.errors.checkOutDate && (
-                  <p className="mt-1 flex items-center gap-1 text-xs text-rose-600">
-                    <AlertCircle className="h-3 w-3" />
-                    {formState.errors.checkOutDate.message}
-                  </p>
-                )}
-              </div>
-            </div>
+        {/* Solicitudes especiales */}
+        <FormTextarea
+          id="edit-special"
+          label="Solicitudes especiales"
+          rows={3}
+          maxLength={300}
+          placeholder="Ej: Cama extra, vista al mar, piso alto..."
+          error={formState.errors.specialRequests?.message}
+          helperText="Máximo 300 caracteres"
+          register={register('specialRequests')}
+        />
 
-            {/* Huéspedes */}
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-              <div>
-                <label htmlFor="edit-adults" className="mb-1 block text-sm font-medium text-slate-700">
-                  Adultos <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  id="edit-adults"
-                  type="number"
-                  min={1}
-                  max={8}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 ${formState.errors.numberOfAdults ? 'border-rose-300 bg-rose-50' : 'border-slate-200'}`}
-                  {...register('numberOfAdults', { valueAsNumber: true })}
-                />
-                {formState.errors.numberOfAdults ? (
-                  <p className="mt-1 flex items-center gap-1 text-xs text-rose-600">
-                    <AlertCircle className="h-3 w-3" />
-                    {formState.errors.numberOfAdults.message}
-                  </p>
-                ) : (
-                  <p className="mt-1 text-xs text-slate-500">Mín: 1, Máx: 8</p>
-                )}
-              </div>
+        {/* Preview de noches */}
+        {nightsPreview && (
+          <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            ✓ Duración estimada: <strong>{nightsPreview}</strong> noche{nightsPreview === 1 ? '' : 's'}
+          </div>
+        )}
 
-              <div>
-                <label htmlFor="edit-children" className="mb-1 block text-sm font-medium text-slate-700">
-                  Niños (3-12 años)
-                </label>
-                <input
-                  id="edit-children"
-                  type="number"
-                  min={0}
-                  max={6}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 ${formState.errors.numberOfChildren ? 'border-rose-300 bg-rose-50' : 'border-slate-200'}`}
-                  {...register('numberOfChildren', { valueAsNumber: true })}
-                />
-                {formState.errors.numberOfChildren ? (
-                  <p className="mt-1 flex items-center gap-1 text-xs text-rose-600">
-                    <AlertCircle className="h-3 w-3" />
-                    {formState.errors.numberOfChildren.message}
-                  </p>
-                ) : (
-                  <p className="mt-1 text-xs text-slate-500">Máx: 6</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="edit-infants" className="mb-1 block text-sm font-medium text-slate-700">
-                  Bebés (0-2 años)
-                </label>
-                <input
-                  id="edit-infants"
-                  type="number"
-                  min={0}
-                  max={4}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 ${formState.errors.numberOfInfants ? 'border-rose-300 bg-rose-50' : 'border-slate-200'}`}
-                  {...register('numberOfInfants', { valueAsNumber: true })}
-                />
-                {formState.errors.numberOfInfants ? (
-                  <p className="mt-1 flex items-center gap-1 text-xs text-rose-600">
-                    <AlertCircle className="h-3 w-3" />
-                    {formState.errors.numberOfInfants.message}
-                  </p>
-                ) : (
-                  <p className="mt-1 text-xs text-slate-500">Máx: 4</p>
-                )}
-              </div>
-            </div>
-
-            {/* Habitación y Total */}
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <div>
-                <label htmlFor="edit-room" className="mb-1 block text-sm font-medium text-slate-700">
-                  Tipo de habitación <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  id="edit-room"
-                  className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 ${formState.errors.roomType ? 'border-rose-300 bg-rose-50' : 'border-slate-200'}`}
-                  disabled={isLoadingRoomTypes}
-                  {...register('roomType')}
-                >
-                  <option value="">Selecciona una opción</option>
-                  {roomTypes.map((type) => (
-                    <option key={type.type} value={type.type}>
-                      {type.name} (Capacidad: {type.capacity ?? '—'})
-                    </option>
-                  ))}
-                </select>
-                {formState.errors.roomType && (
-                  <p className="mt-1 flex items-center gap-1 text-xs text-rose-600">
-                    <AlertCircle className="h-3 w-3" />
-                    {formState.errors.roomType.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="edit-pax" className="mb-1 block text-sm font-medium text-slate-700">
-                  Huéspedes totales
-                </label>
-                <input
-                  id="edit-pax"
-                  type="number"
-                  readOnly
-                  className={`w-full rounded-lg border bg-slate-50 px-3 py-2 text-sm shadow-sm ${formState.errors.numberOfGuests ? 'border-rose-300 bg-rose-50' : 'border-slate-200'}`}
-                  value={Number.isFinite(numberOfGuestsValue) ? numberOfGuestsValue : ''}
-                  {...register('numberOfGuests', { valueAsNumber: true })}
-                />
-                <p className="mt-1 text-xs text-slate-500">
-                  Máximo: {maxGuests} según tipo de habitación
-                </p>
-                {formState.errors.numberOfGuests && (
-                  <p className="mt-1 flex items-center gap-1 text-xs text-rose-600">
-                    <AlertCircle className="h-3 w-3" />
-                    {formState.errors.numberOfGuests.message}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Solicitudes especiales */}
-            <div>
-              <label htmlFor="edit-special" className="mb-1 block text-sm font-medium text-slate-700">
-                Solicitudes especiales
-              </label>
-              <textarea
-                id="edit-special"
-                rows={3}
-                maxLength={300}
-                className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 ${formState.errors.specialRequests ? 'border-rose-300 bg-rose-50' : 'border-slate-200'}`}
-                placeholder="Ej: Cama extra, vista al mar, piso alto..."
-                {...register('specialRequests')}
-              />
-              {formState.errors.specialRequests && (
-                <p className="mt-1 flex items-center gap-1 text-xs text-rose-600">
-                  <AlertCircle className="h-3 w-3" />
-                  {formState.errors.specialRequests.message}
-                </p>
-              )}
-              <p className="mt-1 text-xs text-slate-500">Máximo 300 caracteres</p>
-            </div>
-
-            {/* Preview de noches */}
-            {nightsPreview && (
-              <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                ✓ Duración estimada: <strong>{nightsPreview}</strong> noche{nightsPreview === 1 ? '' : 's'}
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-                disabled={updateReservation.isPending}
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={updateReservation.isPending || !formState.isValid}
-                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
-              >
-                {updateReservation.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-                Guardar cambios
-              </button>
-            </div>
-          </form>
-    </div>
+        {/* Actions */}
+        <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+            disabled={updateReservation.isPending}
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={updateReservation.isPending || !formState.isValid}
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+          >
+            {updateReservation.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+            Guardar cambios
+          </button>
+        </div>
+      </form>
+    </ReservationPanelBase>
   );
 };
