@@ -18,7 +18,6 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2 } from 'lucide-react';
 import type { Reservation } from '../../types';
 import { useRoomTypes, useUpdateReservation } from '../../hooks/useReservationQueries';
 import {
@@ -26,6 +25,7 @@ import {
   FormInput,
   FormSelect,
   FormTextarea,
+  ActionButtons,
   formatDateForInput,
   calculateNights,
 } from './shared';
@@ -370,25 +370,16 @@ export const ReservationEditPanel: React.FC<ReservationEditPanelProps> = ({
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-            disabled={updateReservation.isPending}
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={updateReservation.isPending || !formState.isValid}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
-          >
-            {updateReservation.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-            Guardar cambios
-          </button>
-        </div>
+        <ActionButtons
+          variant="primary"
+          cancelLabel="Cancelar"
+          confirmLabel="Guardar cambios"
+          onCancel={onClose}
+          onConfirm={onSubmit}
+          disabled={updateReservation.isPending}
+          confirmDisabled={!formState.isValid}
+          isLoading={updateReservation.isPending}
+        />
       </form>
     </ReservationPanelBase>
   );

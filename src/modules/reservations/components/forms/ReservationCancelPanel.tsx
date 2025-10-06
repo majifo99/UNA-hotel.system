@@ -20,11 +20,11 @@
  */
 
 import React from 'react';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import type { Reservation } from '../../types';
 import { useCancelReservation } from '../../hooks/useReservationQueries';
 import { ReservationStatusBadge } from '../ReservationStatusBadge';
-import { ReservationPanelBase, colonFormatter } from './shared';
+import { ReservationPanelBase, ActionButtons, colonFormatter } from './shared';
 
 /**
  * Regla de penalidad con rangos de tiempo y porcentajes
@@ -268,26 +268,16 @@ export const ReservationCancelPanel: React.FC<ReservationCancelPanelProps> = ({
               </div>
             </div>
 
-      {/* Actions */}
-      <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-          disabled={cancelReservation.isPending}
-        >
-          Mantener reserva
-        </button>
-        <button
-          type="button"
-          onClick={handleConfirm}
-          disabled={!canConfirm || cancelReservation.isPending}
-          className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-rose-300"
-        >
-          {cancelReservation.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-          Confirmar cancelación
-        </button>
-      </div>
+      <ActionButtons
+        variant="danger"
+        cancelLabel="Mantener reserva"
+        confirmLabel="Confirmar cancelación"
+        onCancel={onClose}
+        onConfirm={handleConfirm}
+        disabled={cancelReservation.isPending}
+        confirmDisabled={!canConfirm}
+        isLoading={cancelReservation.isPending}
+      />
     </ReservationPanelBase>
   );
 };

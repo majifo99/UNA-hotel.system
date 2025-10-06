@@ -313,3 +313,65 @@ export const calculateNights = (checkIn: string | undefined, checkOut: string | 
     return null;
   }
 };
+
+/**
+ * Props para botones de acción
+ */
+export interface ActionButtonsProps {
+  /** Variante del botón primario */
+  variant: 'danger' | 'primary';
+  /** Texto del botón de cancelar */
+  cancelLabel: string;
+  /** Texto del botón primario */
+  confirmLabel: string;
+  /** Handler al cancelar */
+  onCancel: () => void;
+  /** Handler al confirmar */
+  onConfirm: () => void;
+  /** Deshabilitar botones durante carga */
+  disabled?: boolean;
+  /** Deshabilitar solo el botón de confirmación */
+  confirmDisabled?: boolean;
+  /** Mostrar spinner en botón de confirmación */
+  isLoading?: boolean;
+}
+
+/**
+ * Botones de acción reutilizables para paneles de reserva
+ */
+export const ActionButtons: React.FC<ActionButtonsProps> = ({
+  variant,
+  cancelLabel,
+  confirmLabel,
+  onCancel,
+  onConfirm,
+  disabled,
+  confirmDisabled,
+  isLoading,
+}) => {
+  const primaryClass = variant === 'danger' 
+    ? 'bg-rose-600 hover:bg-rose-700 disabled:bg-rose-300'
+    : 'bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300';
+
+  return (
+    <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
+      <button
+        type="button"
+        onClick={onCancel}
+        className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+        disabled={disabled}
+      >
+        {cancelLabel}
+      </button>
+      <button
+        type={variant === 'primary' ? 'submit' : 'button'}
+        onClick={variant === 'danger' ? onConfirm : undefined}
+        disabled={disabled || confirmDisabled || isLoading}
+        className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed ${primaryClass}`}
+      >
+        {isLoading && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden />}
+        {confirmLabel}
+      </button>
+    </div>
+  );
+};
