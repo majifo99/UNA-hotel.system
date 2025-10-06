@@ -1,8 +1,8 @@
 ﻿import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Reservation } from '../types';
 import { useReservationsList } from '../hooks/useReservationQueries';
 import { ReservationsFilters, ReservationsTable, type ReservationListFilters } from '../components/list';
-import { ReservationEditDialog, ReservationCancelDialog } from '../components/modals';
 
 const STRINGS = {
   title: 'Gestión de reservaciones',
@@ -67,10 +67,9 @@ function applyFilters(reservations: Reservation[], filters: ReservationListFilte
 }
 
 export const ReservationsListPage: React.FC = () => {
+  const navigate = useNavigate();
   const { data = [], isLoading, isError, refetch } = useReservationsList();
   const [filters, setFilters] = React.useState<ReservationListFilters>(DEFAULT_FILTERS);
-  const [reservationToEdit, setReservationToEdit] = React.useState<Reservation | null>(null);
-  const [reservationToCancel, setReservationToCancel] = React.useState<Reservation | null>(null);
 
   const filteredReservations = React.useMemo(
     () => applyFilters(data, filters),
@@ -108,24 +107,6 @@ export const ReservationsListPage: React.FC = () => {
 
     return counters;
   }, [data]);
-
-  React.useEffect(() => {
-    if (reservationToEdit) {
-      const latest = data.find((reservation) => reservation.id === reservationToEdit.id);
-      if (latest && latest !== reservationToEdit) {
-        setReservationToEdit(latest);
-      }
-    }
-  }, [data, reservationToEdit]);
-
-  React.useEffect(() => {
-    if (reservationToCancel) {
-      const latest = data.find((reservation) => reservation.id === reservationToCancel.id);
-      if (latest && latest !== reservationToCancel) {
-        setReservationToCancel(latest);
-      }
-    }
-  }, [data, reservationToCancel]);
 
   const handleResetFilters = () => {
     setFilters(DEFAULT_FILTERS);
@@ -175,27 +156,11 @@ export const ReservationsListPage: React.FC = () => {
             isLoading={isLoading}
             isError={isError}
             onRetry={refetch}
-            onEdit={setReservationToEdit}
-            onCancel={setReservationToCancel}
+            onEdit={(reservation) => navigate(`/reservations/${reservation.id}/edit`)}
+            onCancel={(reservation) => navigate(`/reservations/${reservation.id}/cancel`)}
           />
         </div>
       </section>
-
-      {reservationToEdit && (
-        <ReservationEditDialog
-          reservation={reservationToEdit}
-          isOpen={Boolean(reservationToEdit)}
-          onClose={() => setReservationToEdit(null)}
-        />
-      )}
-
-      {reservationToCancel && (
-        <ReservationCancelDialog
-          reservation={reservationToCancel}
-          isOpen={Boolean(reservationToCancel)}
-          onClose={() => setReservationToCancel(null)}
-        />
-      )}
     </div>
   );
 };

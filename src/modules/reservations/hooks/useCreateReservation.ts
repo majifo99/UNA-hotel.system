@@ -214,7 +214,29 @@ export const useCreateReservation = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const updateFormField = (field: keyof SimpleReservationFormData, value: any) => {
+  /**
+   * Parsea el valor de número de huéspedes a un número seguro.
+   */
+  const parseGuestCount = (value: unknown): number => {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const parsed = parseInt(value, 10);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  };
+
+  /**
+   * Actualiza un campo del formulario y limpia errores relacionados.
+   * Utiliza tipos genéricos para mantener type safety.
+   * 
+   * @param field - Campo del formulario a actualizar
+   * @param value - Nuevo valor (tipado según el campo)
+   */
+  const updateFormField = <K extends keyof SimpleReservationFormData>(
+    field: K,
+    value: SimpleReservationFormData[K]
+  ) => {
     setFormData((prev: SimpleReservationFormData) => ({ ...prev, [field]: value }));
     
     // Clear related errors when user starts typing/changing values
@@ -226,8 +248,8 @@ export const useCreateReservation = () => {
     const newErrors: ReservationValidationErrors = {};
 
     if (field === 'checkInDate' || field === 'checkOutDate') {
-      const checkInDate = field === 'checkInDate' ? value : formData.checkInDate;
-      const checkOutDate = field === 'checkOutDate' ? value : formData.checkOutDate;
+      const checkInDate = field === 'checkInDate' ? value as string : formData.checkInDate;
+      const checkOutDate = field === 'checkOutDate' ? value as string : formData.checkOutDate;
 
       if (checkInDate && checkOutDate) {
         const checkIn = new Date(checkInDate);
@@ -246,7 +268,7 @@ export const useCreateReservation = () => {
     }
 
     if (field === 'numberOfGuests') {
-      const guestCount = typeof value === 'number' ? value : parseInt(value) || 0;
+      const guestCount = parseGuestCount(value);
       
       if (guestCount < 1) {
         newErrors.numberOfGuests = 'Debe especificar al menos 1 huésped';
