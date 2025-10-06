@@ -1,7 +1,10 @@
 /**
  * ReservationEditPanel Component
  * 
- * Componente inline para edición de reservas que reemplaza el modal anterior.
+ * Componente inline para edición de reservas que reemplaza e  };
+});
+
+interface ReservationEditPanelProps {l anterior.
  * Muestra un panel expansible con validaciones en tiempo real y tipado estricto.
  * 
  * Validaciones implementadas:
@@ -20,6 +23,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { Reservation } from '../../types';
 import { useRoomTypes, useUpdateReservation } from '../../hooks/useReservationQueries';
+import { useReservationEditForm } from '../../hooks/useReservationEditForm';
+import type { ReservationEditFormValues } from '../../hooks/useReservationEditForm';
 import {
   ReservationPanelBase,
   FormInput,
@@ -107,8 +112,6 @@ const reservationEditSchema = z.object({
   }
 });
 
-type ReservationEditFormValues = z.infer<typeof reservationEditSchema>;
-
 interface ReservationEditPanelProps {
   /** Reserva a editar con todos sus datos actuales */
   reservation: Reservation;
@@ -149,105 +152,29 @@ export const ReservationEditPanel: React.FC<ReservationEditPanelProps> = ({
       roomType: reservation.roomType || reservation.room?.type || '',
       specialRequests: reservation.specialRequests || '',
     },
-    mode: 'onChange', // Validación en tiempo real
+    mode: 'onChange',
   });
 
-  const { register, handleSubmit, formState, watch, setValue, setError, clearErrors } = form;
+  const { register, formState } = form;
 
-  // Observar valores para validaciones dinámicas
-  const selectedRoomType = watch('roomType');
-  const numberOfGuestsValue = watch('numberOfGuests');
-  const numberOfAdultsValue = watch('numberOfAdults');
-  const numberOfChildrenValue = watch('numberOfChildren');
-  const numberOfInfantsValue = watch('numberOfInfants');
-  const checkInValue = watch('checkInDate');
-  const checkOutValue = watch('checkOutDate');
-
-  /**
-   * Busca la información del tipo de habitación seleccionado
-   */
-  const roomInfo = React.useMemo(() => (
-    roomTypes.find((type) => type.type === selectedRoomType) || null
-  ), [roomTypes, selectedRoomType]);
-
-  /**
-   * Calcula la capacidad máxima permitida según la habitación
-   */
-  const maxGuests = React.useMemo(() => {
-    if (roomInfo?.capacity) return roomInfo.capacity;
-    if (reservation.room?.capacity) return reservation.room.capacity;
-    return Math.max(1, reservation.numberOfGuests, 6);
-  }, [roomInfo, reservation.room?.capacity, reservation.numberOfGuests]);
-
-  /**
-   * Efecto: recalcula total de huéspedes cuando cambian adultos, niños o bebés
-   */
-  React.useEffect(() => {
-    const totalGuests = (numberOfAdultsValue || 0) + (numberOfChildrenValue || 0) + (numberOfInfantsValue || 0);
-    if (totalGuests !== numberOfGuestsValue) {
-      setValue('numberOfGuests', totalGuests, { shouldValidate: true, shouldDirty: true });
-    }
-
-    // Validación manual: debe haber al menos 1 huésped
-    if (totalGuests <= 0) {
-      setError('numberOfGuests', { type: 'manual', message: 'Debe registrar al menos 1 huésped.' });
-    } else if (formState.errors.numberOfGuests?.type === 'manual' && formState.errors.numberOfGuests.message?.includes('al menos 1 huésped')) {
-      clearErrors('numberOfGuests');
-    }
-  }, [numberOfAdultsValue, numberOfChildrenValue, numberOfInfantsValue, numberOfGuestsValue, setValue, setError, clearErrors, formState.errors.numberOfGuests]);
-
-  /**
-   * Efecto: valida que los huéspedes no excedan la capacidad de la habitación
-   */
-  React.useEffect(() => {
-    if (!maxGuests) return;
-    if (numberOfGuestsValue > maxGuests) {
-      setError('numberOfGuests', { type: 'manual', message: `La habitación seleccionada admite máximo ${maxGuests} huéspedes.` });
-    } else if (formState.errors.numberOfGuests?.type === 'manual' && formState.errors.numberOfGuests.message?.includes('habitación seleccionada')) {
-      clearErrors('numberOfGuests');
-    }
-  }, [numberOfGuestsValue, maxGuests, setError, clearErrors, formState.errors.numberOfGuests]);
-
-  /**
-   * Handler: envía la actualización de la reserva
-   */
-  const onSubmit = handleSubmit(async (values) => {
-    // Validación final de fechas antes de enviar
-    if (values.checkInDate && values.checkOutDate) {
-      const checkIn = new Date(values.checkInDate);
-      const checkOut = new Date(values.checkOutDate);
-      if (!Number.isFinite(checkIn.getTime()) || !Number.isFinite(checkOut.getTime()) || checkOut <= checkIn) {
-        setError('checkOutDate', { type: 'manual', message: 'La salida debe ser posterior a la entrada seleccionada.' });
-        return;
-      }
-    }
-
-    // Validación final de capacidad
-    if (values.numberOfGuests > maxGuests) {
-      setError('numberOfGuests', { type: 'manual', message: `La habitación seleccionada admite máximo ${maxGuests} huéspedes.` });
-      return;
-    }
-
-    const updates: Partial<Reservation> = {
-      checkInDate: values.checkInDate,
-      checkOutDate: values.checkOutDate,
-      numberOfGuests: values.numberOfGuests,
-      numberOfAdults: values.numberOfAdults,
-      numberOfChildren: values.numberOfChildren,
-      numberOfInfants: values.numberOfInfants,
-      roomType: values.roomType,
-      specialRequests: values.specialRequests,
-    };
-
-    try {
+  // Usar hook compartido para toda la lógica del formulario
+  const {
+    numberOfGuestsValue,
+    checkInValue,
+    checkOutValue,
+    maxGuests,
+    onSubmit,
+  } = useReservationEditForm({
+    form,
+    reservation,
+    roomTypes,
+    onSubmitSuccess: async (updates) => {
       const updated = await updateReservation.mutateAsync({ id: reservation.id, updates });
       if (updated) {
         onUpdated?.(updated);
         onClose();
       }
-    } catch (error) {
-      console.error('Error al actualizar la reserva:', error);
-    }
+    },
   });
 
   /**

@@ -23,6 +23,8 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 import type { Reservation } from '../types';
 import { useRoomTypes, useUpdateReservation } from '../hooks/useReservationQueries';
+import { useReservationEditForm } from '../hooks/useReservationEditForm';
+import type { ReservationEditFormValues } from '../hooks/useReservationEditForm';
 import { reservationService } from '../services/reservationService';
 import { Alert } from '../../../components/ui/Alert';
 
@@ -79,8 +81,6 @@ const editReservationSchema = z.object({
   }
 });
 
-type EditReservationFormData = z.infer<typeof editReservationSchema>;
-
 /**
  * Helper: formatea fecha ISO a YYYY-MM-DD para input[type="date"]
  */
@@ -114,7 +114,7 @@ export const ReservationEditPage: React.FC = () => {
    */
   const { data: roomTypes = [], isLoading: isLoadingRoomTypes } = useRoomTypes();
 
-  const form = useForm<EditReservationFormData>({
+  const form = useForm<ReservationEditFormValues>({
     resolver: zodResolver(editReservationSchema),
     values: reservation ? {
       checkInDate: formatDateForInput(reservation.checkInDate),
@@ -129,81 +129,25 @@ export const ReservationEditPage: React.FC = () => {
     mode: 'onChange',
   });
 
-  const { register, handleSubmit, formState, watch, setValue, setError, clearErrors } = form;
+  const { register, formState } = form;
 
-  const selectedRoomType = watch('roomType');
-  const numberOfGuestsValue = watch('numberOfGuests');
-  const numberOfAdultsValue = watch('numberOfAdults');
-  const numberOfChildrenValue = watch('numberOfChildren');
-  const numberOfInfantsValue = watch('numberOfInfants');
-  const checkInValue = watch('checkInDate');
-  const checkOutValue = watch('checkOutDate');
-
-  const roomInfo = React.useMemo(
-    () => roomTypes.find((type) => type.type === selectedRoomType) || null,
-    [roomTypes, selectedRoomType]
-  );
-
-  const maxGuests = React.useMemo(() => {
-    if (roomInfo?.capacity) return roomInfo.capacity;
-    if (reservation?.room?.capacity) return reservation.room.capacity;
-    return 6;
-  }, [roomInfo, reservation?.room?.capacity]);
-
-  /**
-   * Efecto: calcula total de huéspedes automáticamente
-   * Solo actualiza si el total calculado difiere del valor actual
-   */
-  React.useEffect(() => {
-    const calculatedGuestTotal = (numberOfAdultsValue || 0) + (numberOfChildrenValue || 0) + (numberOfInfantsValue || 0);
-    if (calculatedGuestTotal !== numberOfGuestsValue) {
-      setValue('numberOfGuests', calculatedGuestTotal, { shouldValidate: true });
-    }
-  }, [numberOfAdultsValue, numberOfChildrenValue, numberOfInfantsValue, numberOfGuestsValue, setValue]);
-
-  /**
-   * Efecto: valida capacidad de habitación
-   * Actualiza error solo cuando numberOfGuests o maxGuests cambian
-   */
-  React.useEffect(() => {
-    if (!maxGuests) return;
-    if (numberOfGuestsValue > maxGuests) {
-      setError('numberOfGuests', { type: 'manual', message: `Máximo ${maxGuests} huéspedes para esta habitación` });
-    } else {
-      clearErrors('numberOfGuests');
-    }
-  }, [numberOfGuestsValue, maxGuests, setError, clearErrors]);
-
-  /**
-   * Handler: guarda cambios usando mutation
-   */
-  const onSubmit = handleSubmit(async (values) => {
-    if (!id || !reservation) return;
-
-    if (values.numberOfGuests > maxGuests) {
-      setError('numberOfGuests', { type: 'manual', message: `Máximo ${maxGuests} huéspedes` });
-      return;
-    }
-
-    const updates: Partial<Reservation> = {
-      checkInDate: values.checkInDate,
-      checkOutDate: values.checkOutDate,
-      numberOfGuests: values.numberOfGuests,
-      numberOfAdults: values.numberOfAdults,
-      numberOfChildren: values.numberOfChildren,
-      numberOfInfants: values.numberOfInfants,
-      roomType: values.roomType,
-      specialRequests: values.specialRequests,
-    };
-
-    try {
+  // Usar hook compartido para toda la lógica del formulario
+  const {
+    numberOfGuestsValue,
+    checkInValue,
+    checkOutValue,
+    maxGuests,
+    onSubmit,
+  } = useReservationEditForm({
+    form,
+    reservation: reservation || {} as Reservation,
+    roomTypes,
+    onSubmitSuccess: async (updates) => {
+      if (!id || !reservation) return;
       await updateReservation.mutateAsync({ id: reservation.id, updates });
       toast.success('Reserva actualizada correctamente');
       navigate('/reservations');
-    } catch (error) {
-      toast.error('Error al actualizar la reserva');
-      console.error('Error:', error);
-    }
+    },
   });
 
   const nightsPreview = React.useMemo(() => {
