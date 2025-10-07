@@ -58,6 +58,21 @@ export const useReservationsList = () => {
 };
 
 /**
+ * Hook: useReservationById
+ *
+ * Fetches a single reservation by ID.
+ * Used for detail pages and viewing individual reservations.
+ */
+export const useReservationById = (id: string) => {
+  return useQuery({
+    queryKey: reservationKeys.detail(id),
+    queryFn: () => reservationService.getReservationById(id),
+    enabled: !!id, // Only fetch when ID is provided
+    staleTime: 30 * 1000, // 30 seconds
+  });
+};
+
+/**
  * Hook: useRoomTypes
  *
  * Returns catalog metadata for room types (name, base price, capacity).

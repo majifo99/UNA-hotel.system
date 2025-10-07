@@ -5,6 +5,9 @@ import { Home } from '../pages/Home';
 import { ReservationsListPage } from '../modules/reservations/pages/ReservationsListPage';
 import { CreateReservationPage } from '../modules/reservations/pages/CreateReservationPage';
 import { SelectServicesPage } from '../modules/reservations/pages/SelectServicesPage';
+import { ReservationEditPage } from '../modules/reservations/pages/ReservationEditPage';
+import { ReservationCancelPage } from '../modules/reservations/pages/ReservationCancelPage';
+import { ReservationDetailFullPage } from '../modules/reservations/pages/ReservationDetailFullPage';
 import HousekeepingDashboard from '../modules/housekeeping/pages/HousekeepingDashboard';
 import { GuestsPage } from '../modules/guests/pages/GuestsPage';
 import { CreateGuestPage } from '../modules/guests/pages/CreateGuestPage';
@@ -136,7 +139,21 @@ const router = createBrowserRouter([
             path: 'create/services',
             element: <SelectServicesPage />,
           },
-          // Future detail routes can be added here, e.g. /reservations/:id
+          {
+            // View full reservation details (pantalla completa)
+            path: ':id/detail',
+            element: <ReservationDetailFullPage />,
+          },
+          {
+            // Edit existing reservation
+            path: ':id/edit',
+            element: <ReservationEditPage />,
+          },
+          {
+            // Cancel existing reservation
+            path: ':id/cancel',
+            element: <ReservationCancelPage />,
+          },
         ],
       },
       {
