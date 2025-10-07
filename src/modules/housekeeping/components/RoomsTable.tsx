@@ -1,13 +1,16 @@
-// src/modules/housekeeping/components/RoomsTable.tsx
-
 import { useMemo, useEffect, useState, useCallback } from "react";
 import { UserCheck, MoreHorizontal, Eye, RefreshCw } from "lucide-react";
-import type { Prioridad, LimpiezaItem } from "../types/limpieza";
+import type { Prioridad } from "../types/limpieza";
 import { useLimpiezasTable, type LimpiezasTableController } from "../hooks/useLimpiezasTable";
-import type { ColumnKey, SortKey } from "../types/table";
+import type { ColumnKey } from "../types/table";
 import LimpiezaDetailModal from "./Modals/LimpiezaDetailModal";
 import CleanToggle, { type FinalizePayload } from "./CleanToggle";
-import type { RoomFilters } from "./FilterBar"; // 👈 importamos el tipo
+import type { RoomFilters } from "./FilterBar";
+
+// UI helpers
+import { BarLoader, TableLoader } from "./UI/Loaders";
+import HabitacionCell from "./UI/HabitacionCell";
+import { EstadoBadge, PrioridadBadge } from "./UI/Badges";
 
 const cn = (...xs: Array<string | false | null | undefined>) => xs.filter(Boolean).join(" ");
 const PRIORIDAD_CLEAN_MODE: "dash" | "finishedAt" = "dash";
@@ -23,37 +26,21 @@ function formatFinishedAt(iso?: string | null) {
   return `Finalizada ${dd}/${mm} ${hh}:${mi}`;
 }
 
-function Pill({
-  children,
-  tone = "slate",
-}: Readonly<{ children: React.ReactNode; tone?: "slate" | "blue" | "orange" | "rose" | "teal" }>) {
-  const map = {
-    slate: "bg-slate-50 border-slate-200 text-slate-700",
-    blue: "bg-blue-50 border-blue-200 text-blue-700",
-    orange: "bg-orange-50 border-orange-200 text-orange-700",
-    rose: "bg-rose-50 border-rose-200 text-rose-700",
-    teal: "bg-teal-50 border-teal-200 text-teal-700",
-  } as const;
-  return <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium border", map[tone])}>{children}</span>;
+function getRowId(item: any): number {
+  return item.id_limpieza ?? item.id;
+}
+function getEstado(item: any): { nombre?: string } | undefined {
+  return item.estado ?? item.estadoHabitacion;
 }
 
-function PrioridadBadge({ prioridad }: Readonly<{ prioridad?: Prioridad | null }>) {
-  if (!prioridad) return <Pill>—</Pill>;
-  const tone: Record<Prioridad, "slate" | "blue" | "orange" | "rose"> = {
-    baja: "slate",
-    media: "blue",
-    alta: "orange",
-    urgente: "rose",
-  };
-  return (
-    <Pill tone={tone[prioridad]}>
-      <span className="capitalize">{prioridad}</span>
-    </Pill>
-  );
-}
-
-function EstadoBadge({ clean }: Readonly<{ clean: boolean }>) {
-  return <Pill tone={clean ? "teal" : "rose"}>{clean ? "Limpia" : "Sucia"}</Pill>;
+function renderPrioridadCell(clean: boolean, fechaFinal?: string | null, prioridad?: Prioridad | null) {
+  if (clean) {
+    if (PRIORIDAD_CLEAN_MODE === "dash") {
+      return <span className="text-slate-400 text-sm" aria-label="Sin prioridad por estar limpia">—</span>;
+    }
+    return <span className="text-slate-600 text-sm">{formatFinishedAt(fechaFinal ?? undefined)}</span>;
+  }
+  return <PrioridadBadge prioridad={prioridad ?? null} />;
 }
 
 export type SelectedRoom = {
@@ -65,64 +52,12 @@ export type SelectedRoom = {
 
 type Props = {
   controller?: LimpiezasTableController;
-  onEdit?: (item: LimpiezaItem) => void;
+  onEdit?: (item: any) => void;
   onSelectionChange?: (room: SelectedRoom | null) => void;
-  /** 👉 filtros provenientes de FilterBar (opcional para no romper llamadas existentes) */
   filters?: RoomFilters;
 };
 
-const SORT_MAP: Record<ColumnKey | "descripcion" | "notas" | "habitacion", SortKey | null> = {
-  numero: "habitacion",
-  tipo: "tipo",
-  piso: "piso",
-  estado: "estado",
-  prioridad: "prioridad",
-  asignador: null,
-  fecha_inicio: null,
-  fecha_final: null,
-  descripcion: null,
-  notas: null,
-  habitacion: "habitacion",
-};
-
-function getRowId(item: any): number {
-  return item.id_limpieza ?? item.id;
-}
-
-function getEstado(item: any): { nombre?: string } | undefined {
-  return item.estadoHabitacion ?? item.estado;
-}
-
-/** Helpers para leer campos usados por los filtros (sin alterar estructura original) */
-function getNumero(item: any): string {
-  return String(item?.habitacion?.numero ?? "").trim();
-}
-function getTipo(item: any): string {
-  return String(item?.habitacion?.tipo?.nombre ?? "").trim();
-}
-function getPiso(item: any): string {
-  const piso = item?.habitacion?.piso;
-  if (piso === undefined || piso === null) return "";
-  return String(piso).trim();
-}
-
-/** Helper para S3358: evita ternarios anidados en la celda de Prioridad */
-function renderPrioridadCell(clean: boolean, fechaFinal?: string | null, prioridad?: Prioridad | null) {
-  if (clean) {
-    if (PRIORIDAD_CLEAN_MODE === "dash") {
-      return (
-        <span className="text-slate-400 text-sm" aria-label="Sin prioridad por estar limpia">
-          —
-        </span>
-      );
-    }
-    return <span className="text-slate-600 text-sm">{formatFinishedAt(fechaFinal ?? undefined)}</span>;
-  }
-  return <PrioridadBadge prioridad={prioridad ?? null} />;
-}
-
-export default function LimpiezasTable({ controller, onEdit, onSelectionChange, filters }: Readonly<Props>) {
-  // ✅ S6440: el hook se llama SIEMPRE y luego resolvemos qué controller usar
+export default function LimpiezasTable({ controller, onSelectionChange, filters }: Readonly<Props>) {
   const internalCtrl = useLimpiezasTable({ initialFilters: { per_page: 10, pendientes: false } });
   const ctrl = controller ?? internalCtrl;
 
@@ -133,38 +68,32 @@ export default function LimpiezasTable({ controller, onEdit, onSelectionChange, 
     pagination,
     selectedIds,
     toggleOne,
-    toggleAllPage,
     gotoPage,
     finalizarLimpieza,
     reabrirLimpieza,
+    isFirstLoad,
+    isRevalidating,
+    showInitialSkeleton,
+    hasPageData,
   } = ctrl;
 
   const totalPages = pagination.last_page;
 
-  const columns = useMemo<
-    ReadonlyArray<{
-      key: ColumnKey | "descripcion" | "notas" | "habitacion";
-      label: string;
-    }>
-  >(
-    () => [
-      { key: "habitacion", label: "Habitación" },
-      { key: "estado", label: "Estado" },
-      { key: "prioridad", label: "Prioridad" },
-      { key: "asignador", label: "Asignador" },
-      { key: "notas", label: "Notas" },
-      { key: "descripcion", label: "Descripción" },
-    ],
+  const columns = useMemo(
+    () =>
+      [
+        { key: "habitacion", label: "Habitación" },
+        { key: "estado", label: "Estado" },
+        { key: "prioridad", label: "Prioridad" },
+        { key: "asignador", label: "Asignado" },
+        { key: "notas", label: "Notas" },
+      ] as ReadonlyArray<{ key: ColumnKey | "notas" | "habitacion"; label: string }>,
     []
   );
 
-  // UI optimista local por fila (visual)
+  // Optimista local para el toggle
   const [optimisticCleanIds, setOptimisticCleanIds] = useState<Set<number>>(new Set());
-
-  const addOptimistic = useCallback((id: number) => {
-    setOptimisticCleanIds((prev) => new Set(prev).add(id));
-  }, []);
-
+  const addOptimistic = useCallback((id: number) => setOptimisticCleanIds((prev) => new Set(prev).add(id)), []);
   const removeOptimistic = useCallback((id: number) => {
     setOptimisticCleanIds((prev) => {
       const next = new Set(prev);
@@ -173,15 +102,12 @@ export default function LimpiezasTable({ controller, onEdit, onSelectionChange, 
     });
   }, []);
 
-  // Wrappers para CleanToggle con manejo de errores (S2737)
   const handleFinalizeForToggle = useCallback(
     async (id: number, payload: FinalizePayload) => {
       addOptimistic(id);
       try {
-        await finalizarLimpieza(id, { fecha_final: payload.fecha_final, notas: payload.notas ?? null });
-        // opcional: removeOptimistic(id);
+        await finalizarLimpieza(id, { fecha_final: payload.fecha_final, notas: null });
       } catch (e) {
-        // ✅ lógica en catch (log + rollback + rethrow si deseas)
         console.error("[RoomsTable] Error al finalizar limpieza", e);
         removeOptimistic(id);
         throw e;
@@ -196,7 +122,6 @@ export default function LimpiezasTable({ controller, onEdit, onSelectionChange, 
       try {
         await reabrirLimpieza(id);
       } catch (e) {
-        // ✅ lógica en catch (log); no es necesario revertir optimista adicional
         console.error("[RoomsTable] Error al reabrir limpieza", e);
         throw e;
       }
@@ -212,7 +137,7 @@ export default function LimpiezasTable({ controller, onEdit, onSelectionChange, 
     return () => document.removeEventListener("click", close);
   }, [openMenuId]);
 
-  // estado para el modal de detalles
+  // modal detalle
   const [detailId, setDetailId] = useState<number | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -224,13 +149,11 @@ export default function LimpiezasTable({ controller, onEdit, onSelectionChange, 
       return;
     }
     const selectedRows = items.filter((r) => selectedIds.includes(getRowId(r)));
-    const firstWithRoom = selectedRows.find(
-      (r) => typeof r?.habitacion?.id === "number" || typeof r?.habitacion?.id === "string"
-    );
+    const firstWithRoom = selectedRows.find((r) => r?.habitacion?.id != null);
     if (!firstWithRoom) return onSelectionChange(null);
     const rawId = firstWithRoom.habitacion!.id;
     const numericId = typeof rawId === "number" ? rawId : Number(rawId);
-    const room: SelectedRoom = {
+    const room = {
       id: numericId,
       numero: firstWithRoom.habitacion?.numero,
       piso: firstWithRoom.habitacion?.piso,
@@ -239,143 +162,148 @@ export default function LimpiezasTable({ controller, onEdit, onSelectionChange, 
     onSelectionChange(room);
   }, [selectedIds, items, onSelectionChange]);
 
-  /** ---------- 👇 AÑADIDO: filtrado en cliente según RoomFilters sin modificar el resto ---------- */
+  /* ---------- Filtros cliente ---------- */
+  const hasClientFilters = useMemo(() => {
+    if (!filters) return false;
+    const s = filters.search?.trim();
+    const st = filters.status?.trim().toLowerCase();
+    const pr = filters.priority?.trim().toLowerCase();
+    const as = filters.assigned?.trim();
+    return Boolean(s || st || pr || as);
+  }, [filters]);
+
   const viewItems = useMemo(() => {
-    if (!filters) return items;
-    const fSearch = (filters.search || "").toLowerCase().trim();
-    const fStatus = (filters.status || "").toLowerCase().trim(); // "sucia" | "limpia" | ""
-    const fType = (filters.type || "").toLowerCase().trim(); // "sencilla" | "doble" | "suite" | "king" | ""
-    const fFloor = (filters.floor || "").toLowerCase().trim(); // "1" | "2" | ""
+    if (!filters) return items || [];
+    const fSearch = (filters?.search || "").toLowerCase().trim();
+    const fStatus = (filters?.status || "").toLowerCase().trim();
+    const fPriority = (filters?.priority || "").toLowerCase().trim();
+    const fAssigned = (filters?.assigned || "").trim();
 
     return (items || []).filter((it) => {
-      const numero = getNumero(it).toLowerCase();
-      const tipo = getTipo(it).toLowerCase();
-      const piso = getPiso(it).toLowerCase();
-      const estadoNombre = String(getEstado(it)?.nombre ?? "").toLowerCase();
+      const numero = String(it?.habitacion?.numero ?? "").toLowerCase();
+      const estadoNombre = String((it?.estado ?? it?.estadoHabitacion)?.nombre ?? "").toLowerCase();
+      const cleanByDate = Boolean(it?.fecha_final);
+      const isLimpia = estadoNombre === "limpia" || cleanByDate;
+      const prioridad = String(it?.prioridad ?? "").toLowerCase();
+      const asignadoNombre = String(it?.usuario_asignado?.nombre ?? it?.asignador?.name ?? "").trim();
 
       if (fSearch && !numero.includes(fSearch)) return false;
-      if (fStatus && estadoNombre !== fStatus) return false;
-      if (fType && tipo !== fType) return false;
-      if (fFloor && piso !== fFloor) return false;
+      if (fStatus === "limpia" && !isLimpia) return false;
+      if (fStatus === "sucia" && isLimpia) return false;
+      if (fPriority && prioridad !== fPriority) return false;
+      if (fAssigned && asignadoNombre !== fAssigned) return false;
 
       return true;
     });
   }, [items, filters]);
-  /** ---------- 👆 FIN AÑADIDO ---------- */
 
-  if (loading && items.length === 0) return <div className="text-center text-slate-500 py-10 text-sm">Cargando…</div>;
-  if (error) return <div className="text-center text-rose-600 py-10 text-sm">Error: {error}</div>;
-  if ((viewItems ?? items).length === 0)
-    return <div className="text-center text-slate-500 py-10 text-sm">No hay limpiezas para mostrar{filters ? " con los filtros aplicados." : "."}</div>;
+  /* ====== ESTADOS DE UI ====== */
+  if ((showInitialSkeleton || isFirstLoad || loading) && !hasPageData) {
+    return <TableLoader />;
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white border border-rose-200 rounded-xl overflow-hidden">
+        <div className="text-center text-rose-600 py-10 text-sm">Error: {error}</div>
+      </div>
+    );
+  }
 
   const HEAD_BASE = "p-4 font-medium text-gray-700 capitalize text-left";
 
+  if (!loading && hasPageData && viewItems.length === 0) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        {isRevalidating && <BarLoader />}
+        <div className="text-center text-slate-500 py-10 text-sm">
+          {hasClientFilters
+            ? "No hay limpiezas para mostrar con los filtros aplicados."
+            : "No hay limpiezas para mostrar."}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      {loading && hasPageData && <BarLoader />}
+
       <div className="overflow-x-auto">
         <table className="w-full table-fixed">
           <colgroup>
             <col className="w-12" />
-            <col className="w-[16%]" />
-            <col className="w-[9%]" />
+            <col className="w-[22%]" />
             <col className="w-[12%]" />
-            <col className="w-[16%]" />
-            <col className="w-[16%]" />
-            <col className="w-[16%]" />
+            <col className="w-[12%]" />
+            <col className="w-[22%]" />
+            <col className="w-[22%]" />
             <col className="w-[110px]" />
           </colgroup>
-          <thead className="bg-slate-50 border-b border-slate-200">
+
+          <thead className="bg-[#304D3C] text-white border-b border-slate-200">
             <tr>
               <th className="px-4 py-3">
                 <input
                   type="checkbox"
-                  checked={(viewItems.length > 0) && viewItems.every((r) => selectedIds.includes(getRowId(r)))}
-                  onChange={toggleAllPage /* mantenemos comportamiento original */}
-                  className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                  checked={false}
+                  disabled
+                  className="h-4 w-4 rounded border-white/40 text-white bg-white/20 cursor-not-allowed"
                 />
               </th>
-              {columns.map((c) => {
-                const sortKey = SORT_MAP[c.key];
-                const isSortable = Boolean(sortKey);
-                return (
-                  <th key={c.key} className={HEAD_BASE}>
-                    {isSortable ? (
-                      <button
-                        type="button"
-                        onClick={() => ctrl.handleSort(sortKey as SortKey)}
-                        className="flex items-center gap-1 hover:text-slate-900 transition-colors"
-                      >
-                        {c.label}
-                      </button>
-                    ) : (
-                      <span>{c.label}</span>
-                    )}
-                  </th>
-                );
-              })}
-              <th className={HEAD_BASE + " text-right"}>Acciones</th>
+              {columns.map((c) => (
+                <th key={c.key} className={HEAD_BASE + " text-white"}>
+                  <span>{c.label}</span>
+                </th>
+              ))}
+              <th className={HEAD_BASE + " text-right text-white"}>Acciones</th>
             </tr>
           </thead>
+
           <tbody className="bg-white divide-y divide-slate-100">
-            {(viewItems as any[]).map((raw) => {
-              const item: any = raw;
+            {viewItems.map((item: any) => {
               const id = getRowId(item);
               const isSelected = selectedIds.includes(id);
               const numero = item.habitacion?.numero ?? "—";
-              const tipo = item.habitacion?.tipo?.nombre ?? "—";
-              const pisoVal = item.habitacion?.piso ?? "—";
-              const pisoFmt = pisoVal === "—" ? "—" : `Piso ${String(pisoVal)}`;
+              const pisoVal = item.habitacion?.piso;
+              const tipoNombre = item.habitacion?.tipo?.nombre ?? undefined;
               const estado = getEstado(item);
               const estadoNombre = estado?.nombre;
               const clean =
                 optimisticCleanIds.has(id) || Boolean(item.fecha_final) || (estadoNombre ?? "").toLowerCase() === "limpia";
 
+              const asignadoNombre = item?.usuario_asignado?.nombre ?? item?.asignador?.name ?? null;
+
               return (
-                <tr key={id} className={cn("hover:bg-slate-50/50 transition-colors", isSelected && "bg-teal-50/30")}>
-                  {/* checkbox */}
+                <tr key={id} className={cn("hover:bg-slate-50/50 transition-colors", isSelected && "bg-emerald-50/30")}>
                   <td className="px-4 py-3">
                     <input
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleOne(id)}
-                      className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                     />
                   </td>
-                  {/* Habitación */}
                   <td className="p-4">
-                    <div className="flex flex-col">
-                      <span className="font-medium text-gray-900">{numero}</span>
-                      <span className="text-sm text-gray-600">
-                        {tipo} • {pisoFmt}
-                      </span>
-                    </div>
+                    <HabitacionCell numero={numero} tipoNombre={tipoNombre} piso={pisoVal} />
                   </td>
-                  {/* Estado */}
                   <td className="p-4">
                     <EstadoBadge clean={clean} />
                   </td>
-                  {/* Prioridad */}
                   <td className="p-4">{renderPrioridadCell(clean, item.fecha_final, item.prioridad ?? null)}</td>
-                  {/* Asignador */}
                   <td className="px-4 py-3 text-sm text-slate-600">
-                    {item.asignador ? (
+                    {asignadoNombre ? (
                       <div className="flex items-center gap-2">
-                        <UserCheck className="w-4 h-4 text-teal-600" />
-                        <span className="text-sm font-medium text-slate-700">{item.asignador.name}</span>
+                        <UserCheck className="w-4 h-4 text-emerald-600" />
+                        <span className="text-sm font-medium text-slate-700">{asignadoNombre}</span>
                       </div>
                     ) : (
-                      <span className="text-slate-400 text-sm">—</span>
+                      <span className="text-slate-400 text-sm">Sin asignar</span>
                     )}
                   </td>
-                  {/* Notas */}
                   <td className="px-4 py-3 text-sm text-slate-700 truncate" title={item.notas ?? ""}>
                     {item.notas ?? <span className="text-slate-400">—</span>}
                   </td>
-                  {/* Descripción */}
-                  <td className="px-4 py-3 text-sm text-slate-700 truncate" title={item.descripcion ?? ""}>
-                    {item.descripcion ?? <span className="text-slate-400">—</span>}
-                  </td>
-                  {/* Acciones */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 justify-end">
                       <CleanToggle
@@ -384,10 +312,15 @@ export default function LimpiezasTable({ controller, onEdit, onSelectionChange, 
                         notas={item.notas ?? null}
                         onFinalize={handleFinalizeForToggle}
                         onReopen={handleReopenForToggle}
-                        onOptimisticAdd={addOptimistic}
-                        onOptimisticRemove={removeOptimistic}
+                        onOptimisticAdd={(x) => setOptimisticCleanIds((s) => new Set(s).add(x))}
+                        onOptimisticRemove={(x) =>
+                          setOptimisticCleanIds((s) => {
+                            const nx = new Set(s);
+                            nx.delete(x);
+                            return nx;
+                          })
+                        }
                       />
-                      {/* Menú tres puntos */}
                       <div className="relative">
                         <button
                           type="button"
@@ -448,12 +381,13 @@ export default function LimpiezasTable({ controller, onEdit, onSelectionChange, 
           </tbody>
         </table>
       </div>
+
       {/* Paginación */}
       <div className="flex justify-center items-center gap-1 py-5 bg-white border-t border-slate-100">
         <button
           onClick={() => gotoPage(pagination.current_page - 1)}
           disabled={pagination.current_page <= 1}
-          className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-teal-600 disabled:opacity-30"
+          className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-emerald-600 disabled:opacity-30"
           aria-label="Página anterior"
         >
           ←
@@ -464,7 +398,9 @@ export default function LimpiezasTable({ controller, onEdit, onSelectionChange, 
             onClick={() => gotoPage(p)}
             className={cn(
               "w-8 h-8 rounded-md text-sm transition-colors",
-              pagination.current_page === p ? "text-teal-700 font-semibold bg-slate-100" : "text-slate-500 hover:text-teal-600"
+              pagination.current_page === p
+                ? "text-emerald-700 font-semibold bg-slate-100"
+                : "text-slate-500 hover:text-emerald-600"
             )}
           >
             {p}
@@ -473,30 +409,15 @@ export default function LimpiezasTable({ controller, onEdit, onSelectionChange, 
         <button
           onClick={() => gotoPage(pagination.current_page + 1)}
           disabled={pagination.current_page >= totalPages}
-          className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-teal-600 disabled:opacity-30"
+          className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-emerald-600 disabled:opacity-30"
           aria-label="Página siguiente"
         >
           →
         </button>
       </div>
+
       {/* Modal de detalles */}
-      <LimpiezaDetailModal
-        open={detailOpen}
-        limpiezaId={detailId}
-        onClose={() => setDetailOpen(false)}
-        onEdit={(itm) => {
-          setDetailOpen(false);
-          onEdit?.(itm);
-        }}
-        onMarkCompleted={async (id) => {
-          try {
-            await finalizarLimpieza(id, { fecha_final: new Date().toISOString(), notas: null });
-          } catch (e) {
-            console.error("[RoomsTable] Error al marcar como completada desde modal", e);
-            throw e;
-          }
-        }}
-      />
+      <LimpiezaDetailModal open={detailOpen} limpiezaId={detailId} onClose={() => setDetailOpen(false)} />
     </div>
   );
 }

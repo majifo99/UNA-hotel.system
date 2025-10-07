@@ -3,17 +3,17 @@ export type Prioridad = "baja" | "media" | "alta" | "urgente";
 export const PRIORIDADES: Readonly<Prioridad[]> = ["baja", "media", "alta", "urgente"] as const;
 
 // --- Estados de habitación usados en limpieza ---
-export const ESTADO_HAB = {
-  SUCIA: 3,
-  LIMPIA: 4,
-} as const;
+export const ESTADO_HAB = { SUCIA: 3, LIMPIA: 4 } as const;
 export type EstadoHab = typeof ESTADO_HAB[keyof typeof ESTADO_HAB]; // 3 | 4
 
-// --- Tipos para las relaciones ---
+// --- Tipos base ---
 export type Usuario = {
-  id_usuario: number;
-  name: string;
-  email: string;
+  id_usuario?: number;   // compat
+  id?: number;           // compat/back simple
+  name?: string;         // compat
+  nombre?: string;       // back actual
+  email?: string;
+  telefono?: string;
 };
 
 export type Habitacion = {
@@ -31,69 +31,67 @@ export type Habitacion = {
 };
 
 export type EstadoHabitacion = {
-  id_estado_hab: number;
+  id?: number;               // back actual usa "id"
+  id_estado_hab?: number;    // compat
   nombre: string;
   tipo?: string;
   descripcion?: string;
 };
 
-export type HistorialLimpieza = {
-  id_historial: number;
-  accion: string;
-  fecha: string;
-  usuario?: Usuario;
-};
-
-// --- DTOs ---
+// --- DTOs (back Laravel) ---
 export type LimpiezaCreateDTO = {
-  nombre: string;
-  descripcion?: string | null;
   notas?: string | null;
   prioridad?: Prioridad | null;
+
   fecha_inicio: string;
   fecha_final?: string | null;
-  id_habitacion?: number | null;
-  id_usuario_asigna?: number | null;
-  id_estado_hab?: EstadoHab | null; // 3 | 4
-};
 
-export type LimpiezaUpdateDTO = Partial<
-  Omit<LimpiezaCreateDTO, "fecha_reporte" | "id_usuario_reporta">
->;
-
-export type LimpiezaEstadoUpdateDTO = {
-  id_estado_hab: EstadoHab; // 3 | 4
-};
-
-export type FinalizarLimpiezaDTO = {
-  fecha_final: string; // ISO
-  notas?: string | null;
-};
-
-// --- Respuesta completa ---
-export type LimpiezaItem = {
-  id_limpieza: number;
-  nombre: string;
-  descripcion?: string | null;
-  notas?: string | null;
-  prioridad?: Prioridad | null;
-  fecha_inicio: string;
-  fecha_final?: string | null;
-  fecha_reporte: string;
   id_habitacion?: number | null;
   id_usuario_asigna?: number | null;
   id_usuario_reporta?: number | null;
-  id_estado_hab?: EstadoHab | null; // 3 | 4
+  id_estado_hab?: EstadoHab | null;
+};
+
+export type LimpiezaUpdateDTO = Partial<LimpiezaCreateDTO>;
+
+export type FinalizarLimpiezaDTO = {
+  fecha_final: string;
+  notas?: string | null;
+};
+
+// --- Item devuelto por el API (según tu JSON) ---
+export type LimpiezaItem = {
+  id_limpieza?: number; // compat
+  id: number;
+
+  notas?: string | null;
+  prioridad?: Prioridad | null;
+
+  fecha_inicio: string;
+  fecha_final?: string | null;
+  fecha_reporte?: string;
+
+  id_habitacion?: number | null;
+  id_usuario_asigna?: number | null;
+  id_usuario_reporta?: number | null;
+  id_estado_hab?: EstadoHab | null;
+
   created_at: string;
   updated_at: string;
+
+  // Relaciones (nombres del back actual)
   habitacion?: Habitacion;
+  usuario_asignado?: { id: number; nombre: string; telefono?: string };
+  usuario_reporta?: Usuario | null;
+  estado?: EstadoHabitacion;
+
+  // Compat (por si algo viejo lo usa)
   asignador?: Usuario;
   reportante?: Usuario;
   estadoHabitacion?: EstadoHabitacion;
-  historialLimpiezas?: HistorialLimpieza[];
 };
 
-// --- Paginación y filtros ---
+// --- Paginación ---
 export type LimpiezaPaginatedResponse = {
   data: LimpiezaItem[];
   current_page: number;
@@ -106,10 +104,11 @@ export type LimpiezaPaginatedResponse = {
 
 export type LimpiezaFilters = {
   per_page?: number;
+  page?: number;
   prioridad?: Prioridad;
   pendientes?: boolean;
   id_habitacion?: number;
-  estado_id?: EstadoHab; // 3 | 4
+  estado_id?: EstadoHab;
   desde?: string; // YYYY-MM-DD
   hasta?: string; // YYYY-MM-DD
 };
