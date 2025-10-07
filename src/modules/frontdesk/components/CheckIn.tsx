@@ -355,9 +355,25 @@ const CheckIn = () => {
       })
     };
 
-    const success = await validateAndSubmit(checkInData);
-    if (success) {
-      navigate(ROUTES.FRONTDESK.BASE);
+    const result = await validateAndSubmit(checkInData);
+    if (result.success) {
+      // Emitir evento personalizado para el flujo
+      const checkInSuccessEvent = new CustomEvent('checkInSuccess', {
+        detail: {
+          folioId: result.folioId,
+          guestName: checkInData.guestName,
+          roomNumber: checkInData.roomNumber,
+          requiresChargeDistribution: checkInData.requiereDivisionCargos,
+          checkInData
+        }
+      });
+      window.dispatchEvent(checkInSuccessEvent);
+      
+      // Si no requiere división de cargos, ir directamente al dashboard
+      if (!checkInData.requiereDivisionCargos) {
+        navigate(ROUTES.FRONTDESK.BASE);
+      }
+      // Si requiere división, el flujo se encargará de mostrar el FolioManager
     }
   };
 

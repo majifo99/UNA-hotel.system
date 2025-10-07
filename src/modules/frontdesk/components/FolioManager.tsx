@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { CreditCard, FileText, RotateCcw, Coffee } from 'lucide-react';
+import { CreditCard, FileText, RotateCcw, Coffee, FileX, Clock } from 'lucide-react';
 import { FolioDistribucion } from './FolioDistribucion';
 import { FolioPagos } from './FolioPagos';
+import { FolioCierre } from './FolioCierre';
+import { FolioHistorial } from './FolioHistorial';
 
 interface FolioManagerProps {
   folioId: number;
@@ -9,7 +11,7 @@ interface FolioManagerProps {
   className?: string;
 }
 
-type TabType = 'distribucion' | 'pagos' | 'resumen';
+type TabType = 'distribucion' | 'pagos' | 'cierre' | 'historial' | 'resumen';
 
 export const FolioManager: React.FC<FolioManagerProps> = ({
   folioId,
@@ -47,6 +49,18 @@ export const FolioManager: React.FC<FolioManagerProps> = ({
       label: 'Registrar Pagos',
       icon: CreditCard,
       description: 'Procesar pagos'
+    },
+    {
+      id: 'cierre' as TabType,
+      label: 'Cerrar Folio',
+      icon: FileX,
+      description: 'Reclasificar al titular'
+    },
+    {
+      id: 'historial' as TabType,
+      label: 'Historial',
+      icon: Clock,
+      description: 'Ver línea de tiempo'
     },
     {
       id: 'resumen' as TabType,
@@ -125,6 +139,41 @@ export const FolioManager: React.FC<FolioManagerProps> = ({
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'cierre' && (
+          <div>
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">Cierre de Folio</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Reclasifica todos los cargos y saldos pendientes al titular principal
+              </p>
+            </div>
+            {folioData ? (
+              <FolioCierre
+                folioId={folioId}
+                folioData={folioData}
+                onCierreCompleto={handlePaymentComplete}
+              />
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <FileX className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>Primero debes cargar los datos del folio</p>
+                <button
+                  onClick={() => setActiveTab('distribucion')}
+                  className="mt-2 text-blue-600 hover:text-blue-800"
+                >
+                  Ir a Distribución
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'historial' && (
+          <div>
+            <FolioHistorial folioId={folioId} />
           </div>
         )}
 

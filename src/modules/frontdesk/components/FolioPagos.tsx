@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { DollarSign, User, Globe, AlertCircle, CheckCircle, Coffee } from 'lucide-react';
-import { folioService, type PagoRequest } from '../services/folioService';
+import { useFolioPagos } from '../hooks/useFolioPagos';
 
 interface FolioPagosProps {
   folioId: number;
@@ -32,78 +32,66 @@ export const FolioPagos: React.FC<FolioPagosProps> = ({
   const [clienteSeleccionado, setClienteSeleccionado] = useState<number | null>(null);
   const [monto, setMonto] = useState<string>('');
   const [metodo, setMetodo] = useState<string>('Efectivo');
-  const [procesando, setProcesando] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
+
+  // Usar el hook de pagos
+  const { procesando, error, registrarPagoGeneral, registrarPagoCliente, limpiarError } = useFolioPagos({
+    folioId,
+    onError: (err) => {
+      console.error('Error en pago:', err);
+    },
+    onSuccess: (mensaje, data) => {
+      setExito(mensaje);
+      resetearFormulario();
+      if (onPagoCompleto) {
+        onPagoCompleto(data);
+      }
+    }
+  });
 
   const resetearFormulario = () => {
     setMonto('');
-    setError(null);
+    limpiarError();
     setExito(null);
   };
 
   const registrarPago = async () => {
     try {
-      setProcesando(true);
-      setError(null);
+      limpiarError();
       setExito(null);
 
       const montoNumerico = Number.parseFloat(monto);
       
       if (!montoNumerico || montoNumerico <= 0) {
-        setError('El monto debe ser mayor a 0');
-        return;
+        throw new Error('El monto debe ser mayor a 0');
       }
 
       // Validar límites según el tipo de pago
       if (tipoPago === 'general') {
         if (montoNumerico > saldoGlobal) {
-          setError(`El monto no puede exceder el saldo global ($${saldoGlobal.toFixed(2)})`);
-          return;
+          throw new Error(`El monto no puede exceder el saldo global ($${saldoGlobal.toFixed(2)})`);
         }
+        await registrarPagoGeneral(montoNumerico, metodo);
       } else {
         if (!clienteSeleccionado) {
-          setError('Debe seleccionar un cliente');
-          return;
+          throw new Error('Debe seleccionar un cliente');
         }
         
         const persona = personas.find(p => p.id_cliente === clienteSeleccionado);
         if (!persona) {
-          setError('Cliente no encontrado');
-          return;
+          throw new Error('Cliente no encontrado');
         }
         
         if (montoNumerico > persona.saldo) {
-          setError(`El monto no puede exceder el saldo del cliente ($${persona.saldo.toFixed(2)})`);
-          return;
+          throw new Error(`El monto no puede exceder el saldo del cliente ($${persona.saldo.toFixed(2)})`);
         }
-      }
 
-      // Generar ID único para la operación
-      const operacion_uid = `pay-${Date.now()}-${Math.random().toString(36).substring(2, 12)}`;
-
-      const pagoData: PagoRequest = {
-        operacion_uid,
-        monto: montoNumerico,
-        metodo,
-        resultado: 'OK',
-        ...(tipoPago === 'persona' && clienteSeleccionado ? { id_cliente: clienteSeleccionado } : {})
-      };
-
-      const resultado = await folioService.registrarPago(folioId, pagoData);
-      
-      setExito(`Pago de $${montoNumerico.toFixed(2)} registrado exitosamente`);
-      resetearFormulario();
-      
-      if (onPagoCompleto) {
-        onPagoCompleto(resultado);
+        await registrarPagoCliente(montoNumerico, metodo, clienteSeleccionado);
       }
       
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Error al registrar el pago';
-      setError(errorMessage);
-    } finally {
-      setProcesando(false);
+      // El error ya se maneja en el hook
+      console.error('Error en registro de pago:', err);
     }
   };
 
