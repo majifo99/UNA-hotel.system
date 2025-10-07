@@ -8,3 +8,6 @@ export { ReservationRoomCard } from './ReservationRoomCard';
 export { ReservationFinancialCard } from './ReservationFinancialCard';
 export { ReservationSpecialRequestsCard } from './ReservationSpecialRequestsCard';
 export { ReservationMetadataCard } from './ReservationMetadataCard';
+export { ReservationRoomsList } from './ReservationRoomsList';
+export { ReservationSourceCard } from './ReservationSourceCard';
+export { ReservationNotesCard } from './ReservationNotesCard';

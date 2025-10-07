@@ -4,7 +4,7 @@ import type { Reservation } from '../types';
 import { useReservationsList } from '../hooks/useReservationQueries';
 import { 
   ReservationsFilters, 
-  ReservationsTable, 
+  ReservationsTable,  
   TablePagination,
   type ReservationListFilters,
   type PaginationInfo,

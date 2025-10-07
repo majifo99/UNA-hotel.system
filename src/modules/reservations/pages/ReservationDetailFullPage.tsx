@@ -2,7 +2,11 @@
  * Página: ReservationDetailFullPage
  * 
  * Vista de pantalla completa para ver todos los detalles de una reserva.
- * Reutiliza componentes compartidos para evitar duplicación.
+ * Integra con la nueva estructura del API que devuelve:
+ * - cliente con nombre completo, email, teléfono, nacionalidad
+ * - estado de la reserva
+ * - fuente (Booking.com, etc.)
+ * - habitaciones[] con fechas, PAX y detalles de cada habitación
  * 
  * Ruta: /reservations/:id/detail
  */
@@ -14,30 +18,17 @@ import { useReservationById } from '../hooks/useReservationQueries';
 import { ReservationStatusBadge } from '../components/ReservationStatusBadge';
 import {
   ReservationGuestCard,
-  ReservationDatesCard,
-  ReservationRoomCard,
   ReservationFinancialCard,
-  ReservationSpecialRequestsCard,
   ReservationMetadataCard,
+  ReservationRoomsList,
+  ReservationSourceCard,
+  ReservationNotesCard,
 } from '../components/detail';
-
-/**
- * Hook personalizado para calcular noches de estadía
- */
-function useNights(checkInDate?: string | null, checkOutDate?: string | null): number {
-  return React.useMemo(() => {
-    if (!checkInDate || !checkOutDate) return 0;
-    const checkIn = new Date(checkInDate);
-    const checkOut = new Date(checkOutDate);
-    return Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
-  }, [checkInDate, checkOutDate]);
-}
 
 export const ReservationDetailFullPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: reservation, isLoading, isError, error } = useReservationById(id || '');
-  const nights = useNights(reservation?.checkInDate, reservation?.checkOutDate);
 
   // Loading state
   if (isLoading) {
@@ -92,7 +83,7 @@ export const ReservationDetailFullPage: React.FC = () => {
               <div>
                 <h1 className="text-xl font-bold text-slate-900">Detalle de reserva</h1>
                 <p className="mt-0.5 text-sm text-slate-500">
-                  Confirmación: <span className="font-mono font-medium">{reservation.confirmationNumber}</span>
+                  ID: <span className="font-mono font-medium">#{reservation.confirmationNumber}</span>
                 </p>
               </div>
             </div>
@@ -129,9 +120,9 @@ export const ReservationDetailFullPage: React.FC = () => {
           {/* Grid de contenido */}
           <div className="space-y-6">
             <ReservationGuestCard reservation={reservation} />
-            <ReservationDatesCard reservation={reservation} nights={nights} />
-            <ReservationRoomCard reservation={reservation} />
-            <ReservationSpecialRequestsCard reservation={reservation} />
+            <ReservationSourceCard reservation={reservation} />
+            <ReservationRoomsList reservation={reservation} />
+            <ReservationNotesCard reservation={reservation} />
             <ReservationFinancialCard reservation={reservation} />
             <ReservationMetadataCard reservation={reservation} />
           </div>
