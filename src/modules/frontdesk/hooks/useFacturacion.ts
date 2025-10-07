@@ -1,22 +1,3 @@
-/**
- * 🧾 Hook: useFacturacion
- * =======================
- * Maneja la generación de facturas por responsable en el check-out.
- * 
- * NOTA: Este hook está preparado arquitectónicamente para facturación múltiple.
- * El sistema actual podría usar:
- * - El historial de folio (`/api/folios/{id}/historial`) para facturas
- * - O implementar endpoints dedicados en el futuro
- * 
- * Funcionalidades preparadas:
- * - Generar factura por responsable
- * - Generar facturas múltiples en batch
- * - Consultar facturas existentes
- * - Descargar PDF
- * 
- * @module hooks/useFacturacion
- */
-
 import { useState, useCallback } from 'react';
 import { folioService as _folioService } from '../services/folioService';
 import type {
@@ -126,18 +107,6 @@ export const useFacturacion = ({
 
     try {
       // TODO: Implementar llamada al API dedicado o adaptar al endpoint de historial
-      // Para implementación futura:
-      /*
-      const request: FacturacionRequest = {
-        id_folio: folioId,
-        id_responsable: idResponsable,
-        tipo_responsable: tipoResponsable,
-        datos_fiscales: datosFiscales,
-        metodo_pago: metodoPago,
-        generar_xml: true
-      };
-      const response = await apiClient.post(`/folios/${folioId}/facturar`, request);
-      */
 
       const nuevaFactura: Factura = {
         id: `FAC-${Date.now()}`,

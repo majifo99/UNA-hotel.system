@@ -2,6 +2,11 @@ import { useState, useCallback } from 'react';
 import FrontdeskService from '../services/frontdeskService';
 import type { RoomInfo, RoomSearchFilters, RoomAvailability } from '../types/room';
 
+// Helper function to map room status
+const mapRoomStatus = (status: string | undefined): 'available' | 'occupied' | 'maintenance' | 'reserved' => {
+  return status === 'available' ? 'available' : status === 'occupied' ? 'occupied' : status === 'maintenance' ? 'maintenance' : 'reserved';
+};
+
 export const useRoomSelection = () => {
   const [selectedRoom, setSelectedRoom] = useState<RoomInfo | null>(null);
   const [availableRooms, setAvailableRooms] = useState<RoomInfo[]>([]);
@@ -26,7 +31,7 @@ export const useRoomSelection = () => {
           total: room.capacity 
         },
         floor: room.floor || 1,
-        status: (room.status === 'available' ? 'available' : room.status === 'occupied' ? 'occupied' : room.status === 'maintenance' ? 'maintenance' : 'reserved') as 'available' | 'occupied' | 'maintenance' | 'reserved',
+        status: mapRoomStatus(room.status),
         amenities: room.amenities,
         price: { base: room.pricePerNight, currency: 'USD' },
         features: { 
@@ -94,7 +99,7 @@ export const useRoomSelection = () => {
           total: room.capacity 
         },
         floor: room.floor || 1,
-        status: (room.status === 'available' ? 'available' : room.status === 'occupied' ? 'occupied' : room.status === 'maintenance' ? 'maintenance' : 'reserved') as 'available' | 'occupied' | 'maintenance' | 'reserved',
+        status: mapRoomStatus(room.status),
         amenities: room.amenities,
         price: { base: room.pricePerNight, currency: 'USD' },
         features: { 
@@ -169,7 +174,7 @@ export const useRoomSelection = () => {
           total: room.capacity 
         },
         floor: room.floor || 1,
-        status: (room.status === 'available' ? 'available' : room.status === 'occupied' ? 'occupied' : room.status === 'maintenance' ? 'maintenance' : 'reserved') as 'available' | 'occupied' | 'maintenance' | 'reserved',
+        status: mapRoomStatus(room.status),
         amenities: room.amenities,
         price: { base: room.pricePerNight, currency: 'USD' },
         features: { 

@@ -48,7 +48,7 @@ export const FolioPagos: React.FC<FolioPagosProps> = ({
       setError(null);
       setExito(null);
 
-      const montoNumerico = parseFloat(monto);
+      const montoNumerico = Number.parseFloat(monto);
       
       if (!montoNumerico || montoNumerico <= 0) {
         setError('El monto debe ser mayor a 0');
@@ -250,15 +250,15 @@ export const FolioPagos: React.FC<FolioPagosProps> = ({
         disabled={
           procesando || 
           !monto || 
-          parseFloat(monto) <= 0 || 
-          parseFloat(monto) > montoMaximo ||
+          Number.parseFloat(monto) <= 0 || 
+          Number.parseFloat(monto) > montoMaximo ||
           (tipoPago === 'persona' && !clienteSeleccionado)
         }
         className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
           procesando || 
           !monto || 
-          parseFloat(monto) <= 0 || 
-          parseFloat(monto) > montoMaximo ||
+          Number.parseFloat(monto) <= 0 || 
+          Number.parseFloat(monto) > montoMaximo ||
           (tipoPago === 'persona' && !clienteSeleccionado)
             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
             : 'bg-green-600 text-white hover:bg-green-700 shadow-lg hover:shadow-xl'

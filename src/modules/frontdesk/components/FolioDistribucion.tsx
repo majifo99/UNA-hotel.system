@@ -1,13 +1,3 @@
-/**
- * 🏨 Componente Refactorizado: FolioDistribucion
- * ==============================================
- * Orquesta la división de cargos hoteleros integrando:
- * - Depósito previo (primera noche)
- * - División de cargos por estrategia
- * - Facturación múltiple por responsable
- * 
- * @refactored 2025-10-05
- */
 
 import React, { useState, useEffect } from 'react';
 import { Users, Calculator, Divide, RefreshCw, AlertCircle, CheckCircle, Coffee } from 'lucide-react';
@@ -204,72 +194,30 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
     try {
       setError(null);
       setSuccessMessage(null);
-
-      if (!hayPendiente) {
-        setError('No hay montos pendientes para distribuir');
-        return;
-      }
-
-      if (selectedClientes.length === 0) {
-        setError('Debe seleccionar al menos un cliente');
-        return;
-      }
+      if (!hayPendiente) return setError('No hay montos pendientes para distribuir');
+      if (!selectedClientes.length) return setError('Debe seleccionar al menos un cliente');
 
       let resultado;
-
-      switch (strategy) {
-        case 'single':
-          if (selectedClientes.length !== 1) {
-            setError('Debe seleccionar exactamente un cliente para esta estrategia');
-            return;
-          }
-          resultado = await distribuirUnico(selectedClientes[0]);
-          break;
-
-        case 'equal':
-          if (selectedClientes.length < 1) {
-            setError('Debe seleccionar al menos un cliente');
-            return;
-          }
-          resultado = await distribuirEquitativo(selectedClientes);
-          break;
-
-        case 'percent':
-          const validacionPorcentajes = validarPorcentajes();
-          if (!validacionPorcentajes.valido) {
-            setError(validacionPorcentajes.mensaje || 'Error en validación de porcentajes');
-            return;
-          }
-
-          const responsablesPercent = selectedClientes.map(idCliente => ({
-            id_cliente: idCliente,
-            percent: porcentajes[idCliente] || 0
-          }));
-
-          resultado = await distribuirPorcentual(responsablesPercent);
-          break;
-
-        case 'fixed':
-          const validacionMontos = validarMontos();
-          if (!validacionMontos.valido) {
-            setError(validacionMontos.mensaje || 'Error en validación de montos');
-            return;
-          }
-
-          const responsablesFixed = selectedClientes.map(idCliente => ({
-            id_cliente: idCliente,
-            amount: montos[idCliente] || 0
-          }));
-
-          resultado = await distribuirMontosFijos(responsablesFixed);
-          break;
+      if (strategy === 'single') {
+        if (selectedClientes.length !== 1) return setError('Debe seleccionar exactamente un cliente para esta estrategia');
+        resultado = await distribuirUnico(selectedClientes[0]);
+      } else if (strategy === 'equal') {
+        resultado = await distribuirEquitativo(selectedClientes);
+      } else if (strategy === 'percent') {
+        const validacionPorcentajes = validarPorcentajes();
+        if (!validacionPorcentajes.valido) return setError(validacionPorcentajes.mensaje || 'Error en validación de porcentajes');
+        const responsablesPercent = selectedClientes.map(idCliente => ({ id_cliente: idCliente, percent: porcentajes[idCliente] || 0 }));
+        resultado = await distribuirPorcentual(responsablesPercent);
+      } else if (strategy === 'fixed') {
+        const validacionMontos = validarMontos();
+        if (!validacionMontos.valido) return setError(validacionMontos.mensaje || 'Error en validación de montos');
+        const responsablesFixed = selectedClientes.map(idCliente => ({ id_cliente: idCliente, amount: montos[idCliente] || 0 }));
+        resultado = await distribuirMontosFijos(responsablesFixed);
       }
 
       if (resultado) {
         setSuccessMessage('Distribución completada exitosamente');
-        if (onDistributionComplete) {
-          onDistributionComplete(resultado);
-        }
+        onDistributionComplete?.(resultado);
       }
     } catch (err: any) {
       setError(err.message || 'Error al ejecutar la distribución');
@@ -309,6 +257,183 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
     obtenerResumen();
     setError(null);
     setSuccessMessage(null);
+  };
+
+  // Render helpers to reduce complexity
+  const renderValidationIndicator = () => {
+    if (strategy === 'percent' && selectedClientes.length > 0) {
+      const total = Object.values(porcentajes).reduce((sum, p) => sum + (p || 0), 0);
+      const valid = Math.abs(total - 100) < 0.01;
+      return (
+        <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
+          <span className="text-blue-700">
+            Total porcentajes: {total.toFixed(1)}% {valid ? <CheckCircle className="inline w-4 h-4 ml-1 text-green-600" /> : <AlertCircle className="inline w-4 h-4 ml-1 text-amber-600" />}
+          </span>
+        </div>
+      );
+    }
+    if (strategy === 'fixed' && selectedClientes.length > 0) {
+      const total = Object.values(montos).reduce((sum, m) => sum + (m || 0), 0);
+      const valid = Math.abs(total - cargosSinPersona) < 0.01;
+      return (
+        <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
+          <span className="text-blue-700">
+            Total montos: ${total.toFixed(2)} / ${cargosSinPersona.toFixed(2)} {valid ? <CheckCircle className="inline w-4 h-4 ml-1 text-green-600" /> : <AlertCircle className="inline w-4 h-4 ml-1 text-amber-600" />}
+          </span>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const renderClientesList = () => (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="font-medium text-gray-900">Clientes Disponibles</h4>
+        {(strategy === 'percent' || strategy === 'fixed') && selectedClientes.length > 1 && (
+          <button
+            onClick={strategy === 'percent' ? inicializarPorcentajesEquitativos : inicializarMontosEquitativos}
+            className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+            disabled={distribuyendo}
+          >
+            <Divide className="w-3 h-3 mr-1 inline" />
+            Distribuir Equitativamente
+          </button>
+        )}
+      </div>
+      <div className="space-y-2 max-h-60 overflow-y-auto">
+        {personas.length > 0 ? (
+          personas.map((persona) => (
+            <div
+              key={persona.id_cliente}
+              className={`p-3 border rounded-lg ${
+                selectedClientes.includes(persona.id_cliente)
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id={`cliente-${persona.id_cliente}`}
+                    checked={selectedClientes.includes(persona.id_cliente)}
+                    onChange={() => toggleClienteSeleccion(persona.id_cliente)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    disabled={distribuyendo || (strategy === 'single' && selectedClientes.length === 1 && !selectedClientes.includes(persona.id_cliente))}
+                  />
+                  <label htmlFor={`cliente-${persona.id_cliente}`} className="ml-2 text-sm font-medium text-gray-900">
+                    {persona.nombre || `Cliente #${persona.id_cliente}`}
+                  </label>
+                </div>
+                {selectedClientes.includes(persona.id_cliente) && (
+                  <div className="flex items-center">
+                    {strategy === 'percent' && (
+                      <div className="flex items-center">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.1"
+                          value={porcentajes[persona.id_cliente] || ''}
+                          onChange={(e) => actualizarPorcentaje(persona.id_cliente, Number(e.target.value))}
+                          className="w-20 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          placeholder="%"
+                          disabled={distribuyendo}
+                        />
+                        <span className="ml-1 text-sm">%</span>
+                      </div>
+                    )}
+                    {strategy === 'fixed' && (
+                      <div className="flex items-center">
+                        <span className="mr-1 text-sm">$</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          max={cargosSinPersona}
+                          value={montos[persona.id_cliente] || ''}
+                          onChange={(e) => actualizarMonto(persona.id_cliente, Number(e.target.value))}
+                          className="w-24 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          placeholder="Monto"
+                          disabled={distribuyendo}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {folioData?.personas && selectedClientes.includes(persona.id_cliente) && (
+                <div className="mt-2 pl-6 text-xs text-gray-500 grid grid-cols-3 gap-2">
+                  {folioData.personas.find((p: any) => p.id_cliente === persona.id_cliente) && (
+                    <>
+                      <div>
+                        <span className="block">Ya asignado:</span>
+                        <span className="font-medium">${folioData.personas.find((p: any) => p.id_cliente === persona.id_cliente)?.asignado.toFixed(2)}</span>
+                      </div>
+                      <div>
+                        <span className="block">Pagos:</span>
+                        <span className="font-medium">${folioData.personas.find((p: any) => p.id_cliente === persona.id_cliente)?.pagos.toFixed(2)}</span>
+                      </div>
+                      <div>
+                        <span className="block">Saldo:</span>
+                        <span className="font-medium">${folioData.personas.find((p: any) => p.id_cliente === persona.id_cliente)?.saldo.toFixed(2)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          ))
+        ) : (
+          <div className="text-center py-4 text-gray-500">
+            <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p>No hay clientes disponibles</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderActionButton = () => {
+    let label = '';
+    if (selectedClientes.length === 0) label = 'Selecciona al menos un cliente para continuar';
+    else if (selectedClientes.length === 1 && strategy === 'single') label = '✓ Listo para distribuir a 1 cliente';
+    else if (selectedClientes.length > 1 && strategy === 'equal') label = `✓ Listo para dividir entre ${selectedClientes.length} clientes`;
+    else if (selectedClientes.length > 0 && strategy === 'percent') {
+      const total = Object.values(porcentajes).reduce((sum, p) => sum + (p || 0), 0);
+      label = Math.abs(total - 100) < 0.01 ? '✓ Porcentajes válidos' : '⚠ Ajusta los porcentajes para sumar 100%';
+    }
+    else if (selectedClientes.length > 0 && strategy === 'fixed') {
+      const total = Object.values(montos).reduce((sum, m) => sum + (m || 0), 0);
+      label = Math.abs(total - cargosSinPersona) < 0.01 ? '✓ Montos válidos' : `⚠ Ajusta los montos para sumar $${cargosSinPersona.toFixed(2)}`;
+    }
+    return (
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-gray-600">{label}</div>
+        <button
+          onClick={ejecutarDistribucion}
+          disabled={distribuyendo || selectedClientes.length === 0 || !hayPendiente}
+          className={`px-6 py-3 rounded-lg flex items-center font-medium transition-all duration-200 ${
+            distribuyendo || selectedClientes.length === 0 || !hayPendiente
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+          }`}
+        >
+          {distribuyendo ? (
+            <>
+              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+              Procesando...
+            </>
+          ) : (
+            <>
+              <Calculator className="h-4 w-4 mr-2" />
+              Distribuir Servicios ${cargosSinPersona.toFixed(2)}
+            </>
+          )}
+        </button>
+      </div>
+    );
   };
 
   if (loading && !folioData) {
@@ -363,7 +488,7 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
             </div>
             <div className="bg-white p-3 rounded-lg border">
               <span className="block text-xs text-gray-500 uppercase font-medium">Servicios Sin Asignar</span>
-              <span className={`text-lg font-bold ${parseFloat(folioData.resumen.cargos_sin_persona) > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+              <span className={`text-lg font-bold ${Number.parseFloat(folioData.resumen.cargos_sin_persona) > 0 ? 'text-amber-600' : 'text-green-600'}`}>
                 ${folioData.resumen.cargos_sin_persona}
               </span>
             </div>
@@ -450,188 +575,12 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
               {strategy === 'fixed' && STRATEGY_DESCRIPTIONS.fixed}
             </p>
             
-            {/* Indicadores de validación en tiempo real */}
-            {strategy === 'percent' && selectedClientes.length > 0 && (
-              <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
-                <span className="text-blue-700">
-                  Total porcentajes: {Object.values(porcentajes).reduce((sum, p) => sum + (p || 0), 0).toFixed(1)}% 
-                  {Math.abs(Object.values(porcentajes).reduce((sum, p) => sum + (p || 0), 0) - 100) < 0.01 ? 
-                    <CheckCircle className="inline w-4 h-4 ml-1 text-green-600" /> : 
-                    <AlertCircle className="inline w-4 h-4 ml-1 text-amber-600" />
-                  }
-                </span>
-              </div>
-            )}
-            
-            {strategy === 'fixed' && selectedClientes.length > 0 && (
-              <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
-                <span className="text-blue-700">
-                  Total montos: ${Object.values(montos).reduce((sum, m) => sum + (m || 0), 0).toFixed(2)} 
-                  / ${cargosSinPersona.toFixed(2)}
-                  {Math.abs(Object.values(montos).reduce((sum, m) => sum + (m || 0), 0) - cargosSinPersona) < 0.01 ? 
-                    <CheckCircle className="inline w-4 h-4 ml-1 text-green-600" /> : 
-                    <AlertCircle className="inline w-4 h-4 ml-1 text-amber-600" />
-                  }
-                </span>
-              </div>
-            )}
+            {renderValidationIndicator()}
           </div>
 
-          {/* Lista de clientes */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium text-gray-900">Clientes Disponibles</h4>
-              
-              {(strategy === 'percent' || strategy === 'fixed') && selectedClientes.length > 1 && (
-                <button
-                  onClick={strategy === 'percent' ? inicializarPorcentajesEquitativos : inicializarMontosEquitativos}
-                  className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-                  disabled={distribuyendo}
-                >
-                  <Divide className="w-3 h-3 mr-1 inline" />
-                  Distribuir Equitativamente
-                </button>
-              )}
-            </div>
+          {renderClientesList()}
 
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {personas.length > 0 ? (
-                personas.map((persona) => (
-                  <div 
-                    key={persona.id_cliente}
-                    className={`p-3 border rounded-lg ${
-                      selectedClientes.includes(persona.id_cliente) 
-                        ? 'border-blue-500 bg-blue-50' 
-                        : 'border-gray-200'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id={`cliente-${persona.id_cliente}`}
-                          checked={selectedClientes.includes(persona.id_cliente)}
-                          onChange={() => toggleClienteSeleccion(persona.id_cliente)}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                          disabled={distribuyendo || (strategy === 'single' && selectedClientes.length === 1 && !selectedClientes.includes(persona.id_cliente))}
-                        />
-                        <label htmlFor={`cliente-${persona.id_cliente}`} className="ml-2 text-sm font-medium text-gray-900">
-                          {persona.nombre || `Cliente #${persona.id_cliente}`}
-                        </label>
-                      </div>
-                      
-                      {selectedClientes.includes(persona.id_cliente) && (
-                        <div className="flex items-center">
-                          {strategy === 'percent' && (
-                            <div className="flex items-center">
-                              <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.1"
-                                value={porcentajes[persona.id_cliente] || ''}
-                                onChange={(e) => actualizarPorcentaje(persona.id_cliente, Number(e.target.value))}
-                                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                placeholder="%"
-                                disabled={distribuyendo}
-                              />
-                              <span className="ml-1 text-sm">%</span>
-                            </div>
-                          )}
-                          
-                          {strategy === 'fixed' && (
-                            <div className="flex items-center">
-                              <span className="mr-1 text-sm">$</span>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                max={cargosSinPersona}
-                                value={montos[persona.id_cliente] || ''}
-                                onChange={(e) => actualizarMonto(persona.id_cliente, Number(e.target.value))}
-                                className="w-24 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                placeholder="Monto"
-                                disabled={distribuyendo}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    
-                    {folioData?.personas && selectedClientes.includes(persona.id_cliente) && (
-                      <div className="mt-2 pl-6 text-xs text-gray-500 grid grid-cols-3 gap-2">
-                        {folioData.personas.find((p: any) => p.id_cliente === persona.id_cliente) && (
-                          <>
-                            <div>
-                              <span className="block">Ya asignado:</span>
-                              <span className="font-medium">${folioData.personas.find((p: any) => p.id_cliente === persona.id_cliente)?.asignado.toFixed(2)}</span>
-                            </div>
-                            <div>
-                              <span className="block">Pagos:</span>
-                              <span className="font-medium">${folioData.personas.find((p: any) => p.id_cliente === persona.id_cliente)?.pagos.toFixed(2)}</span>
-                            </div>
-                            <div>
-                              <span className="block">Saldo:</span>
-                              <span className="font-medium">${folioData.personas.find((p: any) => p.id_cliente === persona.id_cliente)?.saldo.toFixed(2)}</span>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-4 text-gray-500">
-                  <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>No hay clientes disponibles</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Botón de acción */}
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-gray-600">
-              {selectedClientes.length === 0 && 'Selecciona al menos un cliente para continuar'}
-              {selectedClientes.length === 1 && strategy === 'single' && '✓ Listo para distribuir a 1 cliente'}
-              {selectedClientes.length > 1 && strategy === 'equal' && `✓ Listo para dividir entre ${selectedClientes.length} clientes`}
-              {selectedClientes.length > 0 && strategy === 'percent' && 
-                (Math.abs(Object.values(porcentajes).reduce((sum, p) => sum + (p || 0), 0) - 100) < 0.01 ?
-                  '✓ Porcentajes válidos' : 
-                  '⚠ Ajusta los porcentajes para sumar 100%'
-                )
-              }
-              {selectedClientes.length > 0 && strategy === 'fixed' && 
-                (Math.abs(Object.values(montos).reduce((sum, m) => sum + (m || 0), 0) - cargosSinPersona) < 0.01 ?
-                  '✓ Montos válidos' : 
-                  `⚠ Ajusta los montos para sumar $${cargosSinPersona.toFixed(2)}`
-                )
-              }
-            </div>
-            
-            <button
-              onClick={ejecutarDistribucion}
-              disabled={distribuyendo || selectedClientes.length === 0 || !hayPendiente}
-              className={`px-6 py-3 rounded-lg flex items-center font-medium transition-all duration-200 ${
-                distribuyendo || selectedClientes.length === 0 || !hayPendiente
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
-              }`}
-            >
-              {distribuyendo ? (
-                <>
-                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                  Procesando...
-                </>
-              ) : (
-                <>
-                  <Calculator className="h-4 w-4 mr-2" />
-                  Distribuir Servicios ${cargosSinPersona.toFixed(2)}
-                </>
-              )}
-            </button>
-          </div>
+          {renderActionButton()}
         </>
       ) : (
         <div className="text-center py-8">

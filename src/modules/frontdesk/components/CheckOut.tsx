@@ -18,10 +18,10 @@ const CheckOut = () => {
   const { validateAndSubmit, searchReservation, isSubmitting, isSearching, error, setError } = useCheckout();
   
   // IDs dinámicos - se actualizan al buscar la reservación
-  // @ts-expect-error - Se establecerán cuando el backend retorne folioId en la búsqueda de reservación
-  const [folioId, setFolioId] = useState<number | null>(null);
-  // @ts-expect-error - Se establecerán cuando el backend retorne id de reserva
-  const [reservaId, setReservaId] = useState<number | undefined>(undefined);
+  // Se establecerán cuando el backend retorne folioId en la búsqueda de reservación
+  const [folioId] = useState<number | null>(null);
+  // Se establecerán cuando el backend retorne id de reserva
+  const [reservaId] = useState<number | undefined>(undefined);
   
   // Hook refactorizado para checkout completo - solo se inicializa si hay folioId
   const checkoutRefactored = useCheckoutRefactored(folioId || 1, reservaId);
@@ -60,10 +60,10 @@ const CheckOut = () => {
   
   // ⚖️ Estados para división de cargos
   const [mostrarDivision, setMostrarDivision] = useState(false);
-  // @ts-expect-error - Preparado para futura funcionalidad de configuración inline de responsables
-  const [responsables, setResponsables] = useState<ResponsablePago[]>([]);
-  // @ts-expect-error - Preparado para futura funcionalidad de asignación de tipos de cargo
-  const [asignaciones, setAsignaciones] = useState<Array<{
+  // Preparado para futura funcionalidad de configuración inline de responsables
+  const [responsables] = useState<ResponsablePago[]>([]);
+  // Preparado para futura funcionalidad de asignación de tipos de cargo
+  const [asignaciones] = useState<Array<{
     tipoCargo: TipoCargo;
     responsableId: string;
   }>>([]);
@@ -553,9 +553,7 @@ const CheckOut = () => {
 
                     <div className="bg-blue-100 border border-blue-300 rounded-md p-4">
                       <p className="text-sm text-blue-800">
-                        <strong>ℹ️ Información:</strong> Para configurar la división de cargos detallada 
-                        (asignar responsables, porcentajes, tipos de cargo), utilice el sistema de 
-                        <strong> Distribución de Folios</strong> antes de completar el checkout.
+                        <strong>ℹ️ Información:</strong> Para configurar la división de cargos detallada (asignar responsables, porcentajes, tipos de cargo), utilice el sistema de <strong>Distribución de Folios</strong> antes de completar el checkout.
                       </p>
                     </div>
                   </div>

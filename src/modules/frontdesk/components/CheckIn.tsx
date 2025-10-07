@@ -161,6 +161,31 @@ const CheckIn = () => {
   // Estado para edición del campo de habitación
   const [isRoomEditable, setIsRoomEditable] = useState(false);
 
+  // Estado para información de habitación
+  const [roomInfo, setRoomInfo] = useState<RoomInfo | null>(null);
+  const [loadingRoomInfo, setLoadingRoomInfo] = useState(false);
+
+  // Efecto para cargar información de habitación cuando cambia el número
+  useEffect(() => {
+    const fetchRoomInfo = async () => {
+      if (formData.roomNumber) {
+        setLoadingRoomInfo(true);
+        try {
+          const info = await getRoomInfo(formData.roomNumber);
+          setRoomInfo(info);
+        } catch (error) {
+          console.error('Error fetching room info:', error);
+          setRoomInfo(null);
+        } finally {
+          setLoadingRoomInfo(false);
+        }
+      } else {
+        setRoomInfo(null);
+      }
+    };
+    fetchRoomInfo();
+  }, [formData.roomNumber, getRoomInfo]);
+
   // Función para cambiar el tipo de check-in y limpiar datos relevantes
   const handleCheckInTypeChange = (type: CheckInType) => {
     setCheckInType(type);
@@ -913,87 +938,64 @@ const CheckIn = () => {
                 </div>
                 
                 {/* Información adicional de la habitación */}
-                {formData.roomNumber && (() => {
-                  const [roomInfo, setRoomInfo] = useState<RoomInfo | null>(null);
-                  const [loadingRoomInfo, setLoadingRoomInfo] = useState(false);
-
-                  useEffect(() => {
-                    const fetchRoomInfo = async () => {
-                      if (formData.roomNumber) {
-                        setLoadingRoomInfo(true);
-                        try {
-                          const info = await getRoomInfo(formData.roomNumber);
-                          setRoomInfo(info);
-                        } catch (error) {
-                          console.error('Error fetching room info:', error);
-                          setRoomInfo(null);
-                        } finally {
-                          setLoadingRoomInfo(false);
-                        }
-                      }
-                    };
-                    fetchRoomInfo();
-                  }, [formData.roomNumber]);
-
-                  if (loadingRoomInfo) {
-                    return (
+                {formData.roomNumber && (
+                  <>
+                    {loadingRoomInfo ? (
                       <div className="mt-3 pt-3 border-t border-gray-200">
                         <div className="text-xs text-gray-500 italic">
                           Cargando información de la habitación...
                         </div>
                       </div>
-                    );
-                  }
-
-                  return roomInfo ? (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <div className="grid grid-cols-2 gap-4 text-xs text-gray-600">
-                        <div>
-                          <span className="font-medium">Tipo:</span> {roomInfo.type}
-                        </div>
-                        <div>
-                          <span className="font-medium">Capacidad:</span> {roomInfo.capacity.adults} adultos, {roomInfo.capacity.children} niños
-                        </div>
-                        <div>
-                          <span className="font-medium">Estado:</span> 
-                          <span className={`ml-1 ${getRoomStatusDisplay(roomInfo.status).color}`}>
-                            {getRoomStatusDisplay(roomInfo.status).text}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="font-medium">Piso:</span> {roomInfo.floor}
-                        </div>
-                        <div>
-                          <span className="font-medium">Precio:</span> ${roomInfo.price.base}/{roomInfo.price.currency}
-                        </div>
-                        <div>
-                          <span className="font-medium">Vista:</span> {roomInfo.features.hasSeaView ? 'Mar' : 'Ciudad'}
-                        </div>
-                      </div>
-                      
-                      {/* Amenidades */}
-                      <div className="mt-2">
-                        <span className="font-medium text-xs text-gray-600">Amenidades:</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {roomInfo.amenities.map((amenity: string) => (
-                            <span 
-                              key={amenity} 
-                              className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
-                            >
-                              {amenity}
+                    ) : roomInfo ? (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <div className="grid grid-cols-2 gap-4 text-xs text-gray-600">
+                          <div>
+                            <span className="font-medium">Tipo:</span> {roomInfo.type}
+                          </div>
+                          <div>
+                            <span className="font-medium">Capacidad:</span> {roomInfo.capacity.adults} adultos, {roomInfo.capacity.children} niños
+                          </div>
+                          <div>
+                            <span className="font-medium">Estado:</span>
+                            <span className={`ml-1 ${getRoomStatusDisplay(roomInfo.status).color}`}>
+                              {getRoomStatusDisplay(roomInfo.status).text}
                             </span>
-                          ))}
+                          </div>
+                          <div>
+                            <span className="font-medium">Piso:</span> {roomInfo.floor}
+                          </div>
+                          <div>
+                            <span className="font-medium">Precio:</span> ${roomInfo.price.base}/{roomInfo.price.currency}
+                          </div>
+                          <div>
+                            <span className="font-medium">Vista:</span> {roomInfo.features.hasSeaView ? 'Mar' : 'Ciudad'}
+                          </div>
+                        </div>
+
+                        {/* Amenidades */}
+                        <div className="mt-2">
+                          <span className="font-medium text-xs text-gray-600">Amenidades:</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {roomInfo.amenities.map((amenity: string) => (
+                              <span
+                                key={amenity}
+                                className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
+                              >
+                                {amenity}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <div className="text-xs text-gray-500 italic">
-                        Habitación no encontrada en el sistema
+                    ) : (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <div className="text-xs text-gray-500 italic">
+                          Habitación no encontrada en el sistema
+                        </div>
                       </div>
-                    </div>
-                  );
-                })()}
+                    )}
+                  </>
+                )}
               </div>
 
               {/* ⚖️ División de Cargos al Checkout */}

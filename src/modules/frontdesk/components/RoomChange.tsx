@@ -10,6 +10,39 @@ import FrontdeskService from '../services/frontdeskService';
 import type { RoomChangeData, RoomChangeReason } from '../types/roomChange';
 import type { RoomInfo } from '../types/room';
 
+// Helper function to map room data to RoomInfo
+const mapRoomToRoomInfo = (room: any, assignments: Array<{
+  roomId: string;
+  roomNumber: string;
+  guestName: string;
+  reservationId: string;
+  checkInDate: string;
+  checkOutDate: string;
+}>): RoomInfo => {
+  const assignment = assignments.find(a => a.roomId === room.id || a.roomNumber === (room.number || room.id));
+
+  return {
+    number: room.number || room.id,
+    type: room.type,
+    capacity: {
+      adults: Math.floor(room.capacity * 0.7),
+      children: Math.floor(room.capacity * 0.3),
+      total: room.capacity
+    },
+    floor: room.floor || 1,
+    status: assignment ? 'occupied' : (room.status === 'available' ? 'available' : room.status === 'occupied' ? 'occupied' : room.status === 'maintenance' ? 'maintenance' : 'reserved'),
+    amenities: room.amenities,
+    price: { base: room.pricePerNight, currency: 'USD' },
+    features: {
+      hasBalcony: false,
+      hasSeaView: false,
+      hasKitchen: room.amenities.includes('kitchen'),
+      smokingAllowed: false
+    },
+    guestName: assignment?.guestName
+  };
+};
+
 type LocalState = {
   currentRoomNumber: string;
   newRoomId: number | '';
@@ -69,29 +102,7 @@ const RoomChange = () => {
         // Load rooms
         setIsLoadingRooms(true);
         const rooms = await FrontdeskService.getRooms();
-        const roomInfos: RoomInfo[] = rooms.map(room => {
-          const assignment = assignments.find(a => a.roomId === room.id || a.roomNumber === (room.number || room.id));
-          return {
-            number: room.number || room.id,
-            type: room.type,
-            capacity: { 
-              adults: Math.floor(room.capacity * 0.7),
-              children: Math.floor(room.capacity * 0.3),
-              total: room.capacity 
-            },
-            floor: room.floor || 1,
-            status: assignment ? 'occupied' : (room.status === 'available' ? 'available' : room.status === 'occupied' ? 'occupied' : room.status === 'maintenance' ? 'maintenance' : 'reserved'),
-            amenities: room.amenities,
-            price: { base: room.pricePerNight, currency: 'USD' },
-            features: { 
-              hasBalcony: false, 
-              hasSeaView: false, 
-              hasKitchen: room.amenities.includes('kitchen'), 
-              smokingAllowed: false 
-            },
-            guestName: assignment?.guestName
-          };
-        });
+        const roomInfos: RoomInfo[] = rooms.map(room => mapRoomToRoomInfo(room, assignments));
         setAllRooms(roomInfos);
 
       } catch (error) {
