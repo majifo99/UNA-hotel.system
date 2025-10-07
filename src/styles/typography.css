@@ -1,0 +1,50 @@
+/* UNA Hotel System - Typography Configuration */
+
+/* =================== TYPOGRAPHY SYSTEM =================== */
+
+:root {
+  /* Font Family Variables */
+  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Playfair Display', 'Georgia', 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+
+/* =================== TYPOGRAPHY OVERRIDES =================== */
+
+/* Títulos principales con tipografía elegante */
+h1, .h1,
+h2, .h2 {
+  font-family: var(--font-heading);
+}
+
+/* Todos los demás elementos usan la tipografía principal */
+h3, .h3,
+h4, .h4,
+h5, .h5,
+h6, .h6,
+p,
+body,
+.text-nav,
+.text-label {
+  font-family: var(--font-primary);
+}
+
+/* Elementos especiales con tipografía monospace */
+.text-price,
+.text-code,
+code,
+pre {
+  font-family: var(--font-mono);
+}
+
+/* Marca/Brand con tipografía elegante */
+.text-brand {
+  font-family: var(--font-heading);
+}
+
+/* =================== UTILITY CLASSES =================== */
+
+/* Font Family Utilities */
+.font-primary { font-family: var(--font-primary); }
+.font-heading { font-family: var(--font-heading); }
+.font-mono { font-family: var(--font-mono); }

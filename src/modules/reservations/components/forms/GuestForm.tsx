@@ -4,7 +4,7 @@ import type { Guest } from '../../types';
 interface GuestFormProps {
   formData: {
     firstName: string;
-    lastName: string;
+    firstLastName: string;
     email: string;
     phone: string;
     documentType: 'passport' | 'id' | 'license';
@@ -45,15 +45,15 @@ export const GuestForm: React.FC<GuestFormProps> = ({
         </label>
         <input
           type="text"
-          value={formData.lastName}
-          onChange={(e) => onFieldChange('lastName', e.target.value)}
+          value={formData.firstLastName}
+          onChange={(e) => onFieldChange('firstLastName', e.target.value)}
           className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            errors.lastName ? 'border-red-500' : 'border-gray-300'
+            errors.firstLastName ? 'border-red-500' : 'border-gray-300'
           }`}
           placeholder="Ingrese el apellido"
         />
-        {errors.lastName && (
-          <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>
+        {errors.firstLastName && (
+          <p className="mt-1 text-sm text-red-600">{errors.firstLastName}</p>
         )}
       </div>
 

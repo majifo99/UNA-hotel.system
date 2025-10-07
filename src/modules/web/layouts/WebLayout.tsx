@@ -29,7 +29,7 @@ interface WebLayoutProps {
  */
 export function WebLayout({ children }: WebLayoutProps) {
   return (
-    <div className="min-h-screen flex flex-col bg-una-bg-100">
+    <div className="min-h-screen flex flex-col bg-gray-100">
       {/* Header */}
       <WebHeader />
       

@@ -179,6 +179,16 @@ export abstract class BaseApiService {
   }
 
   /**
+   * PATCH request
+   */
+  protected async patch<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  /**
    * DELETE request
    */
   protected async delete<T>(endpoint: string): Promise<ApiResponse<T>> {

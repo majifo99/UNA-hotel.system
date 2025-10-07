@@ -92,7 +92,7 @@ export const GuestSearchModal: React.FC<GuestSearchModalProps> = ({
                     }
                   }}
                   className="w-full p-4 border border-gray-200 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-left"
-                  aria-label={`Seleccionar huésped ${guest.firstName} ${guest.lastName}, correo ${guest.email}`}
+                  aria-label={`Seleccionar huésped ${guest.firstName} ${guest.firstLastName} ${guest.secondLastName || ''}, correo ${guest.email}`}
                   type="button"
                 >
                   <div className="flex items-start justify-between">
@@ -100,7 +100,7 @@ export const GuestSearchModal: React.FC<GuestSearchModalProps> = ({
                       <div className="flex items-center gap-2 mb-2">
                         <User size={16} className="text-gray-500" />
                         <h4 className="font-semibold text-gray-900">
-                          {guest.firstName} {guest.lastName}
+                          {guest.firstName} {guest.firstLastName} {guest.secondLastName || ''}
                         </h4>
                       </div>
                       

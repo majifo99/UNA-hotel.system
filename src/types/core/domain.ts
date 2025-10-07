@@ -13,7 +13,8 @@
 export interface Guest {
   id: string;
   firstName: string;
-  lastName: string;
+  firstLastName: string;
+  secondLastName?: string;
   email: string;
   phone: string;
   

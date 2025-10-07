@@ -27,7 +27,8 @@ import type {
  */
 export interface CreateGuestData {
   firstName: string;
-  lastName: string;
+  firstLastName: string;
+  secondLastName?: string;
   email: string;
   phone: string;
   documentType: DocumentType;
@@ -95,6 +96,9 @@ export interface SimpleReservationFormData {
   checkInDate: string;
   checkOutDate: string;
   numberOfGuests: number;
+  numberOfAdults: number;
+  numberOfChildren: number;
+  numberOfInfants: number;
   numberOfNights: number;
   roomType: RoomType;
   additionalServices: string[];
@@ -117,6 +121,9 @@ export interface ReservationFormData {
   checkInDate: string;
   checkOutDate: string;
   numberOfGuests: number;
+  numberOfAdults: number;
+  numberOfChildren: number;
+  numberOfInfants: number;
   numberOfNights: number;
   
   // Room selection
@@ -205,7 +212,8 @@ export interface ReservationValidationErrors {
 
 export interface GuestValidationErrors {
   firstName?: string;
-  lastName?: string;
+  firstLastName?: string;
+  secondLastName?: string;
   email?: string;
   phone?: string;
   documentNumber?: string;
