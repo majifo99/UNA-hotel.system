@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, LogIn, UserPlus, Calendar, Search, User } from 'lucide-react';
 import PhoneInput from 'react-phone-input-2';
@@ -8,13 +8,11 @@ import { useCheckIn } from '../hooks/useCheckIn';
 import { useGuests } from '../../guests/hooks/useGuests';
 import { useRoomSelection } from '../hooks/useRoomSelection';
 import { useInputValidation } from '../../../hooks/useInputValidation';
-import { ChargeDistributionComponent } from './ChargeDistribution';
-import { FolioManager } from './FolioManager';
 import { ROUTES } from '../../../router/routes';
 import { DEFAULT_CURRENCY } from '../constants/currencies';
 import type { CheckInData, PaymentMethod, Currency } from '../types/checkin';
-import type { ChargeDistribution } from '../types/chargeDistribution';
 import type { Guest } from '../../../types/core/domain';
+import type { RoomInfo } from '../types/room';
 import { CurrencySelector } from './CurrencySelector';
 
 type CheckInType = 'reservation' | 'walk-in';
@@ -42,6 +40,10 @@ type LocalState = {
   nationality: string;
   selectedGuestId: string;
   guestSearchTerm: string;
+  // ⚖️ División de cargos
+  requiereDivisionCargos: boolean;
+  notasDivision: string;
+  empresaPagadora: string;
 };
 
 // Helper functions to reduce complexity
@@ -150,11 +152,11 @@ const CheckIn = () => {
     nationality: 'US',
     selectedGuestId: '',
     guestSearchTerm: '',
+    // ⚖️ División de cargos
+    requiereDivisionCargos: false,
+    notasDivision: '',
+    empresaPagadora: '',
   });
-
-  // Estado para división de cargos
-  const [chargeDistribution, setChargeDistribution] = useState<ChargeDistribution | null>(null);
-  const [totalAmount, setTotalAmount] = useState(0); // Monto total a dividir
 
   // Estado para edición del campo de habitación
   const [isRoomEditable, setIsRoomEditable] = useState(false);
@@ -252,10 +254,10 @@ const CheckIn = () => {
       guestEmail: formData.email,
       guestPhone: formData.phone,
       guestNationality: formData.nationality,
-      // División de cargos
-      useChargeDistribution: chargeDistribution !== null,
-      chargeDistribution: chargeDistribution || undefined,
-      totalAmount: totalAmount > 0 ? totalAmount : undefined,
+      // ⚖️ División de cargos
+      requiereDivisionCargos: formData.requiereDivisionCargos,
+      notasDivision: formData.requiereDivisionCargos ? formData.notasDivision : undefined,
+      empresaPagadora: formData.requiereDivisionCargos ? formData.empresaPagadora : undefined,
       // Agregar ID del huésped existente si se seleccionó uno
       ...(checkInType === 'walk-in' && walkInGuestType === 'existing' && formData.selectedGuestId && {
         existingGuestId: formData.selectedGuestId
@@ -668,81 +670,6 @@ const CheckIn = () => {
               </div>
             </div>
 
-            {/* División de Cargos */}
-            <div className="border border-purple-200 bg-purple-50 rounded-lg p-6">
-              <div className="mb-4">
-                <h3 className="font-medium text-lg text-gray-900">División de Cargos</h3>
-                <p className="text-sm text-gray-500">
-                  Puedes dividir los cargos entre múltiples responsables de pago o utilizar el nuevo sistema de distribución.
-                </p>
-              </div>
-
-              <div className="mb-4 pb-4 border-b border-purple-200">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Monto Total de la Estancia ({formData.currency})
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="999999.99"
-                  step="0.01"
-                  value={totalAmount}
-                  onChange={(e) => {
-                    const value = Number.parseFloat(e.target.value) || 0;
-                    if (value >= 0 && value <= 999999.99) {
-                      setTotalAmount(value);
-                      clearError('totalAmount');
-                    }
-                  }}
-                  onBlur={(e) => validate('totalAmount', e.target.value, getCommonRules('currency'))}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 ${
-                    errors.totalAmount 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : 'border-gray-300 focus:ring-purple-500'
-                  }`}
-                  placeholder="0.00"
-                />
-                {errors.totalAmount && (
-                  <p className="mt-1 text-sm text-red-600">{errors.totalAmount}</p>
-                )}
-              </div>
-
-              {/* Sistema anterior */}
-              <div className="mb-6">
-                <h4 className="font-medium text-gray-900 mb-2">Método de Distribución Anterior</h4>
-                <ChargeDistributionComponent
-                  totalAmount={totalAmount}
-                  guestCount={formData.numberOfGuests}
-                  onDistributionChange={setChargeDistribution}
-                />
-              </div>
-
-              {/* Nuevo sistema de distribución */}
-              <div className="mt-6 pt-6 border-t border-purple-200">
-                <h4 className="font-medium text-gray-900 mb-2">💫 Nuevo Sistema de Distribución</h4>
-                <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-200">
-                  <p className="text-sm text-gray-700 mb-3">
-                    <strong>Sistema mejorado disponible después del check-in:</strong>
-                  </p>
-                  <ul className="text-sm text-gray-600 space-y-1 mb-4">
-                    <li>• ✅ Distribución por estrategias: único, equitativo, porcentajes, montos fijos</li>
-                    <li>• ✅ Validación automática de montos y porcentajes</li>
-                    <li>• ✅ Registro de pagos por cliente o general</li>
-                    <li>• ✅ Seguimiento en tiempo real del estado del folio</li>
-                    <li>• ✅ Idempotencia para evitar duplicados</li>
-                  </ul>
-                  
-                  <div className="bg-blue-100 border border-blue-300 rounded-md p-3">
-                    <p className="text-sm text-blue-800">
-                      <strong>🚀 Próximos pasos:</strong> Una vez completado el check-in, 
-                      podrás acceder al sistema completo de distribución de cargos y pagos 
-                      desde la gestión del folio generado.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Información adicional para Walk-In */}
             {checkInType === 'walk-in' && (
               <div className="border border-yellow-200 bg-yellow-50 rounded-lg p-6">
@@ -987,7 +914,37 @@ const CheckIn = () => {
                 
                 {/* Información adicional de la habitación */}
                 {formData.roomNumber && (() => {
-                  const roomInfo = getRoomInfo(formData.roomNumber);
+                  const [roomInfo, setRoomInfo] = useState<RoomInfo | null>(null);
+                  const [loadingRoomInfo, setLoadingRoomInfo] = useState(false);
+
+                  useEffect(() => {
+                    const fetchRoomInfo = async () => {
+                      if (formData.roomNumber) {
+                        setLoadingRoomInfo(true);
+                        try {
+                          const info = await getRoomInfo(formData.roomNumber);
+                          setRoomInfo(info);
+                        } catch (error) {
+                          console.error('Error fetching room info:', error);
+                          setRoomInfo(null);
+                        } finally {
+                          setLoadingRoomInfo(false);
+                        }
+                      }
+                    };
+                    fetchRoomInfo();
+                  }, [formData.roomNumber]);
+
+                  if (loadingRoomInfo) {
+                    return (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <div className="text-xs text-gray-500 italic">
+                          Cargando información de la habitación...
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return roomInfo ? (
                     <div className="mt-3 pt-3 border-t border-gray-200">
                       <div className="grid grid-cols-2 gap-4 text-xs text-gray-600">
@@ -1018,7 +975,7 @@ const CheckIn = () => {
                       <div className="mt-2">
                         <span className="font-medium text-xs text-gray-600">Amenidades:</span>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {roomInfo.amenities.map((amenity) => (
+                          {roomInfo.amenities.map((amenity: string) => (
                             <span 
                               key={amenity} 
                               className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
@@ -1037,6 +994,90 @@ const CheckIn = () => {
                     </div>
                   );
                 })()}
+              </div>
+
+              {/* ⚖️ División de Cargos al Checkout */}
+              <div className="mt-6 border-t pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">⚖️ División de Cargos</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center">
+                    <input
+                      id="requiereDivisionCargos"
+                      type="checkbox"
+                      checked={formData.requiereDivisionCargos}
+                      onChange={(e) => setFormData(prev => ({ 
+                        ...prev, 
+                        requiereDivisionCargos: e.target.checked,
+                        // Limpiar campos relacionados si se desmarca
+                        notasDivision: e.target.checked ? prev.notasDivision : '',
+                        empresaPagadora: e.target.checked ? prev.empresaPagadora : ''
+                      }))}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="requiereDivisionCargos" className="ml-2 block text-sm font-medium text-gray-700">
+                      Requiere división de cargos en el checkout
+                    </label>
+                  </div>
+
+                  {formData.requiereDivisionCargos && (
+                    <div className="ml-6 space-y-4 border-l-4 border-blue-500 pl-4 bg-blue-50 p-4 rounded-r-lg">
+                      <div className="bg-blue-100 border border-blue-300 rounded-md p-3">
+                        <p className="text-sm text-blue-800">
+                          <strong>ℹ️ Información:</strong> Esta configuración indica que los cargos 
+                          deberán dividirse entre diferentes responsables durante el checkout. 
+                          La división real se realizará en ese momento usando el sistema de distribución de folios.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label htmlFor="empresaPagadora" className="block text-sm font-medium text-gray-700 mb-2">
+                          Empresa/Agencia Pagadora (opcional)
+                        </label>
+                        <input
+                          id="empresaPagadora"
+                          type="text"
+                          value={formData.empresaPagadora}
+                          onChange={(e) => setFormData(prev => ({ ...prev, empresaPagadora: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Ej: Corporativo ABC, Agencia XYZ..."
+                          maxLength={100}
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          Nombre de la empresa o agencia que pagará parte o todos los cargos
+                        </p>
+                      </div>
+
+                      <div>
+                        <label htmlFor="notasDivision" className="block text-sm font-medium text-gray-700 mb-2">
+                          Notas sobre la división
+                        </label>
+                        <textarea
+                          id="notasDivision"
+                          value={formData.notasDivision}
+                          onChange={(e) => setFormData(prev => ({ ...prev, notasDivision: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          rows={3}
+                          placeholder="Ej: 'Hospedaje y desayuno a cargo de la empresa. Otros cargos al huésped.'"
+                          maxLength={300}
+                        />
+                        <div className="mt-1 text-xs text-gray-500 text-right">
+                          {formData.notasDivision.length}/300 caracteres
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Instrucciones específicas sobre cómo dividir los cargos (se usarán en el checkout)
+                        </p>
+                      </div>
+
+                      <div className="bg-yellow-50 border border-yellow-300 rounded-md p-3">
+                        <p className="text-sm text-yellow-800">
+                          <strong>⚠️ Recordatorio:</strong> Esta es solo una nota de que se requerirá división. 
+                          La configuración detallada (tipos de cargo, porcentajes, responsables específicos) 
+                          se realizará durante el proceso de checkout.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Observaciones */}

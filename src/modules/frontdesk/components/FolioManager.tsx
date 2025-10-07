@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calculator, CreditCard, FileText, RotateCcw } from 'lucide-react';
+import { CreditCard, FileText, RotateCcw, Coffee } from 'lucide-react';
 import { FolioDistribucion } from './FolioDistribucion';
 import { FolioPagos } from './FolioPagos';
 
@@ -38,9 +38,9 @@ export const FolioManager: React.FC<FolioManagerProps> = ({
   const tabs = [
     {
       id: 'distribucion' as TabType,
-      label: 'Distribuir Cargos',
-      icon: Calculator,
-      description: 'Asignar cargos a clientes'
+      label: 'Distribuir Servicios',
+      icon: Coffee,
+      description: 'Asignar cargos por servicios a clientes'
     },
     {
       id: 'pagos' as TabType,
@@ -86,9 +86,9 @@ export const FolioManager: React.FC<FolioManagerProps> = ({
         {activeTab === 'distribucion' && (
           <div>
             <div className="mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">Distribución de Cargos</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Distribución de Servicios</h2>
               <p className="text-sm text-gray-600 mt-1">
-                Asigna los cargos pendientes entre los clientes responsables
+                Asigna los cargos por servicios pendientes entre los clientes responsables
               </p>
             </div>
             <FolioDistribucion
@@ -101,9 +101,9 @@ export const FolioManager: React.FC<FolioManagerProps> = ({
         {activeTab === 'pagos' && (
           <div>
             <div className="mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">Registro de Pagos</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Pagos por Servicios</h2>
               <p className="text-sm text-gray-600 mt-1">
-                Registra pagos generales o específicos por cliente
+                Registra pagos por servicios generales o específicos por cliente
               </p>
             </div>
             {folioData ? (
@@ -116,7 +116,7 @@ export const FolioManager: React.FC<FolioManagerProps> = ({
             ) : (
               <div className="text-center py-8 text-gray-500">
                 <CreditCard className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>Primero debes distribuir los cargos</p>
+                <p>Primero debes distribuir los cargos por servicios</p>
                 <button
                   onClick={() => setActiveTab('distribucion')}
                   className="mt-2 text-blue-600 hover:text-blue-800"
@@ -146,7 +146,7 @@ export const FolioManager: React.FC<FolioManagerProps> = ({
                       <div className="text-2xl font-bold text-blue-600">
                         ${folioData.resumen?.a_distribuir || '0.00'}
                       </div>
-                      <div className="text-sm text-gray-600">Total a Distribuir</div>
+                      <div className="text-sm text-gray-600">Total Servicios a Distribuir</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-green-600">

@@ -130,9 +130,9 @@ export class FrontdeskService {
       await simulateNetworkDelay();
       
       if (simulateRandomError()) {
-        throw new Error('Error al obtener estadísticas');
+        throw new Error('Error al obtener estadísticas del dashboard');
       }
-
+      
       return mockDashboardStats;
     }
 
@@ -140,7 +140,57 @@ export class FrontdeskService {
       const response = await apiClient.get(`${this.baseURL}/dashboard/stats`);
       return response.data;
     } catch (error) {
-      console.error('Error al obtener estadísticas:', error);
+      console.error('Error al obtener estadísticas del dashboard:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Obtener asignaciones actuales de habitaciones con información de huéspedes
+   */
+  static async getCurrentRoomAssignments(): Promise<Array<{
+    roomId: string;
+    roomNumber: string;
+    guestName: string;
+    reservationId: string;
+    checkInDate: string;
+    checkOutDate: string;
+  }>> {
+    if (this.isDevelopment) {
+      await simulateNetworkDelay();
+      
+      if (simulateRandomError()) {
+        throw new Error('Error al obtener asignaciones de habitaciones');
+      }
+
+      // Mock current assignments
+      return [
+        {
+          roomId: '1',
+          roomNumber: '101',
+          guestName: 'Juan Pérez',
+          reservationId: 'RES-001',
+          checkInDate: '2024-10-05',
+          checkOutDate: '2024-10-08'
+        },
+        {
+          roomId: '4',
+          roomNumber: '202',
+          guestName: 'María González',
+          reservationId: 'RES-002',
+          checkInDate: '2024-10-06',
+          checkOutDate: '2024-10-10'
+        }
+      ];
+    }
+
+    try {
+      // In a real implementation, this would call an endpoint that returns current room assignments
+      // For now, we'll return an empty array as the real API structure isn't defined
+      const response = await apiClient.get(`${this.baseURL}/current-assignments`);
+      return response.data || [];
+    } catch (error) {
+      console.error('Error al obtener asignaciones actuales:', error);
       throw error;
     }
   }

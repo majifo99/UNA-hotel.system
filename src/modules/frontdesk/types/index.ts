@@ -12,6 +12,9 @@ export type { Guest, Room } from '../../../types/core';
 export * from './checkin';
 export * from './checkout';
 
+// 🏨 Folio Management Types (Refactored)
+export * from './folioTypes';
+
 // Frontdesk-specific domain types
 export type { 
   CheckInForm,

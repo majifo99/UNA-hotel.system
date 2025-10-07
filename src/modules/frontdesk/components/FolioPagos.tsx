@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CreditCard, DollarSign, User, Globe, AlertCircle, CheckCircle } from 'lucide-react';
+import { DollarSign, User, Globe, AlertCircle, CheckCircle, Coffee } from 'lucide-react';
 import { folioService, type PagoRequest } from '../services/folioService';
 
 interface FolioPagosProps {
@@ -114,8 +114,8 @@ export const FolioPagos: React.FC<FolioPagosProps> = ({
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border">
       <div className="flex items-center mb-4">
-        <CreditCard className="w-5 h-5 mr-2 text-green-600" />
-        <h3 className="text-lg font-medium text-gray-900">Registrar Pago</h3>
+        <Coffee className="w-5 h-5 mr-2 text-green-600" />
+        <h3 className="text-lg font-medium text-gray-900">Registrar Pago por Servicios</h3>
       </div>
 
       {/* Tipo de pago */}
@@ -137,8 +137,8 @@ export const FolioPagos: React.FC<FolioPagosProps> = ({
             }`}
           >
             <Globe className="w-5 h-5 mx-auto mb-1" />
-            <div className="text-sm font-medium">Pago General</div>
-            <div className="text-xs text-gray-500">Sin asignar a cliente</div>
+            <div className="text-sm font-medium">Pago General por Servicios</div>
+            <div className="text-xs text-gray-500">Sin asignar a cliente específico</div>
           </button>
           
           <button
@@ -153,7 +153,7 @@ export const FolioPagos: React.FC<FolioPagosProps> = ({
             }`}
           >
             <User className="w-5 h-5 mx-auto mb-1" />
-            <div className="text-sm font-medium">Pago por Cliente</div>
+            <div className="text-sm font-medium">Pago por Servicios de Cliente</div>
             <div className="text-xs text-gray-500">Asignado a cliente específico</div>
           </button>
         </div>

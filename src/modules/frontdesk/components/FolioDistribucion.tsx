@@ -1,21 +1,41 @@
-import React, { useState, useEffect } from 'react';
-import { Users, DollarSign, Calculator, Divide, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
-import { useFolioDistribucion } from '../hooks/useFolioDistribucion';
+/**
+ * 🏨 Componente Refactorizado: FolioDistribucion
+ * ==============================================
+ * Orquesta la división de cargos hoteleros integrando:
+ * - Depósito previo (primera noche)
+ * - División de cargos por estrategia
+ * - Facturación múltiple por responsable
+ * 
+ * @refactored 2025-10-05
+ */
 
+import React, { useState, useEffect } from 'react';
+import { Users, Calculator, Divide, RefreshCw, AlertCircle, CheckCircle, Coffee } from 'lucide-react';
+import { useDivisionCargos } from '../hooks/useDivisionCargos';
+import { useDeposito } from '../hooks/useDeposito';
+import { useFacturacion } from '../hooks/useFacturacion';
+import { DepositoResumen } from './DepositoResumen';
+import { FacturacionResumen } from './FacturacionResumen';
+import type { TipoCargo, EstrategiaDistribucion } from '../types/folioTypes';
+
+// Interfaz para las propiedades del componente de distribución de servicios
 interface FolioDistribucionProps {
   folioId?: number;
   onDistributionComplete?: (data: any) => void;
   className?: string;
+  showDeposito?: boolean;        // Mostrar sección de depósito
+  showFacturacion?: boolean;     // Mostrar sección de facturación
+  tiposCargo?: TipoCargo[];      // Filtrar por tipos de cargo específicos
 }
 
-const STRATEGY_LABELS = {
+const STRATEGY_LABELS: Record<EstrategiaDistribucion, string> = {
   single: 'Todo a una persona',
   equal: 'Partes iguales',
   percent: 'Por porcentajes',
   fixed: 'Montos fijos'
 } as const;
 
-const STRATEGY_DESCRIPTIONS = {
+const STRATEGY_DESCRIPTIONS: Record<EstrategiaDistribucion, string> = {
   single: 'Asigna todo el monto pendiente a un solo cliente.',
   equal: 'Divide el monto pendiente en partes iguales entre los clientes seleccionados.',
   percent: 'Distribuye el monto según los porcentajes definidos (deben sumar 100%).',
@@ -25,33 +45,60 @@ const STRATEGY_DESCRIPTIONS = {
 export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
   folioId,
   onDistributionComplete,
-  className = ''
+  className = '',
+  showDeposito = false,
+  showFacturacion = false,
+  tiposCargo
 }) => {
-  // Estados locales
-  const [strategy, setStrategy] = useState<'single' | 'equal' | 'percent' | 'fixed'>('equal');
+  // ========================================
+  // 🎯 Estados Locales del Componente
+  // ========================================
+  const [strategy, setStrategy] = useState<EstrategiaDistribucion>('equal');
   const [selectedClientes, setSelectedClientes] = useState<number[]>([]);
   const [porcentajes, setPorcentajes] = useState<Record<number, number>>({});
   const [montos, setMontos] = useState<Record<number, number>>({});
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Usar el hook de distribución de folios
+  // ========================================
+  // 🪝 Hooks de Negocio Hotelero
+  // ========================================
+  
+  // Hook principal de división de cargos (wrapper del sistema existente)
   const {
     folioData,
     personas,
     loading,
-    distribuyendo,
+    procesando: distribuyendo,
     error: apiError,
-    obtenerResumen,
+    cargarDatos: obtenerResumen,
     distribuirUnico,
     distribuirEquitativo,
     distribuirPorcentual,
     distribuirMontosFijos,
     cargosSinPersona,
     hayPendiente
-  } = useFolioDistribucion({
+  } = useDivisionCargos({
     folioId,
-    onError: (err) => setError(err.message || 'Error en la operación')
+    tiposCargo,
+    autoLoad: true,
+    onError: (err: Error) => setError(err.message || 'Error en la operación'),
+    onSuccess: (msg: string) => setSuccessMessage(msg)
+  });
+
+  // 💰 Hook de Depósito Previo
+  const depositoHook = useDeposito({
+    folioId,
+    onError: (err) => console.error('Error en depósito:', err),
+    onSuccess: (msg) => setSuccessMessage(msg)
+  });
+
+  // 🧾 Hook de Facturación
+  const facturacionHook = useFacturacion({
+    folioId,
+    autoLoad: showFacturacion,
+    onError: (err) => console.error('Error en facturación:', err),
+    onSuccess: (msg) => setSuccessMessage(msg)
   });
 
   // Limpiar valores cuando cambia la estrategia
@@ -193,12 +240,12 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
             setError(validacionPorcentajes.mensaje || 'Error en validación de porcentajes');
             return;
           }
-          
+
           const responsablesPercent = selectedClientes.map(idCliente => ({
             id_cliente: idCliente,
             percent: porcentajes[idCliente] || 0
           }));
-          
+
           resultado = await distribuirPorcentual(responsablesPercent);
           break;
 
@@ -208,12 +255,12 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
             setError(validacionMontos.mensaje || 'Error en validación de montos');
             return;
           }
-          
+
           const responsablesFixed = selectedClientes.map(idCliente => ({
             id_cliente: idCliente,
             amount: montos[idCliente] || 0
           }));
-          
+
           resultado = await distribuirMontosFijos(responsablesFixed);
           break;
       }
@@ -275,13 +322,25 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
 
   return (
     <div className={`space-y-6 p-4 ${className}`}>
-      {/* Resumen del folio */}
+      {/* 💰 Sección de Depósito (si está habilitada) */}
+      {showDeposito && (
+        <DepositoResumen
+          deposito={depositoHook.deposito}
+          loading={depositoHook.loading}
+          onRegistrarPago={() => {
+            // TODO: Implementar modal de registro de pago
+            console.log('Abrir modal de pago de depósito');
+          }}
+        />
+      )}
+
+      {/* Resumen del folio de servicios */}
       {folioData && (
         <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-lg shadow-sm border">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-medium text-gray-900 flex items-center">
-              <DollarSign className="w-5 h-5 mr-2 text-blue-600" />
-              Resumen del Folio #{folioData.folio}
+              <Coffee className="w-5 h-5 mr-2 text-blue-600" />
+              Distribución de Cargos por Servicios - Folio #{folioData.folio}
             </h3>
             <button
               onClick={reiniciarDistribucion}
@@ -295,15 +354,15 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white p-3 rounded-lg border">
-              <span className="block text-xs text-gray-500 uppercase font-medium">Total a Distribuir</span>
+              <span className="block text-xs text-gray-500 uppercase font-medium">Total Servicios a Distribuir</span>
               <span className="text-lg font-bold text-gray-900">${folioData.resumen.a_distribuir}</span>
             </div>
             <div className="bg-white p-3 rounded-lg border">
-              <span className="block text-xs text-gray-500 uppercase font-medium">Ya Distribuido</span>
+              <span className="block text-xs text-gray-500 uppercase font-medium">Servicios Ya Distribuidos</span>
               <span className="text-lg font-bold text-blue-600">${folioData.resumen.distribuido}</span>
             </div>
             <div className="bg-white p-3 rounded-lg border">
-              <span className="block text-xs text-gray-500 uppercase font-medium">Sin Asignar</span>
+              <span className="block text-xs text-gray-500 uppercase font-medium">Servicios Sin Asignar</span>
               <span className={`text-lg font-bold ${parseFloat(folioData.resumen.cargos_sin_persona) > 0 ? 'text-amber-600' : 'text-green-600'}`}>
                 ${folioData.resumen.cargos_sin_persona}
               </span>
@@ -320,7 +379,7 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
           <div className="mt-4 pt-3 border-t border-gray-200">
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
-                <span className="text-gray-500">Pagos por Persona:</span>
+              {/* Información adicional */}
                 <span className="ml-2 font-medium">${folioData.totales.pagos_por_persona_total.toFixed(2)}</span>
               </div>
               <div>
@@ -354,7 +413,7 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
                 {error || apiError ? 'Error en la operación' : 'Operación exitosa'}
               </p>
               <p className="text-sm mt-1">
-                {error || apiError || successMessage}
+                {error || (apiError ? apiError.message : '') || successMessage}
               </p>
             </div>
           </div>
@@ -502,19 +561,19 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
                     
                     {folioData?.personas && selectedClientes.includes(persona.id_cliente) && (
                       <div className="mt-2 pl-6 text-xs text-gray-500 grid grid-cols-3 gap-2">
-                        {folioData.personas.find(p => p.id_cliente === persona.id_cliente) && (
+                        {folioData.personas.find((p: any) => p.id_cliente === persona.id_cliente) && (
                           <>
                             <div>
                               <span className="block">Ya asignado:</span>
-                              <span className="font-medium">${folioData.personas.find(p => p.id_cliente === persona.id_cliente)?.asignado.toFixed(2)}</span>
+                              <span className="font-medium">${folioData.personas.find((p: any) => p.id_cliente === persona.id_cliente)?.asignado.toFixed(2)}</span>
                             </div>
                             <div>
                               <span className="block">Pagos:</span>
-                              <span className="font-medium">${folioData.personas.find(p => p.id_cliente === persona.id_cliente)?.pagos.toFixed(2)}</span>
+                              <span className="font-medium">${folioData.personas.find((p: any) => p.id_cliente === persona.id_cliente)?.pagos.toFixed(2)}</span>
                             </div>
                             <div>
                               <span className="block">Saldo:</span>
-                              <span className="font-medium">${folioData.personas.find(p => p.id_cliente === persona.id_cliente)?.saldo.toFixed(2)}</span>
+                              <span className="font-medium">${folioData.personas.find((p: any) => p.id_cliente === persona.id_cliente)?.saldo.toFixed(2)}</span>
                             </div>
                           </>
                         )}
@@ -568,7 +627,7 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
               ) : (
                 <>
                   <Calculator className="h-4 w-4 mr-2" />
-                  Distribuir ${cargosSinPersona.toFixed(2)}
+                  Distribuir Servicios ${cargosSinPersona.toFixed(2)}
                 </>
               )}
             </button>
@@ -576,11 +635,32 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
         </>
       ) : (
         <div className="text-center py-8">
-          <DollarSign className="h-12 w-12 mx-auto mb-3 text-green-500 opacity-50" />
-          <h3 className="text-lg font-medium text-gray-900 mb-1">No hay cargos pendientes</h3>
+          <Coffee className="h-12 w-12 mx-auto mb-3 text-green-500 opacity-50" />
+          <h3 className="text-lg font-medium text-gray-900 mb-1">No hay servicios pendientes de distribuir</h3>
           <p className="text-gray-500">
-            Todos los cargos han sido distribuidos entre los clientes.
+            Todos los cargos por servicios han sido distribuidos entre los clientes.
           </p>
+        </div>
+      )}
+
+      {/* 🧾 Sección de Facturación (si está habilitada) */}
+      {showFacturacion && (
+        <div className="mt-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <Coffee className="w-5 h-5 mr-2 text-green-600" />
+            Facturas Generadas
+          </h3>
+          <FacturacionResumen
+            facturas={facturacionHook.facturas}
+            loading={facturacionHook.loading}
+            onDescargarPDF={(idFactura) => {
+              facturacionHook.descargarPDF(idFactura);
+            }}
+            onVerDetalle={(factura) => {
+              console.log('Ver detalle de factura:', factura);
+              // TODO: Implementar modal de detalle
+            }}
+          />
         </div>
       )}
     </div>
