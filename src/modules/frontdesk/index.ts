@@ -17,3 +17,7 @@ export { default as RoomChange } from './components/RoomChange';
 export { default as BillingSection } from './components/BillingSection';
 export { default as ReceiptModal } from './components/ReceiptModal';
 export { ChargeDistributionComponent } from './components/ChargeDistribution';
+export { FolioDistribucion } from './components/FolioDistribucion';
+
+// Nuevos servicios de folio
+export { folioService } from './services/folioService';

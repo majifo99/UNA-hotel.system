@@ -1,5 +1,4 @@
-// CheckIn.tsx — Simplificado para migración
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, LogIn, UserPlus, Calendar, Search, User } from 'lucide-react';
 import PhoneInput from 'react-phone-input-2';
@@ -9,12 +8,11 @@ import { useCheckIn } from '../hooks/useCheckIn';
 import { useGuests } from '../../guests/hooks/useGuests';
 import { useRoomSelection } from '../hooks/useRoomSelection';
 import { useInputValidation } from '../../../hooks/useInputValidation';
-import { ChargeDistributionComponent } from './ChargeDistribution';
 import { ROUTES } from '../../../router/routes';
 import { DEFAULT_CURRENCY } from '../constants/currencies';
 import type { CheckInData, PaymentMethod, Currency } from '../types/checkin';
-import type { ChargeDistribution } from '../types/chargeDistribution';
 import type { Guest } from '../../../types/core/domain';
+import type { RoomInfo } from '../types/room';
 import { CurrencySelector } from './CurrencySelector';
 
 type CheckInType = 'reservation' | 'walk-in';
@@ -42,6 +40,10 @@ type LocalState = {
   nationality: string;
   selectedGuestId: string;
   guestSearchTerm: string;
+  // ⚖️ División de cargos
+  requiereDivisionCargos: boolean;
+  notasDivision: string;
+  empresaPagadora: string;
 };
 
 // Helper functions to reduce complexity
@@ -100,6 +102,72 @@ const getRoomStatusDisplay = (status: string) => {
   };
 };
 
+// Helper function to render room information content
+const renderRoomInfoContent = (loadingRoomInfo: boolean, roomInfo: RoomInfo | null) => {
+  if (loadingRoomInfo) {
+    return (
+      <div className="mt-3 pt-3 border-t border-gray-200">
+        <div className="text-xs text-gray-500 italic">
+          Cargando información de la habitación...
+        </div>
+      </div>
+    );
+  }
+
+  if (roomInfo) {
+    return (
+      <div className="mt-3 pt-3 border-t border-gray-200">
+        <div className="grid grid-cols-2 gap-4 text-xs text-gray-600">
+          <div>
+            <span className="font-medium">Tipo:</span> {roomInfo.type}
+          </div>
+          <div>
+            <span className="font-medium">Capacidad:</span> {roomInfo.capacity.adults} adultos, {roomInfo.capacity.children} niños
+          </div>
+          <div>
+            <span className="font-medium">Estado:</span>
+            <span className={`ml-1 ${getRoomStatusDisplay(roomInfo.status).color}`}>
+              {getRoomStatusDisplay(roomInfo.status).text}
+            </span>
+          </div>
+          <div>
+            <span className="font-medium">Piso:</span> {roomInfo.floor}
+          </div>
+          <div>
+            <span className="font-medium">Precio:</span> ${roomInfo.price.base}/{roomInfo.price.currency}
+          </div>
+          <div>
+            <span className="font-medium">Vista:</span> {roomInfo.features.hasSeaView ? 'Mar' : 'Ciudad'}
+          </div>
+        </div>
+
+        {/* Amenidades */}
+        <div className="mt-2">
+          <span className="font-medium text-xs text-gray-600">Amenidades:</span>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {roomInfo.amenities.map((amenity: string) => (
+              <span
+                key={amenity}
+                className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
+              >
+                {amenity}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t border-gray-200">
+      <div className="text-xs text-gray-500 italic">
+        Habitación no encontrada en el sistema
+      </div>
+    </div>
+  );
+};
+
 const CheckIn = () => {
   const navigate = useNavigate();
   const { validateAndSubmit, isSubmitting, error } = useCheckIn();
@@ -150,14 +218,39 @@ const CheckIn = () => {
     nationality: 'US',
     selectedGuestId: '',
     guestSearchTerm: '',
+    // ⚖️ División de cargos
+    requiereDivisionCargos: false,
+    notasDivision: '',
+    empresaPagadora: '',
   });
-
-  // Estado para división de cargos
-  const [chargeDistribution, setChargeDistribution] = useState<ChargeDistribution | null>(null);
-  const [totalAmount, setTotalAmount] = useState(0); // Monto total a dividir
 
   // Estado para edición del campo de habitación
   const [isRoomEditable, setIsRoomEditable] = useState(false);
+
+  // Estado para información de habitación
+  const [roomInfo, setRoomInfo] = useState<RoomInfo | null>(null);
+  const [loadingRoomInfo, setLoadingRoomInfo] = useState(false);
+
+  // Efecto para cargar información de habitación cuando cambia el número
+  useEffect(() => {
+    const fetchRoomInfo = async () => {
+      if (formData.roomNumber) {
+        setLoadingRoomInfo(true);
+        try {
+          const info = await getRoomInfo(formData.roomNumber);
+          setRoomInfo(info);
+        } catch (error) {
+          console.error('Error fetching room info:', error);
+          setRoomInfo(null);
+        } finally {
+          setLoadingRoomInfo(false);
+        }
+      } else {
+        setRoomInfo(null);
+      }
+    };
+    fetchRoomInfo();
+  }, [formData.roomNumber, getRoomInfo]);
 
   // Función para cambiar el tipo de check-in y limpiar datos relevantes
   const handleCheckInTypeChange = (type: CheckInType) => {
@@ -252,19 +345,35 @@ const CheckIn = () => {
       guestEmail: formData.email,
       guestPhone: formData.phone,
       guestNationality: formData.nationality,
-      // División de cargos
-      useChargeDistribution: chargeDistribution !== null,
-      chargeDistribution: chargeDistribution || undefined,
-      totalAmount: totalAmount > 0 ? totalAmount : undefined,
+      // ⚖️ División de cargos
+      requiereDivisionCargos: formData.requiereDivisionCargos,
+      notasDivision: formData.requiereDivisionCargos ? formData.notasDivision : undefined,
+      empresaPagadora: formData.requiereDivisionCargos ? formData.empresaPagadora : undefined,
       // Agregar ID del huésped existente si se seleccionó uno
       ...(checkInType === 'walk-in' && walkInGuestType === 'existing' && formData.selectedGuestId && {
         existingGuestId: formData.selectedGuestId
       })
     };
 
-    const success = await validateAndSubmit(checkInData);
-    if (success) {
-      navigate(ROUTES.FRONTDESK.BASE);
+    const result = await validateAndSubmit(checkInData);
+    if (result.success) {
+      // Emitir evento personalizado para el flujo
+      const checkInSuccessEvent = new CustomEvent('checkInSuccess', {
+        detail: {
+          folioId: result.folioId,
+          guestName: checkInData.guestName,
+          roomNumber: checkInData.roomNumber,
+          requiresChargeDistribution: checkInData.requiereDivisionCargos,
+          checkInData
+        }
+      });
+      window.dispatchEvent(checkInSuccessEvent);
+      
+      // Si no requiere división de cargos, ir directamente al dashboard
+      if (!checkInData.requiereDivisionCargos) {
+        navigate(ROUTES.FRONTDESK.BASE);
+      }
+      // Si requiere división, el flujo se encargará de mostrar el FolioManager
     }
   };
 
@@ -668,49 +777,6 @@ const CheckIn = () => {
               </div>
             </div>
 
-            {/* División de Cargos */}
-            <div className="border border-purple-200 bg-purple-50 rounded-lg p-6">
-              <ChargeDistributionComponent
-                totalAmount={totalAmount}
-                guestCount={formData.numberOfGuests}
-                onDistributionChange={setChargeDistribution}
-              />
-              
-              {/* Campo para establecer el monto total */}
-              <div className="mt-4 pt-4 border-t border-purple-200">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Monto Total de la Estancia ({formData.currency})
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="999999.99"
-                  step="0.01"
-                  value={totalAmount}
-                  onChange={(e) => {
-                    const value = Number.parseFloat(e.target.value) || 0;
-                    if (value >= 0 && value <= 999999.99) {
-                      setTotalAmount(value);
-                      clearError('totalAmount');
-                    }
-                  }}
-                  onBlur={(e) => validate('totalAmount', e.target.value, getCommonRules('currency'))}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 ${
-                    errors.totalAmount 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : 'border-gray-300 focus:ring-purple-500'
-                  }`}
-                  placeholder="0.00"
-                />
-                {errors.totalAmount && (
-                  <p className="mt-1 text-sm text-red-600">{errors.totalAmount}</p>
-                )}
-                <p className="text-xs text-gray-500 mt-1">
-                  Ingrese el monto total para habilitar la división de cargos (máx. $999,999.99)
-                </p>
-              </div>
-            </div>
-
             {/* Información adicional para Walk-In */}
             {checkInType === 'walk-in' && (
               <div className="border border-yellow-200 bg-yellow-50 rounded-lg p-6">
@@ -954,57 +1020,95 @@ const CheckIn = () => {
                 </div>
                 
                 {/* Información adicional de la habitación */}
-                {formData.roomNumber && (() => {
-                  const roomInfo = getRoomInfo(formData.roomNumber);
-                  return roomInfo ? (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <div className="grid grid-cols-2 gap-4 text-xs text-gray-600">
-                        <div>
-                          <span className="font-medium">Tipo:</span> {roomInfo.type}
-                        </div>
-                        <div>
-                          <span className="font-medium">Capacidad:</span> {roomInfo.capacity.adults} adultos, {roomInfo.capacity.children} niños
-                        </div>
-                        <div>
-                          <span className="font-medium">Estado:</span> 
-                          <span className={`ml-1 ${getRoomStatusDisplay(roomInfo.status).color}`}>
-                            {getRoomStatusDisplay(roomInfo.status).text}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="font-medium">Piso:</span> {roomInfo.floor}
-                        </div>
-                        <div>
-                          <span className="font-medium">Precio:</span> ${roomInfo.price.base}/{roomInfo.price.currency}
-                        </div>
-                        <div>
-                          <span className="font-medium">Vista:</span> {roomInfo.features.hasSeaView ? 'Mar' : 'Ciudad'}
-                        </div>
+                {formData.roomNumber && (
+                  <>
+                    {renderRoomInfoContent(loadingRoomInfo, roomInfo)}
+                  </>
+                )}
+              </div>
+
+              {/* ⚖️ División de Cargos al Checkout */}
+              <div className="mt-6 border-t pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">⚖️ División de Cargos</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center">
+                    <input
+                      id="requiereDivisionCargos"
+                      type="checkbox"
+                      checked={formData.requiereDivisionCargos}
+                      onChange={(e) => setFormData(prev => ({ 
+                        ...prev, 
+                        requiereDivisionCargos: e.target.checked,
+                        // Limpiar campos relacionados si se desmarca
+                        notasDivision: e.target.checked ? prev.notasDivision : '',
+                        empresaPagadora: e.target.checked ? prev.empresaPagadora : ''
+                      }))}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="requiereDivisionCargos" className="ml-2 block text-sm font-medium text-gray-700">
+                      Requiere división de cargos en el checkout
+                    </label>
+                  </div>
+
+                  {formData.requiereDivisionCargos && (
+                    <div className="ml-6 space-y-4 border-l-4 border-blue-500 pl-4 bg-blue-50 p-4 rounded-r-lg">
+                      <div className="bg-blue-100 border border-blue-300 rounded-md p-3">
+                        <p className="text-sm text-blue-800">
+                          <strong>ℹ️ Información:</strong> Esta configuración indica que los cargos 
+                          deberán dividirse entre diferentes responsables durante el checkout. 
+                          La división real se realizará en ese momento usando el sistema de distribución de folios.
+                        </p>
                       </div>
-                      
-                      {/* Amenidades */}
-                      <div className="mt-2">
-                        <span className="font-medium text-xs text-gray-600">Amenidades:</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {roomInfo.amenities.map((amenity) => (
-                            <span 
-                              key={amenity} 
-                              className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
-                            >
-                              {amenity}
-                            </span>
-                          ))}
+
+                      <div>
+                        <label htmlFor="empresaPagadora" className="block text-sm font-medium text-gray-700 mb-2">
+                          Empresa/Agencia Pagadora (opcional)
+                        </label>
+                        <input
+                          id="empresaPagadora"
+                          type="text"
+                          value={formData.empresaPagadora}
+                          onChange={(e) => setFormData(prev => ({ ...prev, empresaPagadora: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Ej: Corporativo ABC, Agencia XYZ..."
+                          maxLength={100}
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          Nombre de la empresa o agencia que pagará parte o todos los cargos
+                        </p>
+                      </div>
+
+                      <div>
+                        <label htmlFor="notasDivision" className="block text-sm font-medium text-gray-700 mb-2">
+                          Notas sobre la división
+                        </label>
+                        <textarea
+                          id="notasDivision"
+                          value={formData.notasDivision}
+                          onChange={(e) => setFormData(prev => ({ ...prev, notasDivision: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          rows={3}
+                          placeholder="Ej: 'Hospedaje y desayuno a cargo de la empresa. Otros cargos al huésped.'"
+                          maxLength={300}
+                        />
+                        <div className="mt-1 text-xs text-gray-500 text-right">
+                          {formData.notasDivision.length}/300 caracteres
                         </div>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Instrucciones específicas sobre cómo dividir los cargos (se usarán en el checkout)
+                        </p>
+                      </div>
+
+                      <div className="bg-yellow-50 border border-yellow-300 rounded-md p-3">
+                        <p className="text-sm text-yellow-800">
+                          <strong>⚠️ Recordatorio:</strong> Esta es solo una nota de que se requerirá división. 
+                          La configuración detallada (tipos de cargo, porcentajes, responsables específicos) 
+                          se realizará durante el proceso de checkout.
+                        </p>
                       </div>
                     </div>
-                  ) : (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <div className="text-xs text-gray-500 italic">
-                        Habitación no encontrada en el sistema
-                      </div>
-                    </div>
-                  );
-                })()}
+                  )}
+                </div>
               </div>
 
               {/* Observaciones */}

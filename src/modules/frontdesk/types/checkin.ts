@@ -1,4 +1,5 @@
 import type { ChargeDistribution } from './chargeDistribution';
+import type { TipoCargo, TipoResponsable } from './folioTypes';
 
 export type PaymentMethod = 
   | 'credit_card'
@@ -51,10 +52,23 @@ export interface CheckInData {
   existingGuestId?: string; // ID del huésped existente para walk-ins
   createdGuestId?: string; // ID del huésped creado para walk-ins nuevos
   
-  // División de cargos
+  // División de cargos (NUEVO SISTEMA)
   useChargeDistribution?: boolean; // Si se utiliza división de cargos
-  chargeDistribution?: ChargeDistribution; // Configuración de división
+  chargeDistribution?: ChargeDistribution; // Configuración de división (legacy)
   totalAmount?: number; // Monto total a dividir
+  
+  // ⚖️ Aviso de división de cargos (aplicada en checkout)
+  requiereDivisionCargos?: boolean; // Si el folio requerirá división en checkout
+  tiposCargoDividir?: TipoCargo[]; // Tipos de cargo que se dividirán
+  notasDivision?: string; // Notas sobre la división planeada
+  empresaPagadora?: string; // Nombre de empresa si aplica
+  responsablesPrevios?: Array<{
+    nombre: string;
+    tipo: TipoResponsable;
+    email?: string;
+    nit?: string;
+    tiposCargo?: TipoCargo[]; // Tipos que pagará este responsable
+  }>;
 }
 
 export interface CheckInResponse {

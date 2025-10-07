@@ -1,19 +1,55 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Home, Users, MessageSquare } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Home, Users, MessageSquare, Loader2 } from 'lucide-react';
 import { useRoomChange } from '../hooks/useRoomChange';
+import { useGuests } from '../../guests/hooks/useGuests';
+import { useRoomSelection } from '../hooks/useRoomSelection';
 import { useInputValidation } from '../../../hooks/useInputValidation';
 import { ROUTES } from '../../../router/routes';
+import FrontdeskService from '../services/frontdeskService';
 import type { RoomChangeData, RoomChangeReason } from '../types/roomChange';
+import type { RoomInfo } from '../types/room';
 
-// Mock data para habitaciones disponibles
-const mockAvailableRooms = [
-  { id: 1, number: '101', type: 'Standard', capacity: 2, isAvailable: true },
-  { id: 2, number: '102', type: 'Standard', capacity: 2, isAvailable: true },
-  { id: 3, number: '201', type: 'Deluxe', capacity: 4, isAvailable: true },
-  { id: 4, number: '202', type: 'Deluxe', capacity: 4, isAvailable: false },
-  { id: 5, number: '301', type: 'Suite', capacity: 6, isAvailable: true },
-];
+// Helper function to map room data to RoomInfo
+const mapRoomToRoomInfo = (room: any, assignments: Array<{
+  roomId: string;
+  roomNumber: string;
+  guestName: string;
+  reservationId: string;
+  checkInDate: string;
+  checkOutDate: string;
+}>): RoomInfo => {
+  const assignment = assignments.find(a => a.roomId === room.id || a.roomNumber === (room.number || room.id));
+
+  // Extract nested ternary operation into independent statement
+  const mapRoomStatus = (roomStatus: string): 'maintenance' | 'occupied' | 'available' | 'reserved' => {
+    if (roomStatus === 'available') return 'available';
+    if (roomStatus === 'occupied') return 'occupied';
+    if (roomStatus === 'maintenance') return 'maintenance';
+    return 'reserved';
+  };
+
+  return {
+    number: room.number || room.id,
+    type: room.type,
+    capacity: {
+      adults: Math.floor(room.capacity * 0.7),
+      children: Math.floor(room.capacity * 0.3),
+      total: room.capacity
+    },
+    floor: room.floor || 1,
+    status: assignment ? 'occupied' : mapRoomStatus(room.status),
+    amenities: room.amenities,
+    price: { base: room.pricePerNight, currency: 'USD' },
+    features: {
+      hasBalcony: false,
+      hasSeaView: false,
+      hasKitchen: room.amenities.includes('kitchen'),
+      smokingAllowed: false
+    },
+    guestName: assignment?.guestName
+  };
+};
 
 type LocalState = {
   currentRoomNumber: string;
@@ -32,10 +68,24 @@ type LocalState = {
 const RoomChange = () => {
   const navigate = useNavigate();
   const { validateAndChangeRoom, isChangingRoom, error } = useRoomChange();
+  const { searchRooms } = useRoomSelection();
   useInputValidation();
 
+  const [allRooms, setAllRooms] = useState<RoomInfo[]>([]);
+  const [roomAssignments, setRoomAssignments] = useState<Array<{
+    roomId: string;
+    roomNumber: string;
+    guestName: string;
+    reservationId: string;
+    checkInDate: string;
+    checkOutDate: string;
+  }>>([]);
+  const [isLoadingRooms, setIsLoadingRooms] = useState(true);
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(true);
+  const [selectedGuest, setSelectedGuest] = useState<any>(null);
+
   const [formData, setFormData] = useState<LocalState>({
-    currentRoomNumber: '101', // Mock current room
+    currentRoomNumber: '',
     newRoomId: '',
     changeDate: new Date().toISOString().split('T')[0],
     adultos: 2,
@@ -44,9 +94,82 @@ const RoomChange = () => {
     reason: '',
     motivo: '',
     observaciones: '',
-    guestName: 'Juan Pérez', // Mock guest name
-    reservationId: 'RES-001', // Mock reservation ID
+    guestName: '',
+    reservationId: '',
   });
+
+  // Load all rooms and current assignments on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Load current assignments first
+        setIsLoadingAssignments(true);
+        const assignments = await FrontdeskService.getCurrentRoomAssignments();
+        setRoomAssignments(assignments);
+
+        // Load rooms
+        setIsLoadingRooms(true);
+        const rooms = await FrontdeskService.getRooms();
+        const roomInfos: RoomInfo[] = rooms.map(room => mapRoomToRoomInfo(room, assignments));
+        setAllRooms(roomInfos);
+
+      } catch (error) {
+        console.error('Error loading data:', error);
+        setAllRooms([]);
+        setRoomAssignments([]);
+      } finally {
+        setIsLoadingRooms(false);
+        setIsLoadingAssignments(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  // Load available rooms when guest count changes
+  useEffect(() => {
+    if (!isLoadingRooms) {
+      searchRooms({ guests: formData.adultos + formData.ninos + formData.bebes });
+    }
+  }, [searchRooms, formData.adultos, formData.ninos, formData.bebes, isLoadingRooms]);
+
+
+  // Guests search hook
+  const { guests, searchGuests } = useGuests();
+
+  // Handle search by name or identification (document number)
+  const handleGuestQuery = (value: string) => {
+    setFormData(prev => ({ ...prev, guestName: value }));
+    if (value.trim().length >= 2) {
+      searchGuests({ query: value.trim(), isActive: true, limit: 10 });
+    }
+  };
+
+  // Handle selecting a guest from results
+  const handleSelectGuest = useCallback(async (guest: any) => {
+    setSelectedGuest(guest);
+    
+    // Fill guest basic info
+    const fullName = `${guest.firstName || guest.nombre || ''} ${guest.firstLastName || guest.apellido1 || ''}`.trim();
+    
+    // Find current room assignment for this guest
+    const currentAssignment = roomAssignments.find(assignment => 
+      assignment.guestName === fullName || assignment.reservationId === guest.reservationId
+    );
+    
+    setFormData(prev => ({
+      ...prev,
+      guestName: fullName,
+      reservationId: guest.reservationId || currentAssignment?.reservationId || prev.reservationId || '',
+      currentRoomNumber: guest.roomNumber || currentAssignment?.roomNumber || prev.currentRoomNumber || '',
+      // Auto-populate guest count if available
+      adultos: guest.adultos || prev.adultos,
+      ninos: guest.ninos || prev.ninos,
+      bebes: guest.bebes || prev.bebes,
+    }));
+
+    // Clear search results
+    // Note: This would need to be implemented in the useGuests hook
+  }, [roomAssignments]);
 
   // Opciones de motivos de cambio
   const changeReasons = [
@@ -85,7 +208,7 @@ const RoomChange = () => {
   };
 
   const totalGuests = formData.adultos + formData.ninos + formData.bebes;
-  const selectedRoom = mockAvailableRooms.find(room => room.id === formData.newRoomId);
+  const selectedRoom = allRooms.find(room => room.number === formData.newRoomId);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -94,7 +217,11 @@ const RoomChange = () => {
           {/* Header */}
           <div className="relative flex items-center justify-center mb-8">
             <div className="flex items-center gap-3">
-              <RefreshCw className="w-8 h-8 text-blue-600" />
+              {isLoadingRooms || isLoadingAssignments ? (
+                <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+              ) : (
+                <RefreshCw className="w-8 h-8 text-blue-600" />
+              )}
               <h1 className="text-3xl font-bold text-gray-900">Cambio de Habitación</h1>
             </div>
             
@@ -115,28 +242,104 @@ const RoomChange = () => {
             </div>
           )}
 
+          {!selectedGuest && (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-700">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                <span>Seleccione un huésped antes de continuar con el cambio de habitación.</span>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Información Actual */}
             <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Información Actual</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-900">Información Actual</h2>
+                <button
+                  type="button"
+                  onClick={() => globalThis.location.reload()}
+                  className="flex items-center gap-2 px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors"
+                  title="Actualizar datos"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Actualizar
+                </button>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <span className="block text-sm font-medium text-gray-700 mb-1">
-                    Huésped
-                  </span>
-                  <p className="text-gray-900 font-medium">{formData.guestName}</p>
+                  <label htmlFor="guestSearch" className="block text-sm font-medium text-gray-700 mb-2">
+                      Buscar Huésped (nombre o identificación)
+                    </label>
+                    <input
+                      id="guestSearch"
+                      type="text"
+                      value={formData.guestName}
+                      onChange={(e) => handleGuestQuery(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Ej: Juan Pérez o 12345678"
+                    />
+                    {/* Resultados de búsqueda */}
+                    {guests && guests.length > 0 && (
+                      <ul className="mt-2 max-h-48 overflow-auto bg-white border border-gray-200 rounded-md shadow-lg">
+                        {guests.map((g: any) => (
+                          <li key={g.id} className="border-b border-gray-100 last:border-b-0">
+                            <button
+                              type="button"
+                              onClick={() => handleSelectGuest(g)}
+                              className="w-full px-3 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <div className="font-medium text-gray-900">
+                                {g.firstName || g.nombre} {g.firstLastName || g.apellido1}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {g.documentNumber || g.numero_doc} • {g.reservationId ? `Reserva: ${g.reservationId}` : 'Sin reserva'}
+                              </div>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {selectedGuest && (
+                      <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md flex items-center justify-between">
+                        <div>
+                          <div className="text-sm text-blue-800 font-medium">Huésped seleccionado</div>
+                          <div className="text-xs text-blue-600">{selectedGuest.documentNumber || selectedGuest.numero_doc}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedGuest(null);
+                            setFormData(prev => ({
+                              ...prev,
+                              guestName: '',
+                              reservationId: '',
+                              currentRoomNumber: '',
+                            }));
+                          }}
+                          className="text-blue-600 hover:text-blue-800 text-sm underline"
+                        >
+                          Limpiar
+                        </button>
+                      </div>
+                    )}
                 </div>
                 <div>
                   <span className="block text-sm font-medium text-gray-700 mb-1">
                     Reserva
                   </span>
-                  <p className="text-gray-900 font-medium">{formData.reservationId}</p>
+                  <p className="text-gray-900 font-medium">
+                    {formData.reservationId || 'No asignada'}
+                    {formData.guestName && formData.reservationId && ` (${formData.guestName})`}
+                  </p>
                 </div>
                 <div>
                   <span className="block text-sm font-medium text-gray-700 mb-1">
                     Habitación Actual
                   </span>
-                  <p className="text-gray-900 font-medium">#{formData.currentRoomNumber}</p>
+                  <p className="text-gray-900 font-medium">
+                    {formData.currentRoomNumber ? `#${formData.currentRoomNumber}` : 'No asignada'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -158,15 +361,16 @@ const RoomChange = () => {
                     }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
+                    disabled={isLoadingRooms}
                   >
-                    <option value="">Seleccionar habitación</option>
-                    {mockAvailableRooms
-                      .filter(room => room.isAvailable)
-                      .map((room) => (
-                        <option key={room.id} value={room.id}>
-                          #{room.number} - {room.type} (Capacidad: {room.capacity})
-                        </option>
-                      ))}
+                    <option value="">
+                      {isLoadingRooms ? 'Cargando habitaciones...' : 'Seleccionar habitación'}
+                    </option>
+                    {allRooms.map((room) => (
+                      <option key={room.number} value={room.number}>
+                        #{room.number} - {room.type} (Capacidad: {room.capacity.total}){room.guestName ? ` - Ocupada por ${room.guestName}` : ''}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -195,7 +399,7 @@ const RoomChange = () => {
                     </span>
                   </div>
                   <p className="text-sm text-gray-600">
-                    Tipo: {selectedRoom.type} | Capacidad máxima: {selectedRoom.capacity} personas
+                    Tipo: {selectedRoom.type} | Capacidad máxima: {selectedRoom.capacity.total} personas{selectedRoom.guestName ? ` | Ocupada por: ${selectedRoom.guestName}` : ''}
                   </p>
                 </div>
               )}
@@ -259,9 +463,14 @@ const RoomChange = () => {
                 <p className="text-sm text-gray-700">
                   <strong>Total de huéspedes:</strong> {totalGuests} 
                   {totalGuests > 1 ? ' personas' : ' persona'}
-                  {selectedRoom && totalGuests > selectedRoom.capacity && (
+                  {selectedRoom && totalGuests > selectedRoom.capacity.total && (
                     <span className="text-red-600 ml-2 font-medium">
-                      ⚠️ Excede la capacidad de la habitación ({selectedRoom.capacity})
+                      ⚠️ Excede la capacidad de la habitación ({selectedRoom.capacity.total})
+                    </span>
+                  )}
+                  {selectedRoom && selectedRoom.status !== 'available' && (
+                    <span className="text-red-600 ml-2 font-medium">
+                      ⚠️ Habitación no disponible
                     </span>
                   )}
                 </p>
@@ -343,10 +552,22 @@ const RoomChange = () => {
               </button>
               <button
                 type="submit"
-                disabled={isChangingRoom || !formData.newRoomId || (selectedRoom && totalGuests > selectedRoom.capacity)}
+                disabled={
+                  isChangingRoom || 
+                  !formData.newRoomId || 
+                  !selectedGuest ||
+                  (selectedRoom && (totalGuests > selectedRoom.capacity.total || selectedRoom.status !== 'available'))
+                }
                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isChangingRoom ? 'Procesando...' : 'Confirmar Cambio'}
+                {isChangingRoom ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Procesando...
+                  </div>
+                ) : (
+                  'Confirmar Cambio'
+                )}
               </button>
             </div>
           </form>

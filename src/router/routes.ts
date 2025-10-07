@@ -26,6 +26,7 @@ export const ROUTES = {
     ROOM_CHANGE: '/frontdesk/room-change',
     DASHBOARD: '/frontdesk/dashboard',
     REGISTER: '/frontdesk/register',
+    FOLIO_MANAGEMENT: (folioId: string) => `/frontdesk/folio/${folioId}`,
   },
 
   // Reservations Module
@@ -137,6 +138,9 @@ export interface RouteParams {
   
   // Payment routes
   paymentId: string;
+  
+  // Folio routes
+  folioId: string;
 }
 
 /**
