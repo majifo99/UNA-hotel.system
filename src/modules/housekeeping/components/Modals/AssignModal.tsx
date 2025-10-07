@@ -3,7 +3,7 @@ import { X, Save, BadgeCheck, Calendar, Clock, AlertCircle } from "lucide-react"
 import { PRIORIDADES, type Prioridad, type LimpiezaItem } from "../../types/limpieza";
 import { useAssignForm } from "../../hooks/useLimpieza";
 import type { SelectedRoom } from "../RoomsTable";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useUsers } from "../../hooks/useUsers";
 
 type Props = {
@@ -49,12 +49,6 @@ export default function AssignModal({
 
   const { users, loading: loadingUsers } = useUsers();
 
-  useEffect(() => {
-    if (toast?.type === "success") {
-      // feedback silencioso opcional
-    }
-  }, [toast?.type]);
-
   const todayStr = useMemo(() => {
     const d = new Date();
     const yyyy = d.getFullYear();
@@ -63,12 +57,7 @@ export default function AssignModal({
     return `${yyyy}-${mm}-${dd}`;
   }, []);
 
-  const isPastDate = useMemo(() => {
-    if (!fecha) return false;
-    return fecha < todayStr;
-  }, [fecha, todayStr]);
-
-  const canSaveLocal = canSave && !isPastDate;
+  const canSaveLocal = canSave;
 
   const ids = {
     asignadoA: "assign-asignadoA",
@@ -88,11 +77,8 @@ export default function AssignModal({
         aria-labelledby="assign-modal-title"
         className="w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col"
       >
-        {/* Header — usa el mismo verde exacto del thead de la tabla */}
+        {/* Header */}
         <div className="relative flex items-center justify-between px-6 py-4 text-white shrink-0 bg-[#304D3C]">
-          {/* si quieres un leve degradado encima, descomenta el ::after
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.06),transparent)]" />
-          */}
           <div className="flex items-center gap-3">
             <div className="h-7 w-7 rounded-lg bg-white/15" />
             <div>
@@ -206,17 +192,13 @@ export default function AssignModal({
                   onChange={(e) => setFecha(e.target.value)}
                   min={todayStr}
                   className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 ${
-                    (errors.fecha || isPastDate)
-                      ? "border-rose-300 focus:ring-rose-500"
-                      : "border-slate-200 focus:ring-emerald-500"
+                    errors.fecha ? "border-rose-300 focus:ring-rose-500" : "border-slate-200 focus:ring-emerald-500"
                   }`}
-                  aria-invalid={!!errors.fecha || isPastDate}
+                  aria-invalid={!!errors.fecha}
                 />
                 <Calendar className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                {(errors.fecha || isPastDate) && (
-                  <p className="mt-1 text-xs text-rose-600">
-                    {isPastDate ? `No puedes seleccionar una fecha anterior a hoy (${todayStr}).` : errors.fecha}
-                  </p>
+                {errors.fecha && (
+                  <p className="mt-1 text-xs text-rose-600">{errors.fecha}</p>
                 )}
               </div>
               <div className="relative">
@@ -249,7 +231,7 @@ export default function AssignModal({
               maxLength={500}
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
-              className={`mt-1 min-h-[72px] w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 ${
+              className={`mt-1 min-h[72px] w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 ${
                 errors.notas ? "border-rose-300 focus:ring-rose-500" : "border-slate-200 focus:ring-emerald-500"
               }`}
               aria-invalid={!!errors.notas}

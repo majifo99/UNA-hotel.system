@@ -59,34 +59,46 @@ export function useAssignForm(params: UseAssignFormParams) {
     return Boolean(anyField);
   }, [idHabitacion, prioridad, nombre, descripcion, notas, fecha, hora, asignadoA]);
 
+  // ---- VALIDATE (refactor: menor complejidad) ----
   const validate = useCallback(() => {
     const e: Record<string, string> = {};
+
+    const tNombre = nombre.trim();
+    const tDescripcion = descripcion.trim();
+    const tNotas = notas.trim();
 
     if (idHabitacion == null || Number.isNaN(Number(idHabitacion))) {
       e.id_habitacion = "Selecciona una habitación válida.";
     }
 
-    // Validar pares fecha/hora solo si se intenta cambiar
-    if (fecha && !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) e.fecha = "Formato inválido (yyyy-MM-dd).";
-    if (hora && !/^\d{2}:\d{2}$/.test(hora)) e.hora = "Formato inválido (HH:mm).";
-    if ((fecha && !hora) || (!fecha && hora)) e.fecha = "Si cambias la programación, llena fecha y hora.";
+    // Validación de programación (fecha/hora) solo si se intenta cambiar
+    const hasFecha = Boolean(fecha);
+    const hasHora = Boolean(hora);
+    if (hasFecha || hasHora) {
+      if (!(hasFecha && hasHora)) {
+        e.fecha = "Si cambias la programación, llena fecha y hora.";
+      } else {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) e.fecha = "Formato inválido (yyyy-MM-dd).";
+        if (!/^\d{2}:\d{2}$/.test(hora)) e.hora = "Formato inválido (HH:mm).";
+      }
+    }
 
-    if (nombre && (nombre.trim().length < 3 || nombre.trim().length > 100)) {
+    if (tNombre && (tNombre.length < 3 || tNombre.length > 100)) {
       e.nombre = "El nombre debe tener entre 3 y 100 caracteres.";
     }
-    if (descripcion && descripcion.length > 500) e.descripcion = "Máximo 500 caracteres.";
-    if (notas && notas.length > 500) e.notas = "Máximo 500 caracteres.";
+    if (tDescripcion && tDescripcion.length > 500) e.descripcion = "Máximo 500 caracteres.";
+    if (tNotas && tNotas.length > 500) e.notas = "Máximo 500 caracteres.";
     if (prioridad && !PRIORIDADES.includes(prioridad)) e.prioridad = "Prioridad inválida.";
     if (asignadoA != null && Number.isNaN(Number(asignadoA))) e.asignadoA = "Selecciona un usuario válido.";
 
     // Debe haber al menos un campo a editar
     const anyField =
       (prioridad && PRIORIDADES.includes(prioridad)) ||
-      nombre.trim() ||
-      descripcion.trim() ||
-      notas.trim() ||
-      (fecha && hora) ||
-      (typeof asignadoA === "number"); // ← antes estaba suelto; ahora unido con ||
+      tNombre ||
+      tDescripcion ||
+      tNotas ||
+      (hasFecha && hasHora) ||
+      (typeof asignadoA === "number");
 
     if (!anyField) e.form = "No hay cambios para guardar.";
 
