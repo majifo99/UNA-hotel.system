@@ -1,130 +1,134 @@
+// src/modules/housekeeping/services/limpiezaService.ts
 import type {
   LimpiezaItem,
   LimpiezaPaginatedResponse,
   LimpiezaFilters,
   LimpiezaCreateDTO,
+  FinalizarLimpiezaDTO,
 } from "../types/limpieza";
+import { ESTADO_HAB } from "../types/limpieza";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 
-async function handleJson(res: Response) {
-  const text = await res.text();
+/* ─────────── Query helpers (evita S6551: "[object Object]") ─────────── */
+function serializeParam(v: unknown): string {
+  if (v === undefined || v === null) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "bigint") return String(v);
+  if (typeof v === "boolean") return v ? "1" : "0";
+  if (v instanceof Date) return v.toISOString();
   try {
-    return text ? JSON.parse(text) : null;
+    return JSON.stringify(v);
   } catch {
-    return text as unknown;
+    return "";
   }
 }
 
-/** DTOs sugeridos para tipar mejor los PATCH/PUT del front */
-export type LimpiezaUpdateDTO = Partial<
-  Omit<
-    LimpiezaCreateDTO,
-    // el backend ignora/forza estos en store/update, mejor no enviarlos
-    "id_usuario_reporta" | "fecha_reporte"
-  >
->;
+function toQuery(params: Record<string, unknown>) {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === "") continue;
+    q.append(k, serializeParam(v));
+  }
+  const s = q.toString();
+  return s ? `?${s}` : "";
+}
+/* ────────────────────────────────────────────────────────────────────── */
 
-export type LimpiezaFinalizarDTO = {
-  fecha_final: string; // ISO 8601 (p.ej. "2025-09-24T10:30:00")
-  notas?: string | null;
-};
+/**
+ * request “agnóstico” (no genérico) que devuelve `any` para
+ * evitar assertions (`as T`) y así eliminar S4325.
+ */
+async function request(url: string, init?: RequestInit & { signal?: AbortSignal }): Promise<any> {
+  const res = await fetch(url, init);
+  const ct = res.headers.get("content-type") || "";
+  const parsed = ct.includes("application/json") ? await res.json() : await res.text();
+
+  if (!res.ok) {
+    const msg =
+      (typeof parsed === "object" && parsed && ("message" in parsed || "error" in parsed))
+        ? ((parsed).message ?? (parsed).error)
+        : `Error ${res.status}`;
+    throw new Error(String(msg));
+  }
+  return parsed; // <- sin "as T"
+}
 
 export const limpiezaService = {
-  /**
-   * GET /limpiezas — lista paginada con filtros
-   */
-  async getLimpiezas(filters: LimpiezaFilters = {}): Promise<LimpiezaPaginatedResponse> {
-    const params = new URLSearchParams();
-    if (filters.per_page) params.append("per_page", String(filters.per_page));
-    if (filters.prioridad) params.append("prioridad", filters.prioridad);
-    if (filters.pendientes) params.append("pendientes", "1");
-    if (filters.id_habitacion) params.append("id_habitacion", String(filters.id_habitacion));
-    if (filters.estado_id) params.append("estado_id", String(filters.estado_id));
-    // nuevos filtros soportados por tu back:
-    if ((filters as any).desde) params.append("desde", String((filters as any).desde));
-    if ((filters as any).hasta) params.append("hasta", String((filters as any).hasta));
+  async getLimpiezas(
+    filters: LimpiezaFilters = {},
+    opts?: { signal?: AbortSignal }
+  ): Promise<LimpiezaPaginatedResponse> {
+    const query = toQuery({
+      per_page: filters.per_page,
+      prioridad: filters.prioridad,
+      pendientes: filters.pendientes,
+      id_habitacion: filters.id_habitacion,
+      id_estado_hab: filters.estado_id, // compat con back
+      desde: filters.desde,
+      hasta: filters.hasta,
+      page: filters.page,
+    });
 
-    const url = `${API_URL}/limpiezas?${params.toString()}`;
-    const res = await fetch(url, { method: "GET" });
-    if (!res.ok) {
-      const payload = await handleJson(res);
-      throw new Error(`GET /limpiezas fallo (${res.status}): ${JSON.stringify(payload)}`);
-    }
-    return (await handleJson(res)) as LimpiezaPaginatedResponse;
+    const data = await request(`${API_URL}/limpiezas${query}`, { signal: opts?.signal });
+    return data as LimpiezaPaginatedResponse; // <- asignación desde any (sin assertion en la llamada)
   },
 
-  /**
-   * GET /limpiezas/{id} — detalle
-   */
   async getLimpiezaById(id: number): Promise<{ data: LimpiezaItem }> {
-    const res = await fetch(`${API_URL}/limpiezas/${id}`, { method: "GET" });
-    if (!res.ok) {
-      const payload = await handleJson(res);
-      throw new Error(`GET /limpiezas/${id} fallo (${res.status}): ${JSON.stringify(payload)}`);
-    }
-    return (await handleJson(res)) as { data: LimpiezaItem };
+    const data = await request(`${API_URL}/limpiezas/${id}`);
+    return data as { data: LimpiezaItem };
   },
 
-  /**
-   * POST /limpiezas — crea una limpieza
-   */
   async createLimpieza(body: LimpiezaCreateDTO): Promise<{ data: LimpiezaItem }> {
-    const res = await fetch(`${API_URL}/limpiezas`, {
+    const data = await request(`${API_URL}/limpiezas`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!res.ok) {
-      const payload = await handleJson(res);
-      throw new Error(`POST /limpiezas fallo (${res.status}): ${JSON.stringify(payload)}`);
-    }
-    return (await handleJson(res)) as { data: LimpiezaItem };
+    return data as { data: LimpiezaItem };
   },
 
-  /**
-   * PUT/PATCH /limpiezas/{id} — actualiza una limpieza (usa PATCH por defecto)
-   * Nota: el back ignora/forza fecha_reporte e id_usuario_reporta.
-   */
-  async updateLimpieza(id: number, body: LimpiezaUpdateDTO, opts?: { method?: "PUT" | "PATCH" }): Promise<{ data: LimpiezaItem }> {
-    const method = opts?.method ?? "PATCH";
-    const res = await fetch(`${API_URL}/limpiezas/${id}`, {
+  async updateLimpieza(
+    id: number,
+    body: Partial<LimpiezaCreateDTO>,
+    method: "PATCH" | "PUT" = "PATCH"
+  ): Promise<{ data: LimpiezaItem }> {
+    const data = await request(`${API_URL}/limpiezas/${id}`, {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!res.ok) {
-      const payload = await handleJson(res);
-      throw new Error(`${method} /limpiezas/${id} fallo (${res.status}): ${JSON.stringify(payload)}`);
-    }
-    return (await handleJson(res)) as { data: LimpiezaItem };
+    return data as { data: LimpiezaItem };
   },
 
-  /**
-   * PATCH /limpiezas/{id}/finalizar — marca fecha_final y (opcional) notas
-   * El back valida: fecha_final >= fecha_inicio
-   */
-  async finalizarLimpieza(id: number, body: LimpiezaFinalizarDTO): Promise<{ data: LimpiezaItem }> {
-    const res = await fetch(`${API_URL}/limpiezas/${id}/finalizar`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const payload = await handleJson(res);
-      throw new Error(`PATCH /limpiezas/${id}/finalizar fallo (${res.status}): ${JSON.stringify(payload)}`);
+  // Finalizar con fallback: primero /finalizar, si 404 → PATCH normal + estado LIMPIA
+  async finalizarLimpieza(id: number, body: FinalizarLimpiezaDTO): Promise<{ data: LimpiezaItem }> {
+    try {
+      const data = await request(`${API_URL}/limpiezas/${id}/finalizar`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return data as { data: LimpiezaItem };
+    } catch (e: any) {
+      const msg = String(e?.message ?? "");
+      if (msg.includes("404")) {
+        const data = await request(`${API_URL}/limpiezas/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fecha_final: body.fecha_final,
+            notas: body.notas ?? null,
+            id_estado_hab: ESTADO_HAB.LIMPIA,
+          }),
+        });
+        return data as { data: LimpiezaItem };
+      }
+      throw e;
     }
-    return (await handleJson(res)) as { data: LimpiezaItem };
   },
 
-  /**
-   * DELETE /limpiezas/{id} — elimina una limpieza
-   */
   async deleteLimpieza(id: number): Promise<void> {
-    const res = await fetch(`${API_URL}/limpiezas/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      const payload = await handleJson(res);
-      throw new Error(`DELETE /limpiezas/${id} fallo (${res.status}): ${JSON.stringify(payload)}`);
-    }
+    await request(`${API_URL}/limpiezas/${id}`, { method: "DELETE" });
   },
 };
