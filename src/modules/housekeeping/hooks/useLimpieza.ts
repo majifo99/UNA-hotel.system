@@ -114,18 +114,19 @@ export function useAssignForm(params: UseAssignFormParams) {
     hora,
     asignadoA,
   ]);
-
-  const reset = useCallback(() => {
-    setPrioridad(null);
-    setNombre("");
-    setDescripcion("");
-    setFecha("");
-    setHora("");
-    setNotas("");
-    setAsignadoA(null); // reset también asignación
-    setErrors({});
-    setToast(null);
-  }, []);
+const reset = useCallback(() => {
+  [
+    () => setPrioridad(null),
+    () => setNombre(""),
+    () => setDescripcion(""),
+    () => setFecha(""),
+    () => setHora(""),
+    () => setNotas(""),
+    () => setAsignadoA(null),
+    () => setErrors({}),
+    () => setToast(null),
+  ].forEach(fn => fn());
+}, []);
 
   const handleSave = useCallback(async () => {
     if (!validate()) return;
