@@ -46,7 +46,7 @@ export function useAssignForm(params: UseAssignFormParams) {
     return js.toISOString();
   }, []);
 
-  // ✅ Reglas nuevas: solo PATCH, nada obligatorio salvo tener habitación y al menos un campo a editar
+  // ✅ Reglas: solo PATCH; obligatorio: habitación válida + al menos un campo a editar
   const canSave = useMemo(() => {
     if (idHabitacion == null || Number.isNaN(Number(idHabitacion))) return false;
     const anyField =
@@ -55,56 +55,63 @@ export function useAssignForm(params: UseAssignFormParams) {
       descripcion.trim() ||
       notas.trim() ||
       (fecha && hora) ||
-      (typeof asignadoA === "number"); // cuenta como cambio
+      typeof asignadoA === "number";
     return Boolean(anyField);
   }, [idHabitacion, prioridad, nombre, descripcion, notas, fecha, hora, asignadoA]);
 
-  // ---- VALIDATE (refactor: menor complejidad) ----
+  // ---- VALIDATE (refactor: menor complejidad cognitiva) ----
   const validate = useCallback(() => {
-    const e: Record<string, string> = {};
-
     const tNombre = nombre.trim();
     const tDescripcion = descripcion.trim();
     const tNotas = notas.trim();
 
-    if (idHabitacion == null || Number.isNaN(Number(idHabitacion))) {
-      e.id_habitacion = "Selecciona una habitación válida.";
-    }
+    const hasFecha = !!fecha;
+    const hasHora = !!hora;
 
-    // Validación de programación (fecha/hora) solo si se intenta cambiar
-    const hasFecha = Boolean(fecha);
-    const hasHora = Boolean(hora);
-    if (hasFecha || hasHora) {
-      if (!(hasFecha && hasHora)) {
-        e.fecha = "Si cambias la programación, llena fecha y hora.";
-      } else {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) e.fecha = "Formato inválido (yyyy-MM-dd).";
-        if (!/^\d{2}:\d{2}$/.test(hora)) e.hora = "Formato inválido (HH:mm).";
-      }
-    }
+    const fechaInvalida = hasFecha && !/^\d{4}-\d{2}-\d{2}$/.test(fecha);
+    const horaInvalida = hasHora && !/^\d{2}:\d{2}$/.test(hora);
+    const faltaParFechaHora = (hasFecha || hasHora) && !(hasFecha && hasHora);
 
-    if (tNombre && (tNombre.length < 3 || tNombre.length > 100)) {
-      e.nombre = "El nombre debe tener entre 3 y 100 caracteres.";
-    }
-    if (tDescripcion && tDescripcion.length > 500) e.descripcion = "Máximo 500 caracteres.";
-    if (tNotas && tNotas.length > 500) e.notas = "Máximo 500 caracteres.";
-    if (prioridad && !PRIORIDADES.includes(prioridad)) e.prioridad = "Prioridad inválida.";
-    if (asignadoA != null && Number.isNaN(Number(asignadoA))) e.asignadoA = "Selecciona un usuario válido.";
+    const prioridadInvalida = !!prioridad && !PRIORIDADES.includes(prioridad);
+    const asignadoInvalido = asignadoA != null && Number.isNaN(Number(asignadoA));
 
-    // Debe haber al menos un campo a editar
+    const nombreInvalido = !!tNombre && (tNombre.length < 3 || tNombre.length > 100);
+    const descripcionInvalida = !!tDescripcion && tDescripcion.length > 500;
+    const notasInvalidas = !!tNotas && tNotas.length > 500;
+
     const anyField =
-      (prioridad && PRIORIDADES.includes(prioridad)) ||
-      tNombre ||
-      tDescripcion ||
-      tNotas ||
+      (!!prioridad && !prioridadInvalida) ||
+      !!tNombre ||
+      !!tDescripcion ||
+      !!tNotas ||
       (hasFecha && hasHora) ||
-      (typeof asignadoA === "number");
+      typeof asignadoA === "number";
 
-    if (!anyField) e.form = "No hay cambios para guardar.";
+    const e: Record<string, string> = {
+      ...(idHabitacion == null || Number.isNaN(Number(idHabitacion)) ? { id_habitacion: "Selecciona una habitación válida." } : {}),
+      ...(faltaParFechaHora ? { fecha: "Si cambias la programación, llena fecha y hora." } : {}),
+      ...(!faltaParFechaHora && fechaInvalida ? { fecha: "Formato inválido (yyyy-MM-dd)." } : {}),
+      ...(!faltaParFechaHora && horaInvalida ? { hora: "Formato inválido (HH:mm)." } : {}),
+      ...(nombreInvalido ? { nombre: "El nombre debe tener entre 3 y 100 caracteres." } : {}),
+      ...(descripcionInvalida ? { descripcion: "Máximo 500 caracteres." } : {}),
+      ...(notasInvalidas ? { notas: "Máximo 500 caracteres." } : {}),
+      ...(prioridadInvalida ? { prioridad: "Prioridad inválida." } : {}),
+      ...(asignadoInvalido ? { asignadoA: "Selecciona un usuario válido." } : {}),
+      ...(!anyField ? { form: "No hay cambios para guardar." } : {}),
+    };
 
     setErrors(e);
     return Object.keys(e).length === 0;
-  }, [idHabitacion, nombre, descripcion, notas, prioridad, fecha, hora, asignadoA]);
+  }, [
+    idHabitacion,
+    nombre,
+    descripcion,
+    notas,
+    prioridad,
+    fecha,
+    hora,
+    asignadoA,
+  ]);
 
   const reset = useCallback(() => {
     setPrioridad(null);
@@ -113,7 +120,7 @@ export function useAssignForm(params: UseAssignFormParams) {
     setFecha("");
     setHora("");
     setNotas("");
-    setAsignadoA(null); // reset también asignación
+    setAsignadoA(null);
     setErrors({});
     setToast(null);
   }, []);
