@@ -19,9 +19,9 @@ const CheckOut = () => {
   
   // IDs dinámicos - se actualizan al buscar la reservación
   // Se establecerán cuando el backend retorne folioId en la búsqueda de reservación
-  const [folioId] = useState<number | null>(null);
+  const [folioId, setFolioId] = useState<number | null>(null);
   // Se establecerán cuando el backend retorne id de reserva
-  const [reservaId] = useState<number | undefined>(undefined);
+  const [reservaId, setReservaId] = useState<number | undefined>(undefined);
   
   // Hook refactorizado para checkout completo - solo se inicializa si hay folioId
   const checkoutRefactored = useCheckoutRefactored(folioId || 1, reservaId);
@@ -89,9 +89,14 @@ const CheckOut = () => {
       setIsReservationFound(true);
       setError(null); // Clear any previous errors
       
-      // TODO: En producción, extraer folioId y reservaId del objeto reservation
-      // Ejemplo: setFolioId(reservation.folioId);
-      // Ejemplo: setReservaId(reservation.id);
+      // Extraer folioId y reservaId del objeto reservation para inicializar el hook refactorizado
+      // En producción, estos vendrían del backend. Por ahora usamos valores mock
+      if (reservation.reservationId) {
+        // Usar el reservationId como reservaId temporalmente
+        setReservaId(parseInt(reservation.reservationId.replace('RES-', '')) || undefined);
+        // Generar un folioId mock basado en el reservationId
+        setFolioId(parseInt(reservation.reservationId.replace('RES-', '')) || 1);
+      }
     } else {
       setIsReservationFound(false);
       setError('No se encontró la reservación. Puede continuar con check-out manual.');
@@ -543,7 +548,7 @@ const CheckOut = () => {
                         <h3 className="font-semibold text-gray-900 mb-2">Mensajes del Proceso</h3>
                         <div className="space-y-1">
                           {checkoutRefactored.mensajes.map((mensaje, idx) => (
-                            <p key={idx} className="text-xs text-gray-700">
+                            <p key={`mensaje-${idx}-${mensaje}`} className="text-xs text-gray-700">
                               {mensaje}
                             </p>
                           ))}

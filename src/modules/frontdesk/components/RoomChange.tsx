@@ -21,6 +21,14 @@ const mapRoomToRoomInfo = (room: any, assignments: Array<{
 }>): RoomInfo => {
   const assignment = assignments.find(a => a.roomId === room.id || a.roomNumber === (room.number || room.id));
 
+  // Extract nested ternary operation into independent statement
+  const mapRoomStatus = (roomStatus: string): 'maintenance' | 'occupied' | 'available' | 'reserved' => {
+    if (roomStatus === 'available') return 'available';
+    if (roomStatus === 'occupied') return 'occupied';
+    if (roomStatus === 'maintenance') return 'maintenance';
+    return 'reserved';
+  };
+
   return {
     number: room.number || room.id,
     type: room.type,
@@ -30,7 +38,7 @@ const mapRoomToRoomInfo = (room: any, assignments: Array<{
       total: room.capacity
     },
     floor: room.floor || 1,
-    status: assignment ? 'occupied' : (room.status === 'available' ? 'available' : room.status === 'occupied' ? 'occupied' : room.status === 'maintenance' ? 'maintenance' : 'reserved'),
+    status: assignment ? 'occupied' : mapRoomStatus(room.status),
     amenities: room.amenities,
     price: { base: room.pricePerNight, currency: 'USD' },
     features: {
@@ -250,7 +258,7 @@ const RoomChange = () => {
                 <h2 className="text-xl font-semibold text-gray-900">Información Actual</h2>
                 <button
                   type="button"
-                  onClick={() => window.location.reload()}
+                  onClick={() => globalThis.location.reload()}
                   className="flex items-center gap-2 px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors"
                   title="Actualizar datos"
                 >
@@ -275,17 +283,19 @@ const RoomChange = () => {
                     {guests && guests.length > 0 && (
                       <ul className="mt-2 max-h-48 overflow-auto bg-white border border-gray-200 rounded-md shadow-lg">
                         {guests.map((g: any) => (
-                          <li
-                            key={g.id}
-                            onClick={() => handleSelectGuest(g)}
-                            className="px-3 py-2 cursor-pointer hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
-                          >
-                            <div className="font-medium text-gray-900">
-                              {g.firstName || g.nombre} {g.firstLastName || g.apellido1}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {g.documentNumber || g.numero_doc} • {g.reservationId ? `Reserva: ${g.reservationId}` : 'Sin reserva'}
-                            </div>
+                          <li key={g.id} className="border-b border-gray-100 last:border-b-0">
+                            <button
+                              type="button"
+                              onClick={() => handleSelectGuest(g)}
+                              className="w-full px-3 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <div className="font-medium text-gray-900">
+                                {g.firstName || g.nombre} {g.firstLastName || g.apellido1}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {g.documentNumber || g.numero_doc} • {g.reservationId ? `Reserva: ${g.reservationId}` : 'Sin reserva'}
+                              </div>
+                            </button>
                           </li>
                         ))}
                       </ul>

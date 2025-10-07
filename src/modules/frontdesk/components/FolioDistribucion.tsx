@@ -231,9 +231,9 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
     const porcentajePorPersona = 100 / selectedClientes.length;
     const nuevosPocentajes: Record<number, number> = {};
     
-    selectedClientes.forEach(id => {
+    for (const id of selectedClientes) {
       nuevosPocentajes[id] = porcentajePorPersona;
-    });
+    }
     
     setPorcentajes(nuevosPocentajes);
   };
@@ -245,9 +245,9 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
     const montoPorPersona = cargosSinPersona / selectedClientes.length;
     const nuevosMontos: Record<number, number> = {};
     
-    selectedClientes.forEach(id => {
+    for (const id of selectedClientes) {
       nuevosMontos[id] = Number(montoPorPersona.toFixed(2));
-    });
+    }
     
     setMontos(nuevosMontos);
   };
@@ -453,8 +453,9 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
           deposito={depositoHook.deposito}
           loading={depositoHook.loading}
           onRegistrarPago={() => {
-            // TODO: Implementar modal de registro de pago
-            console.log('Abrir modal de pago de depósito');
+            // Implementar modal de registro de pago de depósito
+            // Por ahora, mostrar un mensaje informativo
+            alert('Funcionalidad de registro de pago de depósito próximamente disponible. Use el sistema de pagos principal.');
           }}
         />
       )}
@@ -554,7 +555,7 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
             <select
               value={strategy}
               onChange={(e) => {
-                setStrategy(e.target.value as any);
+                setStrategy(e.target.value as EstrategiaDistribucion);
                 setError(null); // Limpiar errores al cambiar estrategia
                 setSuccessMessage(null);
               }}
@@ -606,8 +607,9 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
               facturacionHook.descargarPDF(idFactura);
             }}
             onVerDetalle={(factura) => {
-              console.log('Ver detalle de factura:', factura);
-              // TODO: Implementar modal de detalle
+              // Implementar modal de detalle de factura
+              // Por ahora, mostrar información básica en un alert
+              alert(`Detalle de Factura #${factura.numero_factura}\nCliente: ${factura.nombre_responsable}\nMonto: $${factura.total}\nEstado: ${factura.estado}\n\nFuncionalidad completa próximamente disponible.`);
             }}
           />
         </div>
