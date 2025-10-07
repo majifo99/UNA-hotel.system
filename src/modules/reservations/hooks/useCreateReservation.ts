@@ -7,7 +7,18 @@ import type { Room } from '../../../types/core';
 import type { AdditionalService } from '../../../types/core/domain';
 import { reservationService } from '../services/reservationService';
 import { roomService } from '../services/roomService';
-import { validateAdvanceBooking } from '../constants/businessRules';
+import {
+  parseGuestCount,
+  validateGuest,
+  validateBasicDates,
+  validateDateLogic,
+  validateGuestCapacity,
+  validateRoomAvailability,
+  calculateNights,
+  calculatePricing,
+  validateDateField,
+  validateGuestCount,
+} from './useReservationFormLogic';
 
 export const useCreateReservation = () => {
   const [formData, setFormData] = useState<SimpleReservationFormData>({
@@ -43,29 +54,12 @@ export const useCreateReservation = () => {
   // Calculate nights when dates change
   useEffect(() => {
     if (formData.checkInDate && formData.checkOutDate) {
-      const checkIn = new Date(formData.checkInDate);
-      const checkOut = new Date(formData.checkOutDate);
-      
-      if (checkOut > checkIn) {
-        const diffTime = Math.abs(checkOut.getTime() - checkIn.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        setFormData(prev => ({ ...prev, numberOfNights: diffDays }));
+      const nights = calculateNights(formData.checkInDate, formData.checkOutDate);
+      if (nights !== formData.numberOfNights) {
+        setFormData(prev => ({ ...prev, numberOfNights: nights }));
       }
     }
-  }, [formData.checkInDate, formData.checkOutDate]);
-
-  // Search for available rooms when dates change
-  useEffect(() => {
-    if (formData.checkInDate && formData.checkOutDate) {
-      searchAvailableRooms();
-    }
-  }, [formData.checkInDate, formData.checkOutDate]);
-
-  // Calculate pricing when relevant fields change
-  useEffect(() => {
-    calculatePricing();
-  }, [formData.roomType, formData.numberOfNights, formData.additionalServices, availableRooms, additionalServices]);
+  }, [formData.checkInDate, formData.checkOutDate, formData.numberOfNights]);
 
   const searchAvailableRooms = async () => {
     try {
@@ -80,195 +74,125 @@ export const useCreateReservation = () => {
     }
   };
 
-  const calculatePricing = () => {
+  const calculatePricingEffect = () => {
     const selectedRoom = availableRooms.find(room => room.type === formData.roomType);
     if (!selectedRoom) return;
 
     const roomPrice = selectedRoom.pricePerNight || selectedRoom.basePrice || 0;
-    const subtotal = roomPrice * formData.numberOfNights;
-    
     const servicesTotal = additionalServices
       .filter(service => formData.additionalServices.includes(service.id))
       .reduce((total, service) => total + service.price, 0);
 
-    const taxes = (subtotal + servicesTotal) * 0.13; // 13% IVA en Costa Rica
-    const total = subtotal + servicesTotal + taxes;
-    const depositRequired = total * 0.5; // 50% deposit
+    const pricing = calculatePricing(roomPrice, formData.numberOfNights, servicesTotal);
 
     setFormData((prev: SimpleReservationFormData) => ({
       ...prev,
-      subtotal,
+      subtotal: pricing.subtotal,
       servicesTotal,
-      taxes,
-      total,
-      depositRequired,
+      taxes: pricing.taxes,
+      total: pricing.total,
+      depositRequired: pricing.depositRequired,
     }));
   };
 
+  // Search for available rooms when dates change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (formData.checkInDate && formData.checkOutDate) {
+      searchAvailableRooms();
+    }
+  }, [formData.checkInDate, formData.checkOutDate]);
+
+  // Calculate pricing when relevant fields change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    calculatePricingEffect();
+  }, [formData.roomType, formData.numberOfNights, formData.additionalServices, availableRooms, additionalServices]);
+
   // =================== VALIDATION HELPERS ===================
 
-  /**
-   * Validates guest selection
-   */
-  const validateGuest = (errors: ReservationValidationErrors): void => {
-    if (!formData.guestId) {
-      errors.guestId = 'Debe seleccionar un huésped para continuar';
-    }
-  };
-
-  /**
-   * Validates basic date requirements
-   */
-  const validateBasicDates = (errors: ReservationValidationErrors): void => {
-    if (!formData.checkInDate) {
-      errors.checkInDate = 'La fecha de entrada es requerida';
-    }
-    if (!formData.checkOutDate) {
-      errors.checkOutDate = 'La fecha de salida es requerida';
-    }
-  };
-
-  /**
-   * Validates date logic and constraints
-   */
-  const validateDateLogic = (errors: ReservationValidationErrors): void => {
-    if (!formData.checkInDate || !formData.checkOutDate) return;
-
-    const checkIn = new Date(formData.checkInDate);
-    const checkOut = new Date(formData.checkOutDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Basic date logic
-    if (checkIn < today) {
-      errors.checkInDate = 'La fecha de entrada no puede ser anterior a hoy';
-    }
-    if (checkOut <= checkIn) {
-      errors.checkOutDate = 'La fecha de salida debe ser posterior a la fecha de entrada';
-    }
-
-    // Advanced validations
-    const advanceBookingValidation = validateAdvanceBooking(checkIn, today);
-    if (!advanceBookingValidation.isValid && advanceBookingValidation.isTooFarInFuture) {
-      errors.checkInDate = `No se pueden hacer reservas con más de ${advanceBookingValidation.maxDaysAllowed} días de anticipación`;
-    }
-
-    // Stay duration limits
-    const maxStayDays = 30;
-    if (formData.numberOfNights > maxStayDays) {
-      errors.checkOutDate = `La estadía máxima permitida es de ${maxStayDays} noches`;
-    }
-    if (formData.numberOfNights < 1) {
-      errors.checkOutDate = 'La reserva debe ser de al menos 1 noche';
-    }
-  };
-
-  /**
-   * Validates guest count and capacity
-   */
-  const validateGuestCapacity = (errors: ReservationValidationErrors): void => {
-    if (formData.numberOfGuests < 1) {
-      errors.numberOfGuests = 'Debe especificar al menos 1 huésped';
-    }
-    if (formData.numberOfGuests > 10) {
-      errors.numberOfGuests = 'El número máximo de huéspedes por reserva es 10';
-    }
-
+  const performValidation = (): boolean => {
+    const newErrors: ReservationValidationErrors = {};
     const selectedRoom = availableRooms.find(room => room.type === formData.roomType);
-    if (selectedRoom && formData.numberOfGuests > selectedRoom.capacity) {
-      errors.numberOfGuests = `La habitación ${selectedRoom.name} tiene capacidad máxima de ${selectedRoom.capacity} huésped${selectedRoom.capacity > 1 ? 'es' : ''}. Seleccione otra habitación o reduzca el número de huéspedes.`;
-    }
-  };
 
-  /**
-   * Validates room selection and availability
-   */
-  const validateRoomAvailability = (errors: ReservationValidationErrors): void => {
-    if (!formData.roomType && availableRooms.length > 0) {
-      errors.roomType = 'Debe seleccionar un tipo de habitación';
-    }
+    validateGuest(formData.guestId, newErrors);
+    validateBasicDates(formData.checkInDate, formData.checkOutDate, newErrors);
+    validateDateLogic(formData.checkInDate, formData.checkOutDate, formData.numberOfNights, newErrors);
+    validateGuestCapacity(
+      formData.numberOfGuests,
+      selectedRoom?.capacity,
+      selectedRoom?.name,
+      newErrors
+    );
+    validateRoomAvailability(
+      formData.roomType,
+      availableRooms.length,
+      Boolean(formData.checkInDate && formData.checkOutDate),
+      newErrors
+    );
 
-    if (availableRooms.length === 0 && formData.checkInDate && formData.checkOutDate) {
-      errors.roomType = 'No hay habitaciones disponibles para las fechas seleccionadas. Por favor, seleccione otras fechas.';
-    }
-
+    // Check suitable rooms
     if (availableRooms.length > 0 && formData.numberOfGuests > 0) {
       const suitableRooms = availableRooms.filter(room => room.capacity >= formData.numberOfGuests);
       if (suitableRooms.length === 0) {
-        errors.numberOfGuests = `No hay habitaciones disponibles con capacidad para ${formData.numberOfGuests} huésped${formData.numberOfGuests > 1 ? 'es' : ''} en las fechas seleccionadas`;
+        newErrors.numberOfGuests = `No hay habitaciones disponibles con capacidad para ${formData.numberOfGuests} huésped${formData.numberOfGuests > 1 ? 'es' : ''} en las fechas seleccionadas`;
       }
     }
-  };
-
-  const validateForm = (): boolean => {
-    const newErrors: ReservationValidationErrors = {};
-
-    // Run validation helpers
-    validateGuest(newErrors);
-    validateBasicDates(newErrors);
-    validateDateLogic(newErrors);
-    validateGuestCapacity(newErrors);
-    validateRoomAvailability(newErrors);
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const updateFormField = (field: keyof SimpleReservationFormData, value: any) => {
+  /**
+   * Actualiza un campo del formulario y ejecuta validación en tiempo real.
+   * Reducida complejidad mediante helpers externos.
+   * 
+   * @param field - Campo del formulario a actualizar
+   * @param value - Nuevo valor (tipado según el campo)
+   */
+  const updateFormField = <K extends keyof SimpleReservationFormData>(
+    field: K,
+    value: SimpleReservationFormData[K]
+  ) => {
     setFormData((prev: SimpleReservationFormData) => ({ ...prev, [field]: value }));
     
-    // Clear related errors when user starts typing/changing values
+    // Clear field error
     if (errors[field as keyof ReservationValidationErrors]) {
       setErrors((prev: ReservationValidationErrors) => ({ ...prev, [field]: undefined }));
     }
 
-    // Real-time validation for specific fields
+    // Real-time validation using helpers
     const newErrors: ReservationValidationErrors = {};
 
     if (field === 'checkInDate' || field === 'checkOutDate') {
-      const checkInDate = field === 'checkInDate' ? value : formData.checkInDate;
-      const checkOutDate = field === 'checkOutDate' ? value : formData.checkOutDate;
+      const checkInDate = field === 'checkInDate' ? value as string : formData.checkInDate;
+      const checkOutDate = field === 'checkOutDate' ? value as string : formData.checkOutDate;
 
-      if (checkInDate && checkOutDate) {
-        const checkIn = new Date(checkInDate);
-        const checkOut = new Date(checkOutDate);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+      if (field === 'checkInDate') {
+        const error = validateDateField('checkInDate', checkInDate, checkOutDate);
+        if (error) newErrors.checkInDate = error;
+      }
 
-        if (field === 'checkInDate' && checkIn < today) {
-          newErrors.checkInDate = 'La fecha de entrada no puede ser anterior a hoy';
-        }
-
-        if (field === 'checkOutDate' && checkOut <= checkIn) {
-          newErrors.checkOutDate = 'La fecha de salida debe ser posterior a la fecha de entrada';
-        }
+      if (field === 'checkOutDate') {
+        const error = validateDateField('checkOutDate', checkOutDate, checkInDate);
+        if (error) newErrors.checkOutDate = error;
       }
     }
 
     if (field === 'numberOfGuests') {
-      const guestCount = typeof value === 'number' ? value : parseInt(value) || 0;
-      
-      if (guestCount < 1) {
-        newErrors.numberOfGuests = 'Debe especificar al menos 1 huésped';
-      } else if (guestCount > 10) {
-        newErrors.numberOfGuests = 'El número máximo de huéspedes por reserva es 10';
-      } else {
-        // Check against selected room capacity
-        const selectedRoom = availableRooms.find(room => room.type === formData.roomType);
-        if (selectedRoom && guestCount > selectedRoom.capacity) {
-          newErrors.numberOfGuests = `La habitación ${selectedRoom.name} tiene capacidad máxima de ${selectedRoom.capacity} huésped${selectedRoom.capacity > 1 ? 'es' : ''}`;
-        }
-      }
+      const guestCount = parseGuestCount(value);
+      const selectedRoom = availableRooms.find(room => room.type === formData.roomType);
+      const error = validateGuestCount(guestCount, selectedRoom?.capacity, selectedRoom?.name);
+      if (error) newErrors.numberOfGuests = error;
     }
 
-    // Update errors if there are any new validation errors
     if (Object.keys(newErrors).length > 0) {
       setErrors((prev: ReservationValidationErrors) => ({ ...prev, ...newErrors }));
     }
   };
 
   const submitReservation = async (): Promise<boolean> => {
-    if (!validateForm()) {
+    if (!performValidation()) {
       return false;
     }
 
@@ -318,6 +242,6 @@ export const useCreateReservation = () => {
     additionalServices,
     updateFormField,
     submitReservation,
-    validateForm,
+    validateForm: performValidation,
   };
 };

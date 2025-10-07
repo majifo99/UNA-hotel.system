@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { type FieldError } from 'react-hook-form';
 import { useCreateReservationForm } from '../hooks/useCreateReservationForm';
 import { GuestSelector } from './GuestSelector';
 import { RoomSelection } from './sections/RoomSelection';
@@ -58,8 +59,14 @@ export const CreateReservationForm: React.FC = () => {
     navigate('/guests/create');
   };
 
-  // Helper function to get error message
-  const getErrorMessage = (error: any): string | undefined => {
+  /**
+   * Extrae el mensaje de error de la estructura de errores de React Hook Form.
+   * Evita el uso de `any` mediante acceso seguro a propiedades.
+   * 
+   * @param error - Error de React Hook Form (puede ser FieldError o undefined)
+   * @returns Mensaje de error o undefined
+   */
+  const getErrorMessage = (error: FieldError | undefined): string | undefined => {
     return error?.message || undefined;
   };
 
@@ -143,7 +150,7 @@ export const CreateReservationForm: React.FC = () => {
               }}
               numberOfGuests={formData.numberOfGuests}
               allowMultiple={formData.numberOfGuests > 2}
-              error={getErrorMessage(errors.roomIds) || getErrorMessage(errors.roomId) || getErrorMessage(errors.roomType)}
+              error={errors.roomIds?.message || getErrorMessage(errors.roomId) || getErrorMessage(errors.roomType)}
             />
           ) : (
             <div className="border border-gray-200 rounded-lg p-6 text-center">

@@ -1,5 +1,6 @@
 ﻿import type { SimpleReservationFormData, Reservation, ApiCreateReservaPayload, ApiReservation, ApiReservaHabitacion } from '../types/domain';
-import { mapSimpleFormToApiPayload, mapApiReservationToReservation, mapStatusToEstadoId } from '../types';
+import type { ApiReservaFull } from '../types';
+import { mapSimpleFormToApiPayload, mapApiReservationToReservation, mapStatusToEstadoId, mapApiReservaFullToReservation } from '../types';
 import type { AdditionalService } from '../../../types/core/domain';
 import { simulateApiCall, cloneData } from '../utils/mockApi';
 import { servicesData } from '../data/servicesData';
@@ -185,17 +186,30 @@ class ReservationService {
       return reservation || null;
     }
 
-    const res = await apiClient.get(`/reservas/${id}`);
-    const apiRes: ApiReservation = res.data?.data ? res.data.data : res.data;
-    if (!apiRes) return null;
+    try {
+      // Use the new API endpoint that returns the full structure in one call
+      const res = await apiClient.get<ApiReservaFull | { data: ApiReservaFull }>(`/reservas/${id}`);
+      
+      // Handle both response formats: direct object or wrapped in { data: {...} }
+      const apiReserva: ApiReservaFull = (res.data as any)?.data ?? res.data;
+      
+      if (!apiReserva || !apiReserva.id_reserva) {
+        console.error('Invalid API response structure:', res.data);
+        return null;
+      }
 
-    // Fetch habitaciones for this reserva
-    const roomsRes = await apiClient.get(`/reservas/${id}/habitaciones`);
-    const apiHab: ApiReservaHabitacion[] = Array.isArray(roomsRes.data) ? roomsRes.data : (roomsRes.data?.data || []);
+      console.log('API Response:', apiReserva); // Debug log
+      
+      // Use the new mapper for the full API structure
+      const reservation = mapApiReservaFullToReservation(apiReserva);
+      
+      console.log('Mapped Reservation:', reservation); // Debug log
 
-    const reservation = mapApiReservationToReservation(apiRes as ApiReservation, undefined, undefined, apiHab);
-
-    return reservation;
+      return reservation;
+    } catch (error) {
+      console.error('Error fetching reservation:', error);
+      return null;
+    }
   }
 
   async getReservationByConfirmation(confirmationNumber: string): Promise<Reservation | null> {
