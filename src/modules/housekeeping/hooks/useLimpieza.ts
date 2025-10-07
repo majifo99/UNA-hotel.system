@@ -46,7 +46,7 @@ export function useAssignForm(params: UseAssignFormParams) {
     return js.toISOString();
   }, []);
 
-  // ✅ Reglas: solo PATCH; obligatorio: habitación válida + al menos un campo a editar
+  // ✅ Reglas nuevas: solo PATCH, nada obligatorio salvo tener habitación y al menos un campo a editar
   const canSave = useMemo(() => {
     if (idHabitacion == null || Number.isNaN(Number(idHabitacion))) return false;
     const anyField =
@@ -55,11 +55,11 @@ export function useAssignForm(params: UseAssignFormParams) {
       descripcion.trim() ||
       notas.trim() ||
       (fecha && hora) ||
-      typeof asignadoA === "number";
+      (typeof asignadoA === "number"); // cuenta como cambio
     return Boolean(anyField);
   }, [idHabitacion, prioridad, nombre, descripcion, notas, fecha, hora, asignadoA]);
 
-  // ---- VALIDATE (refactor: menor complejidad cognitiva) ----
+  // ---- VALIDATE (refactor: menor complejidad) ----
   const validate = useCallback(() => {
     const tNombre = nombre.trim();
     const tDescripcion = descripcion.trim();
@@ -68,9 +68,9 @@ export function useAssignForm(params: UseAssignFormParams) {
     const hasFecha = !!fecha;
     const hasHora = !!hora;
 
+    const faltaParFechaHora = (hasFecha || hasHora) && !(hasFecha && hasHora);
     const fechaInvalida = hasFecha && !/^\d{4}-\d{2}-\d{2}$/.test(fecha);
     const horaInvalida = hasHora && !/^\d{2}:\d{2}$/.test(hora);
-    const faltaParFechaHora = (hasFecha || hasHora) && !(hasFecha && hasHora);
 
     const prioridadInvalida = !!prioridad && !PRIORIDADES.includes(prioridad);
     const asignadoInvalido = asignadoA != null && Number.isNaN(Number(asignadoA));
@@ -88,16 +88,18 @@ export function useAssignForm(params: UseAssignFormParams) {
       typeof asignadoA === "number";
 
     const e: Record<string, string> = {
-      ...(idHabitacion == null || Number.isNaN(Number(idHabitacion)) ? { id_habitacion: "Selecciona una habitación válida." } : {}),
-      ...(faltaParFechaHora ? { fecha: "Si cambias la programación, llena fecha y hora." } : {}),
-      ...(!faltaParFechaHora && fechaInvalida ? { fecha: "Formato inválido (yyyy-MM-dd)." } : {}),
-      ...(!faltaParFechaHora && horaInvalida ? { hora: "Formato inválido (HH:mm)." } : {}),
-      ...(nombreInvalido ? { nombre: "El nombre debe tener entre 3 y 100 caracteres." } : {}),
-      ...(descripcionInvalida ? { descripcion: "Máximo 500 caracteres." } : {}),
-      ...(notasInvalidas ? { notas: "Máximo 500 caracteres." } : {}),
-      ...(prioridadInvalida ? { prioridad: "Prioridad inválida." } : {}),
-      ...(asignadoInvalido ? { asignadoA: "Selecciona un usuario válido." } : {}),
-      ...(!anyField ? { form: "No hay cambios para guardar." } : {}),
+      ...((idHabitacion == null || Number.isNaN(Number(idHabitacion))) && {
+        id_habitacion: "Selecciona una habitación válida.",
+      }),
+      ...(faltaParFechaHora && { fecha: "Si cambias la programación, llena fecha y hora." }),
+      ...(!faltaParFechaHora && fechaInvalida && { fecha: "Formato inválido (yyyy-MM-dd)." }),
+      ...(!faltaParFechaHora && horaInvalida && { hora: "Formato inválido (HH:mm)." }),
+      ...(nombreInvalido && { nombre: "El nombre debe tener entre 3 y 100 caracteres." }),
+      ...(descripcionInvalida && { descripcion: "Máximo 500 caracteres." }),
+      ...(notasInvalidas && { notas: "Máximo 500 caracteres." }),
+      ...(prioridadInvalida && { prioridad: "Prioridad inválida." }),
+      ...(asignadoInvalido && { asignadoA: "Selecciona un usuario válido." }),
+      ...(!anyField && { form: "No hay cambios para guardar." }),
     };
 
     setErrors(e);
@@ -120,7 +122,7 @@ export function useAssignForm(params: UseAssignFormParams) {
     setFecha("");
     setHora("");
     setNotas("");
-    setAsignadoA(null);
+    setAsignadoA(null); // reset también asignación
     setErrors({});
     setToast(null);
   }, []);
