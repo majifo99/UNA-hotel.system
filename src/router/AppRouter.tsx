@@ -7,6 +7,7 @@ import { CreateReservationPage } from '../modules/reservations/pages/CreateReser
 import { SelectServicesPage } from '../modules/reservations/pages/SelectServicesPage';
 import { ReservationEditPage } from '../modules/reservations/pages/ReservationEditPage';
 import { ReservationCancelPage } from '../modules/reservations/pages/ReservationCancelPage';
+import { ReservationDetailFullPage } from '../modules/reservations/pages/ReservationDetailFullPage';
 import HousekeepingDashboard from '../modules/housekeeping/pages/HousekeepingDashboard';
 import { GuestsPage } from '../modules/guests/pages/GuestsPage';
 import { CreateGuestPage } from '../modules/guests/pages/CreateGuestPage';
@@ -129,6 +130,11 @@ const router = createBrowserRouter([
             element: <SelectServicesPage />,
           },
           {
+            // View full reservation details (pantalla completa)
+            path: ':id/detail',
+            element: <ReservationDetailFullPage />,
+          },
+          {
             // Edit existing reservation
             path: ':id/edit',
             element: <ReservationEditPage />,
@@ -138,7 +144,6 @@ const router = createBrowserRouter([
             path: ':id/cancel',
             element: <ReservationCancelPage />,
           },
-          // Future detail routes can be added here, e.g. /reservations/:id
         ],
       },
       {

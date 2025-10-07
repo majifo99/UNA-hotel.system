@@ -91,14 +91,23 @@ export const useReservationEditForm = ({
     if (totalGuests !== numberOfGuestsValue) {
       setValue('numberOfGuests', totalGuests, { shouldValidate: true, shouldDirty: true });
     }
+  }, [numberOfAdultsValue, numberOfChildrenValue, numberOfInfantsValue, numberOfGuestsValue, setValue]);
 
-    // Validación manual: debe haber al menos 1 huésped
+  /**
+   * Efecto: validación manual de huéspedes mínimos
+   */
+  React.useEffect(() => {
+    const totalGuests = (numberOfAdultsValue || 0) + (numberOfChildrenValue || 0) + (numberOfInfantsValue || 0);
     if (totalGuests <= 0) {
       setError('numberOfGuests', { type: 'manual', message: 'Debe registrar al menos 1 huésped.' });
-    } else if (formState.errors.numberOfGuests?.type === 'manual' && formState.errors.numberOfGuests.message?.includes('al menos 1 huésped')) {
-      clearErrors('numberOfGuests');
+    } else {
+      // Solo limpia el error si existe
+      const currentError = formState.errors.numberOfGuests;
+      if (currentError?.type === 'manual' && currentError.message?.includes('al menos 1 huésped')) {
+        clearErrors('numberOfGuests');
+      }
     }
-  }, [numberOfAdultsValue, numberOfChildrenValue, numberOfInfantsValue, numberOfGuestsValue, setValue, setError, clearErrors, formState.errors.numberOfGuests]);
+  }, [numberOfAdultsValue, numberOfChildrenValue, numberOfInfantsValue, setError, clearErrors]);
 
   /**
    * Efecto: valida que los huéspedes no excedan la capacidad de la habitación
@@ -107,10 +116,14 @@ export const useReservationEditForm = ({
     if (!maxGuests) return;
     if (numberOfGuestsValue > maxGuests) {
       setError('numberOfGuests', { type: 'manual', message: `La habitación seleccionada admite máximo ${maxGuests} huéspedes.` });
-    } else if (formState.errors.numberOfGuests?.type === 'manual' && formState.errors.numberOfGuests.message?.includes('habitación seleccionada')) {
-      clearErrors('numberOfGuests');
+    } else {
+      // Solo limpia el error si existe
+      const currentError = formState.errors.numberOfGuests;
+      if (currentError?.type === 'manual' && currentError.message?.includes('habitación seleccionada')) {
+        clearErrors('numberOfGuests');
+      }
     }
-  }, [numberOfGuestsValue, maxGuests, setError, clearErrors, formState.errors.numberOfGuests]);
+  }, [numberOfGuestsValue, maxGuests, setError, clearErrors]);
 
   /**
    * Handler: envía la actualización de la reserva con validaciones finales
