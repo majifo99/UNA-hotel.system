@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { CheckInData } from '../types/checkin';
 import { guestApiService } from '../../guests/services/guestApiService';
+import { FrontdeskService } from '../services/frontdeskService';
 import type { CreateGuestData } from '../../../types/core/forms';
 import type { DocumentType } from '../../../types/core/enums';
 
@@ -101,18 +102,72 @@ export const useCheckIn = () => {
       // Handle guest creation for walk-ins
       await handleWalkInGuestCreation(data);
       
-      // TODO: Implement actual check-in API call when Laravel route is available
+      // Perform actual check-in API call
       console.log('Check-in data ready for submission:', data);
       
-      // Simulate folio creation - Replace with actual API call
-      const simulatedFolioId = Math.floor(Math.random() * 1000) + 1;
-      setFolioId(simulatedFolioId);
+      let checkInResult;
+      if (data.isWalkIn) {
+        // Walk-in check-in
+        checkInResult = await FrontdeskService.createWalkIn({
+          guestName: data.guestName,
+          roomNumber: data.roomNumber,
+          checkInDate: data.checkInDate,
+          checkOutDate: data.checkOutDate,
+          numberOfGuests: data.numberOfGuests,
+          adultos: data.adultos,
+          ninos: data.ninos,
+          bebes: data.bebes,
+          identificationNumber: data.identificationNumber,
+          paymentMethod: data.paymentMethod,
+          currency: data.currency,
+          observacion_checkin: data.observacion_checkin,
+          guestEmail: data.guestEmail,
+          guestPhone: data.guestPhone,
+          guestNationality: data.guestNationality,
+          existingGuestId: data.existingGuestId,
+          createdGuestId: data.createdGuestId,
+          useChargeDistribution: data.useChargeDistribution,
+          totalAmount: data.totalAmount,
+          requiereDivisionCargos: data.requiereDivisionCargos,
+          tiposCargoDividir: data.tiposCargoDividir,
+          notasDivision: data.notasDivision,
+          empresaPagadora: data.empresaPagadora,
+          responsablesPrevios: data.responsablesPrevios
+        });
+      } else {
+        // Check-in from existing reservation
+        checkInResult = await FrontdeskService.checkInFromReservation(data.reservationId, {
+          roomNumber: data.roomNumber,
+          checkInDate: data.checkInDate,
+          checkOutDate: data.checkOutDate,
+          numberOfGuests: data.numberOfGuests,
+          adultos: data.adultos,
+          ninos: data.ninos,
+          bebes: data.bebes,
+          identificationNumber: data.identificationNumber,
+          paymentMethod: data.paymentMethod,
+          currency: data.currency,
+          observacion_checkin: data.observacion_checkin,
+          useChargeDistribution: data.useChargeDistribution,
+          totalAmount: data.totalAmount,
+          requiereDivisionCargos: data.requiereDivisionCargos,
+          tiposCargoDividir: data.tiposCargoDividir,
+          notasDivision: data.notasDivision,
+          empresaPagadora: data.empresaPagadora,
+          responsablesPrevios: data.responsablesPrevios
+        });
+      }
       
-      // Invalidate relevant queries when we have real check-in API
+      const folioId = checkInResult.folioId;
+      setFolioId(folioId);
+      
+      // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['checkIns'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
       
       setIsSubmitting(false);
-      return { success: true, folioId: simulatedFolioId, requiresChargeDistribution: data.requiereDivisionCargos };
+      return { success: true, folioId, requiresChargeDistribution: data.requiereDivisionCargos };
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error inesperado');
       setIsSubmitting(false);

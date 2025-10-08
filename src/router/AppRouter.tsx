@@ -5,9 +5,6 @@ import { Home } from '../pages/Home';
 import { ReservationsListPage } from '../modules/reservations/pages/ReservationsListPage';
 import { CreateReservationPage } from '../modules/reservations/pages/CreateReservationPage';
 import { SelectServicesPage } from '../modules/reservations/pages/SelectServicesPage';
-import { ReservationEditPage } from '../modules/reservations/pages/ReservationEditPage';
-import { ReservationCancelPage } from '../modules/reservations/pages/ReservationCancelPage';
-import { ReservationDetailFullPage } from '../modules/reservations/pages/ReservationDetailFullPage';
 import HousekeepingDashboard from '../modules/housekeeping/pages/HousekeepingDashboard';
 import { GuestsPage } from '../modules/guests/pages/GuestsPage';
 import { CreateGuestPage } from '../modules/guests/pages/CreateGuestPage';
@@ -15,9 +12,9 @@ import FrontDesk from '../modules/frontdesk/components/FrontDesk';
 import CheckInPage from '../modules/frontdesk/pages/CheckInPage';
 import CheckOutPage from '../modules/frontdesk/pages/CheckOutPage';
 import RoomChange from '../modules/frontdesk/components/RoomChange';
-import { FolioPage } from '../modules/frontdesk/pages/FolioPage';
 import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
 import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
+import { FolioPage } from '../modules/frontdesk/pages/FolioPage';
 
 /**
  * TanStack Query Client Configuration
@@ -112,12 +109,12 @@ const router = createBrowserRouter([
             element: <RoomChange />,
           },
           {
-            path: 'folio/:folioId',
-            element: <FolioPage />,
-          },
-          {
             path: 'register',
             element: <Navigate to="/reservations/create" replace />,
+          },
+          {
+            path: 'folio/:folioId',
+            element: <FolioPage />,
           },
         ],
       },
@@ -139,21 +136,7 @@ const router = createBrowserRouter([
             path: 'create/services',
             element: <SelectServicesPage />,
           },
-          {
-            // View full reservation details (pantalla completa)
-            path: ':id/detail',
-            element: <ReservationDetailFullPage />,
-          },
-          {
-            // Edit existing reservation
-            path: ':id/edit',
-            element: <ReservationEditPage />,
-          },
-          {
-            // Cancel existing reservation
-            path: ':id/cancel',
-            element: <ReservationCancelPage />,
-          },
+          // Future detail routes can be added here, e.g. /reservations/:id
         ],
       },
       {

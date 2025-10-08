@@ -9,19 +9,23 @@ interface RoomDetailsModalProps {
 // Room status colors mapping
 const ROOM_STATUS_COLORS: Record<FrontdeskRoomStatus, string> = {
   available: '#10B981',
+  occupied: '#EF4444',
   reserved: '#8B5CF6',
   'checked-in': '#EF4444', 
   'checked-out': '#F97316',
-  maintenance: '#F59E0B'
+  maintenance: '#F59E0B',
+  cleaning: '#A855F7'
 };
 
 // Status labels mapping
 const STATUS_LABELS: Record<FrontdeskRoomStatus, string> = {
   available: 'Disponible',
+  occupied: 'Ocupada',
   reserved: 'Reservada',
   'checked-in': 'Ocupada',
   'checked-out': 'Check-out',
-  maintenance: 'Mantenimiento'
+  maintenance: 'Mantenimiento',
+  cleaning: 'Limpieza'
 };
 
 const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({ room, onClose }) => {

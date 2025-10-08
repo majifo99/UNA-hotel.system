@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, LogIn, UserPlus, Calendar, Search, User } from 'lucide-react';
+import { ArrowLeft, LogIn, UserPlus, Calendar, Search, User, CheckCircle, AlertCircle } from 'lucide-react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import ReactFlagsSelect from 'react-flags-select';
@@ -8,6 +8,7 @@ import { useCheckIn } from '../hooks/useCheckIn';
 import { useGuests } from '../../guests/hooks/useGuests';
 import { useRoomSelection } from '../hooks/useRoomSelection';
 import { useInputValidation } from '../../../hooks/useInputValidation';
+import { useReservationById } from '../../reservations/hooks/useReservationQueries';
 import { ROUTES } from '../../../router/routes';
 import { DEFAULT_CURRENCY } from '../constants/currencies';
 import type { CheckInData, PaymentMethod, Currency } from '../types/checkin';
@@ -231,6 +232,20 @@ const CheckIn = () => {
   const [roomInfo, setRoomInfo] = useState<RoomInfo | null>(null);
   const [loadingRoomInfo, setLoadingRoomInfo] = useState(false);
 
+  // Estados para búsqueda de reserva
+  const [reservationSearchId, setReservationSearchId] = useState('');
+  
+  // Hook para obtener datos de reserva por ID
+  const { 
+    data: foundReservation, 
+    isLoading: isLoadingReservation, 
+    isError: isReservationError,
+    error: reservationError 
+  } = useReservationById(reservationSearchId);
+
+  // Estado para controlar si se han cargado datos de reserva
+  const [hasLoadedReservationData, setHasLoadedReservationData] = useState(false);
+
   // Efecto para cargar información de habitación cuando cambia el número
   useEffect(() => {
     const fetchRoomInfo = async () => {
@@ -252,13 +267,100 @@ const CheckIn = () => {
     fetchRoomInfo();
   }, [formData.roomNumber, getRoomInfo]);
 
+  // Efecto para autorellenar datos cuando se encuentra una reserva
+  useEffect(() => {
+    if (foundReservation && !hasLoadedReservationData && checkInType === 'reservation') {
+      console.log('Autofilling from reservation:', foundReservation);
+      
+      // Autorellenar datos del huésped
+      if (foundReservation.guest) {
+        const guest = foundReservation.guest;
+        const fullLastName = guest.secondLastName 
+          ? `${guest.firstLastName} ${guest.secondLastName}`
+          : guest.firstLastName;
+        
+        setFormData(prev => ({
+          ...prev,
+          firstName: guest.firstName,
+          lastName: fullLastName,
+          email: guest.email,
+          phone: guest.phone,
+          identificationNumber: guest.documentNumber,
+          nationality: guest.nationality || 'US',
+        }));
+      }
+      
+      // Autorellenar datos de la estancia
+      setFormData(prev => ({
+        ...prev,
+        checkInDate: foundReservation.checkInDate ? foundReservation.checkInDate.split('T')[0] : prev.checkInDate,
+        checkOutDate: foundReservation.checkOutDate ? foundReservation.checkOutDate.split('T')[0] : prev.checkOutDate,
+        numberOfGuests: foundReservation.numberOfGuests,
+        adultos: foundReservation.numberOfAdults,
+        ninos: foundReservation.numberOfChildren,
+        bebes: foundReservation.numberOfInfants,
+        roomNumber: foundReservation.room?.number || prev.roomNumber,
+      }));
+      
+      setHasLoadedReservationData(true);
+    }
+  }, [foundReservation, hasLoadedReservationData, checkInType]);
+
+  // Resetear datos cargados cuando cambia el tipo de check-in
+  useEffect(() => {
+    if (checkInType === 'walk-in') {
+      setHasLoadedReservationData(false);
+      setReservationSearchId('');
+    }
+  }, [checkInType]);
+
   // Función para cambiar el tipo de check-in y limpiar datos relevantes
   const handleCheckInTypeChange = (type: CheckInType) => {
     setCheckInType(type);
+    setHasLoadedReservationData(false);
     if (type === 'walk-in') {
       // Limpiar el ID de reserva para walk-ins
       setFormData(prev => ({ ...prev, reservationId: '' }));
+      setReservationSearchId('');
+    } else {
+      // Limpiar datos de walk-in
+      setFormData(prev => ({
+        ...prev,
+        selectedGuestId: '',
+        guestSearchTerm: ''
+      }));
     }
+  };
+
+  // Función para buscar reserva por ID
+  const handleSearchReservation = () => {
+    if (formData.reservationId.trim()) {
+      setReservationSearchId(formData.reservationId.trim());
+      setHasLoadedReservationData(false);
+    }
+  };
+
+  // Función para limpiar búsqueda de reserva
+  const handleClearReservation = () => {
+    setFormData(prev => ({
+      ...prev,
+      reservationId: '',
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      identificationNumber: '',
+      nationality: 'US',
+      checkInDate: new Date().toISOString().split('T')[0],
+      checkOutDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      numberOfGuests: 1,
+      adultos: 1,
+      ninos: 0,
+      bebes: 0,
+      roomNumber: ''
+    }));
+    setReservationSearchId('');
+    setHasLoadedReservationData(false);
   };
 
   // Función para cambiar el tipo de huésped en walk-in
@@ -355,25 +457,9 @@ const CheckIn = () => {
       })
     };
 
-    const result = await validateAndSubmit(checkInData);
-    if (result.success) {
-      // Emitir evento personalizado para el flujo
-      const checkInSuccessEvent = new CustomEvent('checkInSuccess', {
-        detail: {
-          folioId: result.folioId,
-          guestName: checkInData.guestName,
-          roomNumber: checkInData.roomNumber,
-          requiresChargeDistribution: checkInData.requiereDivisionCargos,
-          checkInData
-        }
-      });
-      window.dispatchEvent(checkInSuccessEvent);
-      
-      // Si no requiere división de cargos, ir directamente al dashboard
-      if (!checkInData.requiereDivisionCargos) {
-        navigate(ROUTES.FRONTDESK.BASE);
-      }
-      // Si requiere división, el flujo se encargará de mostrar el FolioManager
+    const success = await validateAndSubmit(checkInData);
+    if (success) {
+      navigate(ROUTES.FRONTDESK.BASE);
     }
   };
 
@@ -462,19 +548,105 @@ const CheckIn = () => {
             {checkInType === 'reservation' && (
               <div className="border border-gray-200 rounded-lg p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Información de la Reserva</h2>
-                <div>
-                  <label htmlFor="reservationId" className="block text-sm font-medium text-gray-700 mb-2">
-                    ID de Reserva <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="reservationId"
-                    type="text"
-                    value={formData.reservationId}
-                    onChange={(e) => setFormData(prev => ({ ...prev, reservationId: e.target.value }))}
-                    className={getInputClasses(false, false)}
-                    required={checkInType === 'reservation'}
-                    placeholder="Ingrese el ID de la reserva"
-                  />
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="reservationId" className="block text-sm font-medium text-gray-700 mb-2">
+                      ID de Reserva <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        id="reservationId"
+                        type="text"
+                        value={formData.reservationId}
+                        onChange={(e) => {
+                          setFormData(prev => ({ ...prev, reservationId: e.target.value }));
+                          if (hasLoadedReservationData) {
+                            setHasLoadedReservationData(false);
+                          }
+                        }}
+                        className={getInputClasses(false, false)}
+                        required={checkInType === 'reservation'}
+                        placeholder="Ingrese el ID de la reserva"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSearchReservation();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSearchReservation}
+                        disabled={!formData.reservationId.trim() || isLoadingReservation}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {isLoadingReservation ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Buscando...
+                          </>
+                        ) : (
+                          <>
+                            <Search className="w-4 h-4" />
+                            Buscar
+                          </>
+                        )}
+                      </button>
+                      {hasLoadedReservationData && (
+                        <button
+                          type="button"
+                          onClick={handleClearReservation}
+                          className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 flex items-center gap-2"
+                        >
+                          Limpiar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Estado de búsqueda de reserva */}
+                  {isLoadingReservation && (
+                    <div className="flex items-center gap-2 text-blue-600 text-sm">
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      Buscando reserva...
+                    </div>
+                  )}
+
+                  {isReservationError && reservationError && (
+                    <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+                      <AlertCircle className="w-4 h-4" />
+                      No se encontró la reserva o ocurrió un error: {reservationError.message}
+                    </div>
+                  )}
+
+                  {foundReservation && hasLoadedReservationData && (
+                    <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md text-green-700 text-sm">
+                      <CheckCircle className="w-4 h-4" />
+                      Reserva encontrada - Datos cargados automáticamente
+                      <div className="ml-auto">
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                          Estado: {foundReservation.status}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Información adicional de la reserva encontrada */}
+                  {foundReservation && hasLoadedReservationData && (
+                    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-2">Detalles de la Reserva</h3>
+                      <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                        <div><strong>Confirmación:</strong> {foundReservation.confirmationNumber}</div>
+                        <div><strong>Estado:</strong> {foundReservation.status}</div>
+                        <div><strong>Huéspedes:</strong> {foundReservation.numberOfGuests} personas</div>
+                        <div><strong>Noches:</strong> {foundReservation.numberOfNights}</div>
+                        <div><strong>Total:</strong> ${foundReservation.total}</div>
+                        {foundReservation.specialRequests && (
+                          <div className="col-span-2"><strong>Solicitudes:</strong> {foundReservation.specialRequests}</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -590,9 +762,9 @@ const CheckIn = () => {
                       }
                     }}
                     onBlur={(e) => validate('firstName', e.target.value, getCommonRules('firstName'))}
-                    className={getInputClasses(!!errors.firstName, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId))}
+                    className={getInputClasses(!!errors.firstName, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData)}
                     required
-                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId)}
+                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData}
                     placeholder="Ej: Juan"
                   />
                   {errors.firstName && (
@@ -618,9 +790,9 @@ const CheckIn = () => {
                       }
                     }}
                     onBlur={(e) => validate('lastName', e.target.value, getCommonRules('lastName'))}
-                    className={getInputClasses(!!errors.lastName, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId))}
+                    className={getInputClasses(!!errors.lastName, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData)}
                     required
-                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId)}
+                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData}
                     placeholder="Ej: Pérez"
                   />
                   {errors.lastName && (
@@ -642,9 +814,9 @@ const CheckIn = () => {
                       clearError('email');
                     }}
                     onBlur={(e) => validate('email', e.target.value, getCommonRules('email'))}
-                    className={getInputClasses(!!errors.email, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId))}
+                    className={getInputClasses(!!errors.email, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData)}
                     required
-                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId)}
+                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData}
                     placeholder="Ej: juan@email.com"
                   />
                   {errors.email && (
@@ -664,7 +836,7 @@ const CheckIn = () => {
                       id: 'phone',
                       name: 'phone',
                       required: true,
-                      readOnly: isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId),
+                      readOnly: isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData,
                     }}
                     inputClass="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -681,7 +853,7 @@ const CheckIn = () => {
                     selectButtonClassName="react-flags-select-button"
                     aria-labelledby="nationality-label"
                     aria-required="true"
-                    disabled={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId)}
+                    disabled={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData}
                   />
                 </div>
 
@@ -703,9 +875,9 @@ const CheckIn = () => {
                       }
                     }}
                     onBlur={(e) => validate('identificationNumber', e.target.value, getCommonRules('identification'))}
-                    className={getInputClasses(!!errors.identificationNumber, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId))}
+                    className={getInputClasses(!!errors.identificationNumber, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData)}
                     required
-                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId)}
+                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData}
                     placeholder="Ej: 123456789 o AB123456"
                   />
                   {errors.identificationNumber && (
@@ -979,6 +1151,15 @@ const CheckIn = () => {
                               Habitación {room}
                             </button>
                           ))}
+                        </div>
+                      )}
+                      
+                      {/* Mostrar mensaje si no hay sugerencias pero el usuario está escribiendo */}
+                      {isRoomEditable && formData.roomNumber.length > 0 && roomSuggestions.length === 0 && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-10 p-3">
+                          <p className="text-sm text-gray-500">
+                            No se encontraron habitaciones que coincidan con "{formData.roomNumber}"
+                          </p>
                         </div>
                       )}
                     </div>
