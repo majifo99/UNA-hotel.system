@@ -8,7 +8,6 @@ import { useCheckIn } from '../hooks/useCheckIn';
 import { useGuests } from '../../guests/hooks/useGuests';
 import { useRoomSelection } from '../hooks/useRoomSelection';
 import { useInputValidation } from '../../../hooks/useInputValidation';
-import { useReservationById } from '../../reservations/hooks/useReservationQueries';
 import { ROUTES } from '../../../router/routes';
 import { DEFAULT_CURRENCY } from '../constants/currencies';
 import type { CheckInData, PaymentMethod, Currency } from '../types/checkin';
@@ -232,20 +231,6 @@ const CheckIn = () => {
   const [roomInfo, setRoomInfo] = useState<RoomInfo | null>(null);
   const [loadingRoomInfo, setLoadingRoomInfo] = useState(false);
 
-  // Estados para búsqueda de reserva
-  const [reservationSearchId, setReservationSearchId] = useState('');
-  
-  // Hook para obtener datos de reserva por ID
-  const { 
-    data: foundReservation, 
-    isLoading: isLoadingReservation, 
-    isError: isReservationError,
-    error: reservationError 
-  } = useReservationById(reservationSearchId);
-
-  // Estado para controlar si se han cargado datos de reserva
-  const [hasLoadedReservationData, setHasLoadedReservationData] = useState(false);
-
   // Efecto para cargar información de habitación cuando cambia el número
   useEffect(() => {
     const fetchRoomInfo = async () => {
@@ -266,53 +251,6 @@ const CheckIn = () => {
     };
     fetchRoomInfo();
   }, [formData.roomNumber, getRoomInfo]);
-
-  // Efecto para autorellenar datos cuando se encuentra una reserva
-  useEffect(() => {
-    if (foundReservation && !hasLoadedReservationData && checkInType === 'reservation') {
-      console.log('Autofilling from reservation:', foundReservation);
-      
-      // Autorellenar datos del huésped
-      if (foundReservation.guest) {
-        const guest = foundReservation.guest;
-        const fullLastName = guest.secondLastName 
-          ? `${guest.firstLastName} ${guest.secondLastName}`
-          : guest.firstLastName;
-        
-        setFormData(prev => ({
-          ...prev,
-          firstName: guest.firstName,
-          lastName: fullLastName,
-          email: guest.email,
-          phone: guest.phone,
-          identificationNumber: guest.documentNumber,
-          nationality: guest.nationality || 'US',
-        }));
-      }
-      
-      // Autorellenar datos de la estancia
-      setFormData(prev => ({
-        ...prev,
-        checkInDate: foundReservation.checkInDate ? foundReservation.checkInDate.split('T')[0] : prev.checkInDate,
-        checkOutDate: foundReservation.checkOutDate ? foundReservation.checkOutDate.split('T')[0] : prev.checkOutDate,
-        numberOfGuests: foundReservation.numberOfGuests,
-        adultos: foundReservation.numberOfAdults,
-        ninos: foundReservation.numberOfChildren,
-        bebes: foundReservation.numberOfInfants,
-        roomNumber: foundReservation.room?.number || prev.roomNumber,
-      }));
-      
-      setHasLoadedReservationData(true);
-    }
-  }, [foundReservation, hasLoadedReservationData, checkInType]);
-
-  // Resetear datos cargados cuando cambia el tipo de check-in
-  useEffect(() => {
-    if (checkInType === 'walk-in') {
-      setHasLoadedReservationData(false);
-      setReservationSearchId('');
-    }
-  }, [checkInType]);
 
   // Función para cambiar el tipo de check-in y limpiar datos relevantes
   const handleCheckInTypeChange = (type: CheckInType) => {
@@ -457,9 +395,25 @@ const CheckIn = () => {
       })
     };
 
-    const success = await validateAndSubmit(checkInData);
-    if (success) {
-      navigate(ROUTES.FRONTDESK.BASE);
+    const result = await validateAndSubmit(checkInData);
+    if (result.success) {
+      // Emitir evento personalizado para el flujo
+      const checkInSuccessEvent = new CustomEvent('checkInSuccess', {
+        detail: {
+          folioId: result.folioId,
+          guestName: checkInData.guestName,
+          roomNumber: checkInData.roomNumber,
+          requiresChargeDistribution: checkInData.requiereDivisionCargos,
+          checkInData
+        }
+      });
+      window.dispatchEvent(checkInSuccessEvent);
+      
+      // Si no requiere división de cargos, ir directamente al dashboard
+      if (!checkInData.requiereDivisionCargos) {
+        navigate(ROUTES.FRONTDESK.BASE);
+      }
+      // Si requiere división, el flujo se encargará de mostrar el FolioManager
     }
   };
 
