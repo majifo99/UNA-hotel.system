@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { SimpleReservationFormData, Reservation } from '../types';
+import type { SimpleReservationFormData, Reservation, ReservationFilters, CreateReservationDto, AddReservationServiceDto } from '../types';
 
 // Import service layer for API calls
 import { roomService } from '../services/roomService';
@@ -46,13 +46,14 @@ export const reservationKeys = {
 /**
  * Hook: useReservationsList
  *
- * Provides the full reservations list with TanStack Query caching.
- * Prefers backend data when available, falling back to mock data when configured.
+ * Provides the reservations list with optional filters.
+ * Supports: search (email), estado, fuente, desde, hasta, page
+ * All parameters are optional and combinable.
  */
-export const useReservationsList = () => {
+export const useReservationsList = (filters?: ReservationFilters) => {
   return useQuery({
-    queryKey: reservationKeys.list(),
-    queryFn: () => reservationService.getAllReservations(),
+    queryKey: [...reservationKeys.list(), filters] as const,
+    queryFn: () => reservationService.getReservations(filters),
     staleTime: 60 * 1000, // 1 minute - reservations can change frequently
   });
 };
@@ -89,6 +90,15 @@ export const useRoomTypes = () => {
  * Hook: useAvailableRooms
  *
  * Fetches available rooms based on check-in/check-out dates and guest count.
+ * 
+ * Optimizaciones:
+ * - Solo hace fetch cuando hay parámetros válidos (enabled)
+ * - Mantiene datos previos en cache durante 5 minutos (staleTime)
+ * - Usa `keepPreviousData` implícito de TanStack Query v5
+ * - No refetch automático cuando los parámetros son undefined temporalmente
+ * 
+ * Esto evita que se pierdan las habitaciones visibles cuando otros componentes
+ * invalidan queries o actualizan el estado temporalmente.
  */
 export const useAvailableRooms = (checkInDate: string, checkOutDate: string, numberOfGuests: number) => {
   return useQuery({
@@ -96,6 +106,10 @@ export const useAvailableRooms = (checkInDate: string, checkOutDate: string, num
     queryFn: () => roomService.getAvailableRooms(checkInDate, checkOutDate, numberOfGuests),
     enabled: !!(checkInDate && checkOutDate && numberOfGuests > 0), // Only fetch when all params are valid
     staleTime: 5 * 60 * 1000, // 5 minutes - rooms don't change frequently
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes even if unmounted
+    refetchOnWindowFocus: false, // Don't refetch when window regains focus
+    refetchOnReconnect: false, // Don't refetch on reconnect
+    retry: 2, // Only retry twice on failure
   });
 };
 
@@ -187,6 +201,81 @@ export const useCancelReservation = () => {
     },
     onError: (error) => {
       console.error('Error cancelling reservation:', error);
+    },
+  });
+};
+
+// =================== NEW API HOOKS ===================
+
+/**
+ * Hook: useCreateNewReservation
+ * 
+ * Mutation for creating a new reservation with multiple rooms.
+ * Uses the new API structure (POST /reservas).
+ * 
+ * Features:
+ * - Invalidates reservation list on success
+ * - Updates cache optimistically
+ * - Returns reservation data for navigation
+ */
+export const useCreateNewReservation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: CreateReservationDto) => {
+      return reservationService.createNewReservation(payload);
+    },
+    onSuccess: (data: Reservation) => {
+      // Invalidate all reservation queries to refresh lists
+      queryClient.invalidateQueries({ queryKey: reservationKeys.list() });
+
+      // Set the new reservation in detail cache
+      queryClient.setQueryData(reservationKeys.detail(data.id), data);
+
+      console.log('[Hook] Reservation created successfully:', data);
+    },
+    onError: (error) => {
+      console.error('[Hook] Error creating reservation:', error);
+    },
+  });
+};
+
+/**
+ * Hook: useAddReservationService
+ * 
+ * Mutation for adding a service to an existing reservation.
+ * Uses the new API structure (POST /reservas/{id}/servicios).
+ * 
+ * Features:
+ * - Invalidates ONLY the specific reservation detail (not the full list)
+ * - Preserves other query states to avoid unnecessary refetches
+ * - Provides feedback through mutation state
+ * 
+ * IMPORTANTE: No invalida la lista completa ni queries de habitaciones disponibles
+ * para mantener el estado del formulario de edición intacto.
+ */
+export const useAddReservationService = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ reservationId, payload }: { reservationId: string; payload: AddReservationServiceDto }) => {
+      return reservationService.addServiceToReservation(reservationId, payload);
+    },
+    onSuccess: (_data, variables) => {
+      // ONLY invalidate the specific reservation detail to refresh services
+      // This preserves form state and available rooms queries
+      queryClient.invalidateQueries({ 
+        queryKey: reservationKeys.detail(variables.reservationId),
+        exact: true, // Only invalidate exact match, not derived queries
+      });
+
+      // DO NOT invalidate the full list or available rooms
+      // The list will update naturally when navigating back
+
+      console.log('[Hook] Service added successfully to reservation:', variables.reservationId);
+    },
+    onError: (error) => {
+      console.error('[Hook] Error adding service to reservation:', error);
     },
   });
 };

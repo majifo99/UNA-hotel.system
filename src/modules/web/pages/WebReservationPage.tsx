@@ -6,8 +6,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { roomsData } from '../../reservations/data/roomsData';
+import { roomService } from '../../reservations/services/roomService';
 import { ProtectedRoute } from '../components/ProtectedRoute';
+import type { Room } from '../../../types/core';
 
 // Step Components
 import { ReservationStepOne } from '../components/reservation/ReservationStepOne';
@@ -41,6 +42,7 @@ export function WebReservationPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
+  const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
   
   // Pre-selected room from URL parameters
   const preSelectedRoomId = searchParams.get('room');
@@ -62,18 +64,38 @@ export function WebReservationPage() {
     additionalAmenities: []
   });
 
-  // Available rooms based on dates and filters
-  const availableRooms = roomsData;
-  
   // Capacity warnings and messages
   const [capacityWarning, setCapacityWarning] = useState<string>('');
   const [showSpecialRequestsHint, setShowSpecialRequestsHint] = useState(false);
 
+  // Fetch available rooms when dates change
+  useEffect(() => {
+    const fetchAvailableRooms = async () => {
+      if (!reservationData.checkIn || !reservationData.checkOut) {
+        return;
+      }
+
+      try {
+        const rooms = await roomService.getAvailableRooms(
+          reservationData.checkIn,
+          reservationData.checkOut,
+          reservationData.adults + reservationData.children
+        );
+        setAvailableRooms(rooms);
+      } catch (error) {
+        console.error('Error fetching available rooms:', error);
+        setAvailableRooms([]);
+      }
+    };
+
+    fetchAvailableRooms();
+  }, [reservationData.checkIn, reservationData.checkOut, reservationData.adults, reservationData.children]);
+
   // Check if current room selection can accommodate guests
   useEffect(() => {
     if (reservationData.selectedRoomIds.length > 0 && (reservationData.adults + reservationData.children) > 0) {
-      const selectedRooms = roomsData.filter(room => reservationData.selectedRoomIds.includes(room.id));
-      const totalCapacity = selectedRooms.reduce((sum, room) => sum + room.capacity, 0);
+      const selectedRooms = availableRooms.filter((room: Room) => reservationData.selectedRoomIds.includes(room.id));
+      const totalCapacity = selectedRooms.reduce((sum: number, room: Room) => sum + room.capacity, 0);
       const totalGuests = reservationData.adults + reservationData.children;
       
       if (totalGuests > totalCapacity) {
@@ -86,7 +108,7 @@ export function WebReservationPage() {
         setShowSpecialRequestsHint(false);
       }
     }
-  }, [reservationData.selectedRoomIds, reservationData.adults, reservationData.children]);
+  }, [reservationData.selectedRoomIds, reservationData.adults, reservationData.children, availableRooms]);
 
   const updateReservationData = (updates: Partial<ReservationData>) => {
     setReservationData(prev => ({ ...prev, ...updates }));
@@ -244,7 +266,7 @@ export function WebReservationPage() {
           {currentStep === 3 && (
             <ReservationStepThree
               reservationData={reservationData}
-              selectedRooms={roomsData.filter(room => reservationData.selectedRoomIds.includes(room.id))}
+              selectedRooms={availableRooms.filter((room: Room) => reservationData.selectedRoomIds.includes(room.id))}
               onComplete={handleStepComplete}
               onBack={goToPreviousStep}
               capacityWarning={capacityWarning}

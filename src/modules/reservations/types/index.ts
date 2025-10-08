@@ -43,3 +43,11 @@ export {
   mapEstadoNombreToStatus,
   mapApiReservaFullToReservation
 } from './mappers-new';
+
+// Export new backend DTOs for API operations
+export type {
+  ReservationFilters,
+  CreateReservationDto,
+  CreateReservationRoomDto,
+  AddReservationServiceDto
+} from './backend';

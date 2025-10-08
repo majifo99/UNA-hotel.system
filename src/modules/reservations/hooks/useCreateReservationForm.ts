@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -100,10 +100,33 @@ export const useCreateReservationForm = () => {
     }
   }, [checkInDate, checkOutDate]);
 
+  // Memoized pricing calculation function
+  const calculatePricing = useCallback(() => {
+    // Calculate pricing for multiple rooms
+    const selectedRooms = availableRooms.filter(room => roomIds.includes(room.id));
+    if (selectedRooms.length === 0) return;
+
+    const roomPrice = selectedRooms.reduce((total, room) => total + (room.pricePerNight || room.basePrice || 0), 0);
+    const subtotal = roomPrice * watchedValues.numberOfNights;
+    
+    const servicesTotal = additionalServices
+      .filter(service => selectedServices.includes(service.id))
+      .reduce((total, service) => total + service.price, 0);
+
+    // Use business rules constants for consistent pricing
+    const pricing = calculateBusinessPricing(subtotal, servicesTotal, COSTA_RICA_IVA_RATE, DEFAULT_DEPOSIT_PERCENTAGE);
+
+    setValue('subtotal', pricing.subtotal);
+    setValue('servicesTotal', pricing.servicesTotal);
+    setValue('taxes', pricing.taxes);
+    setValue('total', pricing.total);
+    setValue('depositRequired', pricing.depositRequired);
+  }, [roomIds, watchedValues.numberOfNights, selectedServices, availableRooms, additionalServices, setValue]);
+
   // Calculate pricing when relevant fields change
   useEffect(() => {
     calculatePricing();
-  }, [roomIds, watchedValues.numberOfNights, selectedServices, availableRooms, additionalServices]);
+  }, [calculatePricing]);
 
   // Additional validation for room capacity
   useEffect(() => {
@@ -165,28 +188,6 @@ export const useCreateReservationForm = () => {
         message: 'Error al buscar habitaciones disponibles. Por favor, intente nuevamente.'
       });
     }
-  };
-
-  const calculatePricing = () => {
-    // Calculate pricing for multiple rooms
-    const selectedRooms = availableRooms.filter(room => roomIds.includes(room.id));
-    if (selectedRooms.length === 0) return;
-
-    const roomPrice = selectedRooms.reduce((total, room) => total + (room.pricePerNight || room.basePrice || 0), 0);
-    const subtotal = roomPrice * watchedValues.numberOfNights;
-    
-    const servicesTotal = additionalServices
-      .filter(service => selectedServices.includes(service.id))
-      .reduce((total, service) => total + service.price, 0);
-
-    // Use business rules constants for consistent pricing
-    const pricing = calculateBusinessPricing(subtotal, servicesTotal, COSTA_RICA_IVA_RATE, DEFAULT_DEPOSIT_PERCENTAGE);
-
-    setValue('subtotal', pricing.subtotal);
-    setValue('servicesTotal', pricing.servicesTotal);
-    setValue('taxes', pricing.taxes);
-    setValue('total', pricing.total);
-    setValue('depositRequired', pricing.depositRequired);
   };
 
   const submitReservation = async (data: SimpleReservationFormData): Promise<boolean> => {
