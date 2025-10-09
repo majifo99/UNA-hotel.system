@@ -13,13 +13,41 @@
  */
 
 import type { AdditionalService } from '../../../../types/core/domain';
-import type { AddReservationServiceDto } from '../../types';
+import type { AddReservationServiceDto, BackendAdditionalService } from '../../types';
 import apiClient from '../../lib/apiClient';
 
 /**
  * Servicio para gestión de servicios adicionales
  */
 export class AdditionalServicesService {
+  /**
+   * Mapea un servicio del backend al formato del frontend
+   */
+  private mapBackendService(backendService: BackendAdditionalService): AdditionalService {
+    // Mapeo de categorías del backend al frontend
+    const categoryMap: Record<string, AdditionalService['category']> = {
+      'food': 'food',
+      'spa': 'spa',
+      'transport': 'transport',
+      'entertainment': 'entertainment',
+      'room_service': 'room_service',
+      'restaurant': 'restaurant'
+    };
+
+    const category = backendService.categoria 
+      ? categoryMap[backendService.categoria.toLowerCase()] || 'other'
+      : 'other';
+
+    return {
+      id: String(backendService.id_servicio),
+      name: backendService.nombre,
+      description: backendService.descripcion || '',
+      price: backendService.precio,
+      category,
+      isActive: true
+    };
+  }
+
   /**
    * Obtiene todos los servicios adicionales disponibles
    * GET /servicios
@@ -28,9 +56,12 @@ export class AdditionalServicesService {
     try {
       const res = await apiClient.get('/servicios');
       console.debug('[API] /servicios response:', res.status, res.data);
-      return res.data?.data || res.data || [];
-    } catch (error: any) {
-      console.error('[API] Error fetching /servicios:', error?.message || error);
+      
+      const backendServices: BackendAdditionalService[] = res.data?.data || res.data || [];
+      return backendServices.map(service => this.mapBackendService(service));
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[API] Error fetching /servicios:', errorMessage);
       throw error;
     }
   }
@@ -42,9 +73,11 @@ export class AdditionalServicesService {
   async getByCategory(category: string): Promise<AdditionalService[]> {
     try {
       const res = await apiClient.get('/servicios', { params: { category } });
-      return res.data?.data || res.data || [];
-    } catch (error: any) {
-      console.error('[API] Error fetching services by category:', error?.message || error);
+      const backendServices: BackendAdditionalService[] = res.data?.data || res.data || [];
+      return backendServices.map(service => this.mapBackendService(service));
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[API] Error fetching services by category:', errorMessage);
       throw error;
     }
   }
@@ -57,9 +90,12 @@ export class AdditionalServicesService {
     try {
       const res = await apiClient.get(`/servicios/${serviceId}`);
       console.debug('[API] /servicios/{id} response:', res.status, res.data);
-      return res.data?.data || res.data || null;
-    } catch (error: any) {
-      console.error(`[API] Error fetching /servicios/${serviceId}:`, error?.message || error);
+      
+      const backendService: BackendAdditionalService | null = res.data?.data || res.data || null;
+      return backendService ? this.mapBackendService(backendService) : null;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[API] Error fetching /servicios/${serviceId}:`, errorMessage);
       throw error;
     }
   }

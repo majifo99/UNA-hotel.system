@@ -4,6 +4,7 @@ import { type FieldError } from 'react-hook-form';
 import { useCreateReservationForm } from '../hooks/useCreateReservationForm';
 import { GuestSelector } from './GuestSelector';
 import { RoomSelection } from './sections/RoomSelection';
+import { ServicesSelection } from './ServicesSelection';
 import {
   FormHeader,
   SectionWrapper,
@@ -24,6 +25,7 @@ export const CreateReservationForm: React.FC = () => {
     isValid,
     isSubmitting,
     availableRooms,
+    additionalServices,
     submitReservation,
     setValue,
     trigger,
@@ -46,14 +48,7 @@ export const CreateReservationForm: React.FC = () => {
     }
   });
 
-  const handleSelectServices = () => {
-    navigate('/reservations/create/services', {
-      state: {
-        reservationData: formData,
-        selectedServices: formData.additionalServices
-      }
-    });
-  };
+
 
   const handleCreateNewGuest = () => {
     navigate('/guests/create');
@@ -129,24 +124,25 @@ export const CreateReservationForm: React.FC = () => {
               availableRooms={availableRooms}
               selectedRoomIds={formData.roomIds}
               onRoomSelect={(roomIds: string[]) => {
-                console.log('Selecting room IDs:', roomIds, 'Previous:', formData.roomIds);
-                // Set the selected room IDs
-                setValue('roomIds', roomIds);
-                
-                // For backwards compatibility, also set roomId and roomType with the first selected room
-                if (roomIds.length > 0) {
-                  const firstRoom = availableRooms.find(room => room.id === roomIds[0]);
-                  setValue('roomId', roomIds[0]);
-                  if (firstRoom) {
-                    setValue('roomType', firstRoom.type as 'single' | 'double' | 'triple' | 'suite' | 'family');
+                // Only update if the selection actually changed
+                if (JSON.stringify(roomIds.sort()) !== JSON.stringify(formData.roomIds.sort())) {
+                  setValue('roomIds', roomIds);
+                  
+                  // For backwards compatibility, also set roomId and roomType with the first selected room
+                  if (roomIds.length > 0) {
+                    const firstRoom = availableRooms.find(room => room.id === roomIds[0]);
+                    setValue('roomId', roomIds[0]);
+                    if (firstRoom) {
+                      setValue('roomType', firstRoom.type as 'single' | 'double' | 'triple' | 'suite' | 'family');
+                    }
+                  } else {
+                    setValue('roomId', '');
+                    setValue('roomType', 'single');
                   }
-                } else {
-                  setValue('roomId', '');
-                  setValue('roomType', 'single');
+                  
+                  // Trigger validation only after all updates
+                  trigger('roomIds');
                 }
-                
-                // Trigger validation
-                trigger('roomIds');
               }}
               numberOfGuests={formData.numberOfGuests}
               allowMultiple={formData.numberOfGuests > 2}
@@ -179,44 +175,27 @@ export const CreateReservationForm: React.FC = () => {
           description="Seleccione servicios adicionales para la estadía"
         >
           <div className="space-y-4">
-            {formData.additionalServices?.length > 0 ? (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium text-green-800">
-                      Servicios seleccionados: {formData.additionalServices.length}
-                    </h4>
-                    <p className="text-sm text-green-600">
-                      Los servicios han sido configurados para esta reserva
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleSelectServices}
-                    className="px-4 py-2 text-sm font-medium text-green-700 bg-green-100 border border-green-300 rounded-lg hover:bg-green-200 transition-colors"
-                  >
-                    Modificar servicios
-                  </button>
-                </div>
-              </div>
+            {additionalServices.length > 0 ? (
+              <ServicesSelection
+                services={additionalServices}
+                selectedServices={formData.additionalServices || []}
+                onServiceToggle={(serviceId: string) => {
+                  const currentServices = formData.additionalServices || [];
+                  const newServices = currentServices.includes(serviceId)
+                    ? currentServices.filter(id => id !== serviceId)
+                    : [...currentServices, serviceId];
+                  setValue('additionalServices', newServices);
+                  trigger('additionalServices');
+                }}
+              />
             ) : (
               <div className="border border-gray-200 rounded-lg p-6 text-center">
                 <div className="space-y-3">
                   <h4 className="text-lg font-medium text-gray-900">
-                    ¿Desea agregar servicios adicionales?
+                    Cargando servicios disponibles...
                   </h4>
                   <p className="text-sm text-gray-600">
-                    Puede seleccionar servicios como desayuno, spa, wifi premium, etc.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleSelectServices}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                  >
-                    Seleccionar servicios
-                  </button>
-                  <p className="text-xs text-gray-500">
-                    Opcional - Puede omitir este paso
+                    Por favor espere mientras cargamos los servicios adicionales.
                   </p>
                 </div>
               </div>

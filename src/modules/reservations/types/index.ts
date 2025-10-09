@@ -49,5 +49,6 @@ export type {
   ReservationFilters,
   CreateReservationDto,
   CreateReservationRoomDto,
-  AddReservationServiceDto
+  AddReservationServiceDto,
+  BackendAdditionalService
 } from './backend';

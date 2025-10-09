@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Save, X } from 'lucide-react';
 import { ServicesSelection } from '../components';
-import type { SimpleReservationFormData } from '../types';
+import type { SimpleReservationFormData, AdditionalService } from '../types';
 import { reservationService } from '../services';
 
 interface LocationState {
@@ -24,7 +24,7 @@ export const SelectServicesPage: React.FC = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  const [additionalServices, setAdditionalServices] = React.useState<Array<{id:string;name:string;description:string;price:number;category:string;}>>([]);
+  const [additionalServices, setAdditionalServices] = React.useState<AdditionalService[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -32,21 +32,11 @@ export const SelectServicesPage: React.FC = () => {
     let mounted = true;
     setLoading(true);
     reservationService.getAdditionalServices()
-      .then((list) => {
-        // Map backend service objects to UI shape if needed
-        const mapped = (list || []).map((s: any) => ({
-          id: String(s.id_servicio || s.id || s.uuid || s.id_service || ''),
-          name: s.nombre || s.name || 'Servicio',
-          description: s.descripcion || s.description || '',
-          price: Number(s.precio ?? s.price ?? 0),
-          category: s.categoria || s.category || 'General',
-        }));
-        // eslint-disable-next-line no-console
-        console.debug('[UI] loaded servicios:', mapped);
-        if (mounted) setAdditionalServices(mapped);
+      .then((services) => {
+        console.debug('[UI] loaded servicios:', services);
+        if (mounted) setAdditionalServices(services);
       })
       .catch((err) => {
-        // eslint-disable-next-line no-console
         console.error('[UI] Error loading servicios:', err);
         if (mounted) setError(String(err?.message || err));
       })

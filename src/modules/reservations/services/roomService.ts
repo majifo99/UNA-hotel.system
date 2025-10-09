@@ -115,7 +115,7 @@ class RoomService extends BaseApiService {
     roomType?: string
   ): Promise<Room[]> {
     try {
-      // Convert dates to YYYY-MM-DD format
+      // Convert dates to YYYY-MM-DD format for logging
       const checkInDate = typeof checkIn === 'string' ? checkIn : checkIn.toISOString().split('T')[0];
       const checkOutDate = typeof checkOut === 'string' ? checkOut : checkOut.toISOString().split('T')[0];
       
@@ -124,19 +124,10 @@ class RoomService extends BaseApiService {
         throw new ApiError('Check-out date must be after check-in date', 400, 'INVALID_DATES');
       }
 
-      // Build query params
-      const params = new URLSearchParams();
-      params.append('desde', checkInDate);
-      params.append('hasta', checkOutDate);
-      if (roomType) {
-        // TODO: Map roomType string to tipo_habitacion_id
-        // For now, we'll fetch all and filter client-side
-      }
-
-      const queryString = params.toString();
-      const url = `/disponibilidad${queryString ? `?${queryString}` : ''}`;
+      // Use the /habitaciones endpoint since /disponibilidad is not returning data
+      const url = '/habitaciones';
       
-      console.log('[RoomService] GET', url);
+      console.log(`[RoomService] GET ${url} (filtering for dates: ${checkInDate} to ${checkOutDate})`);
 
       const response = await apiClient.get<ApiHabitacionesResponse | ApiHabitacion[]>(url);
       
@@ -145,20 +136,34 @@ class RoomService extends BaseApiService {
         ? response.data
         : (response.data as ApiHabitacionesResponse).data || [];
 
+      console.log(`[RoomService] Received ${apiHabitaciones.length} total rooms from backend`);
+
       // Map to frontend Room objects
       let rooms = apiHabitaciones.map(mapApiHabitacionToRoom);
+
+      // Filter by availability status (only show rooms with "Disponible" status)
+      rooms = rooms.filter(room => room.isAvailable);
+      console.log(`[RoomService] After availability filter: ${rooms.length} available rooms`);
 
       // Filter by guest capacity if specified
       if (numberOfGuests) {
         rooms = rooms.filter(room => room.capacity >= numberOfGuests);
+        console.log(`[RoomService] After capacity filter (>=${numberOfGuests}): ${rooms.length} rooms`);
       }
 
       // Filter by room type if specified
       if (roomType) {
         rooms = rooms.filter(room => room.type === roomType);
+        console.log(`[RoomService] After type filter (${roomType}): ${rooms.length} rooms`);
       }
 
-      console.log(`[RoomService] Loaded ${rooms.length} available rooms`);
+      console.log(`[RoomService] Final available rooms:`, rooms.map(r => ({ 
+        id: r.id, 
+        name: r.name, 
+        type: r.type, 
+        capacity: r.capacity,
+        basePrice: r.basePrice 
+      })));
       
       return rooms;
 

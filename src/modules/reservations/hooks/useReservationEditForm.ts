@@ -107,7 +107,7 @@ export const useReservationEditForm = ({
         clearErrors('numberOfGuests');
       }
     }
-  }, [numberOfAdultsValue, numberOfChildrenValue, numberOfInfantsValue, setError, clearErrors]);
+  }, [numberOfAdultsValue, numberOfChildrenValue, numberOfInfantsValue, setError, clearErrors, formState.errors.numberOfGuests]);
 
   /**
    * Efecto: valida que los huéspedes no excedan la capacidad de la habitación
@@ -123,7 +123,7 @@ export const useReservationEditForm = ({
         clearErrors('numberOfGuests');
       }
     }
-  }, [numberOfGuestsValue, maxGuests, setError, clearErrors]);
+  }, [numberOfGuestsValue, maxGuests, setError, clearErrors, formState.errors.numberOfGuests]);
 
   /**
    * Handler: envía la actualización de la reserva con validaciones finales

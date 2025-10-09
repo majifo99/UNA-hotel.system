@@ -32,7 +32,10 @@ export interface CreateReservationRequest {
   id_fuente?: number;
 }
 
-export interface UpdateReservationRequest extends Partial<CreateReservationRequest> {}
+export interface UpdateReservationRequest extends Partial<CreateReservationRequest> {
+  // At least one field must be provided for updates
+  id_reserva?: number;
+}
 
 // =================== RESERVATION ROOM TYPES ===================
 
@@ -132,6 +135,7 @@ export interface ReservationSearchParams {
  * POST /reservas
  */
 export interface CreateReservationDto {
+  id_cliente: number;
   id_estado_res: number;
   id_fuente?: number;
   notas?: string;
@@ -148,6 +152,20 @@ export interface CreateReservationRoomDto {
   adultos: number;
   ninos: number;
   bebes: number;
+}
+
+/**
+ * Servicio adicional desde el backend
+ * GET /servicios
+ */
+export interface BackendAdditionalService {
+  id_servicio: number;
+  nombre: string;
+  precio: number;
+  descripcion?: string;
+  categoria?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 /**

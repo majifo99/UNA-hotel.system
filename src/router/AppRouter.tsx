@@ -4,7 +4,6 @@ import { MainLayout } from '../layouts/MainLayout';
 import { Home } from '../pages/Home';
 import { ReservationsListPage } from '../modules/reservations/pages/ReservationsListPage';
 import { CreateReservationPage } from '../modules/reservations/pages/CreateReservationPage';
-import { SelectServicesPage } from '../modules/reservations/pages/SelectServicesPage';
 import { ReservationEditPage } from '../modules/reservations/pages/ReservationEditPage';
 import { ReservationCancelPage } from '../modules/reservations/pages/ReservationCancelPage';
 import { ReservationDetailFullPage } from '../modules/reservations/pages/ReservationDetailFullPage';
@@ -123,11 +122,6 @@ const router = createBrowserRouter([
             // Create new reservation
             path: 'create',
             element: <CreateReservationPage />,
-          },
-          {
-            // Select services for reservation
-            path: 'create/services',
-            element: <SelectServicesPage />,
           },
           {
             // View full reservation details (pantalla completa)

@@ -93,79 +93,8 @@ export const useCreateReservationForm = () => {
     }
   }, [checkInDate, checkOutDate, setValue]);
 
-  // Search for available rooms when dates change
-  useEffect(() => {
-    if (checkInDate && checkOutDate) {
-      searchAvailableRooms();
-    }
-  }, [checkInDate, checkOutDate]);
-
-  // Memoized pricing calculation function
-  const calculatePricing = useCallback(() => {
-    // Calculate pricing for multiple rooms
-    const selectedRooms = availableRooms.filter(room => roomIds.includes(room.id));
-    if (selectedRooms.length === 0) return;
-
-    const roomPrice = selectedRooms.reduce((total, room) => total + (room.pricePerNight || room.basePrice || 0), 0);
-    const subtotal = roomPrice * watchedValues.numberOfNights;
-    
-    const servicesTotal = additionalServices
-      .filter(service => selectedServices.includes(service.id))
-      .reduce((total, service) => total + service.price, 0);
-
-    // Use business rules constants for consistent pricing
-    const pricing = calculateBusinessPricing(subtotal, servicesTotal, COSTA_RICA_IVA_RATE, DEFAULT_DEPOSIT_PERCENTAGE);
-
-    setValue('subtotal', pricing.subtotal);
-    setValue('servicesTotal', pricing.servicesTotal);
-    setValue('taxes', pricing.taxes);
-    setValue('total', pricing.total);
-    setValue('depositRequired', pricing.depositRequired);
-  }, [roomIds, watchedValues.numberOfNights, selectedServices, availableRooms, additionalServices, setValue]);
-
-  // Calculate pricing when relevant fields change
-  useEffect(() => {
-    calculatePricing();
-  }, [calculatePricing]);
-
-  // Additional validation for room capacity
-  useEffect(() => {
-    const totalGuests = (numberOfAdults || 0) + (numberOfChildren || 0) + (numberOfInfants || 0);
-
-    if (totalGuests > 0 && roomIds.length > 0 && availableRooms.length > 0) {
-      const selectedRooms = availableRooms.filter(room => roomIds.includes(room.id));
-      const totalCapacity = selectedRooms.reduce((sum, room) => sum + room.capacity, 0);
-
-      if (totalCapacity < totalGuests) {
-        form.setError('numberOfGuests', {
-          type: 'manual',
-          message: `Las habitaciones seleccionadas tienen capacidad para ${totalCapacity} huésped${totalCapacity > 1 ? 'es' : ''}. Total requerido: ${totalGuests} (${numberOfAdults || 0} adultos + ${numberOfChildren || 0} niños + ${numberOfInfants || 0} bebés). Seleccione habitaciones adicionales.`
-        });
-      } else {
-        // Clear the error if validation passes
-        if (errors.numberOfGuests?.type === 'manual') {
-          form.clearErrors('numberOfGuests');
-        }
-      }
-    }
-  }, [numberOfAdults, numberOfChildren, numberOfInfants, roomIds, availableRooms, form, errors.numberOfGuests]);
-
-  // Check for available rooms suitable for guest count
-  useEffect(() => {
-    const totalGuests = (numberOfAdults || 0) + (numberOfChildren || 0) + (numberOfInfants || 0);
-
-    if (availableRooms.length > 0 && totalGuests > 0) {
-      const suitableRooms = availableRooms.filter(room => room.capacity >= totalGuests);
-      if (suitableRooms.length === 0) {
-        form.setError('numberOfGuests', {
-          type: 'manual',
-          message: `No hay habitaciones disponibles con capacidad para ${totalGuests} huésped${totalGuests > 1 ? 'es' : ''} (${numberOfAdults || 0} adultos + ${numberOfChildren || 0} niños + ${numberOfInfants || 0} bebés) en las fechas seleccionadas`
-        });
-      }
-    }
-  }, [availableRooms, numberOfAdults, numberOfChildren, numberOfInfants, form]);
-
-  const searchAvailableRooms = async () => {
+  // Search for available rooms function
+  const searchAvailableRooms = useCallback(async () => {
     try {
       const rooms = await roomService.getAvailableRooms(checkInDate, checkOutDate);
       setAvailableRooms(rooms);
@@ -188,7 +117,86 @@ export const useCreateReservationForm = () => {
         message: 'Error al buscar habitaciones disponibles. Por favor, intente nuevamente.'
       });
     }
-  };
+  }, [checkInDate, checkOutDate, form]);
+
+  // Search for available rooms when dates change
+  useEffect(() => {
+    if (checkInDate && checkOutDate) {
+      searchAvailableRooms();
+    }
+  }, [checkInDate, checkOutDate, searchAvailableRooms]);
+
+  // Calculate pricing when relevant fields change
+  useEffect(() => {
+    // Calculate pricing for multiple rooms
+    const selectedRooms = availableRooms.filter(room => roomIds.includes(room.id));
+    if (selectedRooms.length === 0) {
+      // Reset pricing if no rooms selected
+      setValue('subtotal', 0);
+      setValue('servicesTotal', 0);
+      setValue('taxes', 0);
+      setValue('total', 0);
+      setValue('depositRequired', 0);
+      return;
+    }
+
+    const roomPrice = selectedRooms.reduce((total, room) => total + (room.pricePerNight || room.basePrice || 0), 0);
+    const subtotal = roomPrice * watchedValues.numberOfNights;
+    
+    const servicesTotal = additionalServices
+      .filter(service => selectedServices.includes(service.id))
+      .reduce((total, service) => total + service.price, 0);
+
+    // Use business rules constants for consistent pricing
+    const pricing = calculateBusinessPricing(subtotal, servicesTotal, COSTA_RICA_IVA_RATE, DEFAULT_DEPOSIT_PERCENTAGE);
+
+    setValue('subtotal', pricing.subtotal);
+    setValue('servicesTotal', pricing.servicesTotal);
+    setValue('taxes', pricing.taxes);
+    setValue('total', pricing.total);
+    setValue('depositRequired', pricing.depositRequired);
+  }, [roomIds, watchedValues.numberOfNights, selectedServices, availableRooms, additionalServices, setValue]);
+
+  // Additional validation for room capacity
+  useEffect(() => {
+    const totalGuests = (numberOfAdults || 0) + (numberOfChildren || 0) + (numberOfInfants || 0);
+
+    if (totalGuests > 0 && roomIds.length > 0 && availableRooms.length > 0) {
+      const selectedRooms = availableRooms.filter(room => roomIds.includes(room.id));
+      const totalCapacity = selectedRooms.reduce((sum, room) => sum + room.capacity, 0);
+
+      if (totalCapacity < totalGuests) {
+        form.setError('numberOfGuests', {
+          type: 'manual',
+          message: `Las habitaciones seleccionadas tienen capacidad para ${totalCapacity} huésped${totalCapacity > 1 ? 'es' : ''}. Total requerido: ${totalGuests} (${numberOfAdults || 0} adultos + ${numberOfChildren || 0} niños + ${numberOfInfants || 0} bebés). Seleccione habitaciones adicionales.`
+        });
+      } else {
+        // Clear the error if validation passes - only if it exists and is manual
+        const currentError = form.formState.errors.numberOfGuests;
+        if (currentError?.type === 'manual') {
+          form.clearErrors('numberOfGuests');
+        }
+      }
+    }
+  }, [numberOfAdults, numberOfChildren, numberOfInfants, roomIds, availableRooms, form]);
+
+  // Check for available rooms suitable for guest count
+  useEffect(() => {
+    const totalGuests = (numberOfAdults || 0) + (numberOfChildren || 0) + (numberOfInfants || 0);
+
+    if (availableRooms.length > 0 && totalGuests > 0 && roomIds.length === 0) {
+      // Only validate when no rooms are selected yet
+      const suitableRooms = availableRooms.filter(room => room.capacity >= totalGuests);
+      if (suitableRooms.length === 0) {
+        form.setError('numberOfGuests', {
+          type: 'manual',
+          message: `No hay habitaciones disponibles con capacidad para ${totalGuests} huésped${totalGuests > 1 ? 'es' : ''} (${numberOfAdults || 0} adultos + ${numberOfChildren || 0} niños + ${numberOfInfants || 0} bebés) en las fechas seleccionadas`
+        });
+      }
+    }
+  }, [availableRooms, numberOfAdults, numberOfChildren, numberOfInfants, roomIds.length, form]);
+
+
 
   const submitReservation = async (data: SimpleReservationFormData): Promise<boolean> => {
     setIsSubmitting(true);
@@ -217,19 +225,26 @@ export const useCreateReservationForm = () => {
         return false;
       }
 
-      // For the service, use the first room ID for backwards compatibility
-      const primaryRoomId = data.roomIds[0];
-      const primaryRoom = selectedRooms[0];
+      // Convert form data to the new CreateReservationDto format
+      const createReservationPayload = {
+        id_cliente: parseInt(data.guestId, 10), // Include guest ID as required by backend
+        id_estado_res: 1, // Default to "Confirmada" or similar initial status
+        id_fuente: 1, // Default source (could be "Web" or "Sistema")
+        notas: data.specialRequests || undefined,
+        habitaciones: selectedRooms.map(room => ({
+          id_habitacion: parseInt(room.id), // Convert string ID to number
+          fecha_llegada: data.checkInDate,
+          fecha_salida: data.checkOutDate,
+          adultos: data.numberOfAdults || 0,
+          ninos: data.numberOfChildren || 0,
+          bebes: data.numberOfInfants || 0
+        }))
+      };
 
       // Debug: log payload that will be sent
-      // eslint-disable-next-line no-console
-      console.debug('[UI] Creating reservation payload (form):', { ...data, roomId: primaryRoomId, roomType: primaryRoom.type });
+      console.debug('[UI] Creating reservation with new format:', createReservationPayload);
 
-      await reservationService.createReservation({
-        ...data,
-        roomId: primaryRoomId,
-        roomType: primaryRoom.type,
-      });
+      await reservationService.createNewReservation(createReservationPayload);
 
       toast.success('✅ Reserva creada exitosamente', {
         description: `La reserva ha sido registrada para ${selectedRooms.length} habitación${selectedRooms.length > 1 ? 'es' : ''}.`

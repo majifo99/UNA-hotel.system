@@ -57,7 +57,7 @@ export class ReservationQueryService {
       
       const apiReservas: ApiReservaFull[] = Array.isArray(res.data) 
         ? res.data 
-        : (res.data as any)?.data || [];
+        : (res.data as { data: ApiReservaFull[] })?.data || [];
 
       const reservations = apiReservas.map(apiReserva => 
         mapApiReservaFullToReservation(apiReserva)

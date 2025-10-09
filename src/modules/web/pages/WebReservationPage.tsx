@@ -38,6 +38,32 @@ interface ReservationData {
   additionalAmenities: string[];
 }
 
+// Step-specific data types
+interface StepOneData {
+  checkIn: string;
+  checkOut: string;
+  adults: number;
+  children: number;
+}
+
+interface StepTwoData {
+  selectedRoomIds: string[];
+}
+
+interface StepThreeData {
+  guestInfo: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    nationalId: string;
+  };
+  specialRequests: string;
+  additionalAmenities: string[];
+}
+
+type StepData = StepOneData | StepTwoData | StepThreeData;
+
 export function WebReservationPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -114,32 +140,38 @@ export function WebReservationPage() {
     setReservationData(prev => ({ ...prev, ...updates }));
   };
 
-  const handleStepComplete = (stepData: any) => {
+  const handleStepComplete = (stepData: StepData) => {
     switch (currentStep) {
-      case 1:
+      case 1: {
+        const step1Data = stepData as StepOneData;
         updateReservationData({
-          checkIn: stepData.checkIn,
-          checkOut: stepData.checkOut,
-          adults: stepData.adults,
-          children: stepData.children
+          checkIn: step1Data.checkIn,
+          checkOut: step1Data.checkOut,
+          adults: step1Data.adults,
+          children: step1Data.children
         });
         setCurrentStep(2);
         break;
-      case 2:
+      }
+      case 2: {
+        const step2Data = stepData as StepTwoData;
         updateReservationData({
-          selectedRoomIds: stepData.selectedRoomIds
+          selectedRoomIds: step2Data.selectedRoomIds
         });
         setCurrentStep(3);
         break;
-      case 3:
+      }
+      case 3: {
+        const step3Data = stepData as StepThreeData;
         // Submit reservation
         handleSubmitReservation({
           ...reservationData,
-          guestInfo: stepData.guestInfo,
-          specialRequests: stepData.specialRequests,
-          additionalAmenities: stepData.additionalAmenities
+          guestInfo: step3Data.guestInfo,
+          specialRequests: step3Data.specialRequests,
+          additionalAmenities: step3Data.additionalAmenities
         });
         break;
+      }
     }
   };
 

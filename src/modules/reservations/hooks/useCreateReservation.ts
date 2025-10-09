@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { 
   SimpleReservationFormData, 
   ReservationValidationErrors 
@@ -61,7 +61,7 @@ export const useCreateReservation = () => {
     }
   }, [formData.checkInDate, formData.checkOutDate, formData.numberOfNights]);
 
-  const searchAvailableRooms = async () => {
+  const searchAvailableRooms = useCallback(async () => {
     try {
       const rooms = await roomService.getAvailableRooms(
         formData.checkInDate,
@@ -72,9 +72,9 @@ export const useCreateReservation = () => {
       console.error('Error searching rooms:', error);
       setAvailableRooms([]);
     }
-  };
+  }, [formData.checkInDate, formData.checkOutDate]);
 
-  const calculatePricingEffect = () => {
+  const calculatePricingEffect = useCallback(() => {
     const selectedRoom = availableRooms.find(room => room.type === formData.roomType);
     if (!selectedRoom) return;
 
@@ -93,21 +93,19 @@ export const useCreateReservation = () => {
       total: pricing.total,
       depositRequired: pricing.depositRequired,
     }));
-  };
+  }, [formData.roomType, formData.numberOfNights, formData.additionalServices, availableRooms, additionalServices]);
 
   // Search for available rooms when dates change
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (formData.checkInDate && formData.checkOutDate) {
       searchAvailableRooms();
     }
-  }, [formData.checkInDate, formData.checkOutDate]);
+  }, [formData.checkInDate, formData.checkOutDate, searchAvailableRooms]);
 
   // Calculate pricing when relevant fields change
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     calculatePricingEffect();
-  }, [formData.roomType, formData.numberOfNights, formData.additionalServices, availableRooms, additionalServices]);
+  }, [calculatePricingEffect]);
 
   // =================== VALIDATION HELPERS ===================
 
