@@ -30,72 +30,108 @@ export const useCheckInImproved = () => {
   const validateCheckInData = (data: CheckInData): CheckInValidationResult => {
     const errors: string[] = [];
 
-    // Validaciones básicas
-    if (!data.roomNumber?.trim()) {
-      errors.push('El número de habitación es requerido');
-    }
-
-    if (!data.guestName?.trim()) {
-      errors.push('El nombre del huésped es requerido');
-    }
-
-    if (!data.identificationNumber?.trim()) {
-      errors.push('El número de identificación es requerido');
-    }
-
-    if (!data.paymentMethod) {
-      errors.push('El método de pago es requerido');
-    }
+    // Validaciones básicas requeridas
+    validateRequiredFields(data, errors);
 
     // Validación de fechas
-    if (!data.checkInDate) {
-      errors.push('La fecha de llegada es requerida');
-    }
-
-    if (!data.checkOutDate) {
-      errors.push('La fecha de salida es requerida');
-    }
-
-    if (data.checkInDate && data.checkOutDate) {
-      const checkIn = new Date(data.checkInDate);
-      const checkOut = new Date(data.checkOutDate);
-      
-      if (checkOut <= checkIn) {
-        errors.push('La fecha de salida debe ser posterior a la fecha de llegada');
-      }
-    }
+    validateDates(data, errors);
 
     // Validación de huéspedes
-    if (!data.adultos || data.adultos < 1) {
-      errors.push('Debe haber al menos 1 adulto');
-    }
+    validateGuests(data, errors);
 
-    // Validaciones específicas para reservas existentes
-    if (!data.isWalkIn) {
-      if (!data.reservationId?.trim()) {
-        errors.push('El ID de reserva es requerido para reservas existentes');
-      }
-    }
-
-    // Validaciones específicas para walk-ins
-    if (data.isWalkIn) {
-      if (!data.guestEmail?.trim()) {
-        errors.push('El email es requerido para walk-ins');
-      }
-
-      if (!data.guestPhone?.trim()) {
-        errors.push('El teléfono es requerido para walk-ins');
-      }
-
-      if (!data.guestNationality?.trim()) {
-        errors.push('La nacionalidad es requerida para walk-ins');
-      }
-    }
+    // Validaciones específicas por tipo
+    validateByType(data, errors);
 
     return {
       isValid: errors.length === 0,
       errors
     };
+  };
+
+  /**
+   * Valida campos requeridos básicos
+   */
+  const validateRequiredFields = (data: CheckInData, errors: string[]) => {
+    const requiredFields = [
+      { value: data.roomNumber?.trim(), message: 'El número de habitación es requerido' },
+      { value: data.guestName?.trim(), message: 'El nombre del huésped es requerido' },
+      { value: data.identificationNumber?.trim(), message: 'El número de identificación es requerido' },
+      { value: data.paymentMethod, message: 'El método de pago es requerido' }
+    ];
+
+    requiredFields.forEach(field => {
+      if (!field.value) {
+        errors.push(field.message);
+      }
+    });
+  };
+
+  /**
+   * Valida las fechas de check-in y check-out
+   */
+  const validateDates = (data: CheckInData, errors: string[]) => {
+    if (!data.checkInDate) {
+      errors.push('La fecha de llegada es requerida');
+      return;
+    }
+
+    if (!data.checkOutDate) {
+      errors.push('La fecha de salida es requerida');
+      return;
+    }
+
+    const checkIn = new Date(data.checkInDate);
+    const checkOut = new Date(data.checkOutDate);
+
+    if (checkOut <= checkIn) {
+      errors.push('La fecha de salida debe ser posterior a la fecha de llegada');
+    }
+  };
+
+  /**
+   * Valida la información de huéspedes
+   */
+  const validateGuests = (data: CheckInData, errors: string[]) => {
+    if (!data.adultos || data.adultos < 1) {
+      errors.push('Debe haber al menos 1 adulto');
+    }
+  };
+
+  /**
+   * Valida campos específicos según el tipo (walk-in vs reserva)
+   */
+  const validateByType = (data: CheckInData, errors: string[]) => {
+    if (data.isWalkIn) {
+      validateWalkInFields(data, errors);
+    } else {
+      validateReservationFields(data, errors);
+    }
+  };
+
+  /**
+   * Valida campos específicos para walk-ins
+   */
+  const validateWalkInFields = (data: CheckInData, errors: string[]) => {
+    const walkInFields = [
+      { value: data.guestEmail?.trim(), message: 'El email es requerido para walk-ins' },
+      { value: data.guestPhone?.trim(), message: 'El teléfono es requerido para walk-ins' },
+      { value: data.guestNationality?.trim(), message: 'La nacionalidad es requerida para walk-ins' }
+    ];
+
+    walkInFields.forEach(field => {
+      if (!field.value) {
+        errors.push(field.message);
+      }
+    });
+  };
+
+  /**
+   * Valida campos específicos para reservas existentes
+   */
+  const validateReservationFields = (data: CheckInData, errors: string[]) => {
+    if (!data.reservationId?.trim()) {
+      errors.push('El ID de reserva es requerido para reservas existentes');
+    }
   };
 
   /**

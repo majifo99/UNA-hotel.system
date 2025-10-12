@@ -15,7 +15,6 @@ import RoomChange from '../modules/frontdesk/components/RoomChange';
 import { FolioPage } from '../modules/frontdesk/pages/FolioPage';
 import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
 import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
-import { FolioPage } from '../modules/frontdesk/pages/FolioPage';
 
 /**
  * TanStack Query Client Configuration
@@ -116,10 +115,6 @@ const router = createBrowserRouter([
           {
             path: 'register',
             element: <Navigate to="/reservations/create" replace />,
-          },
-          {
-            path: 'folio/:folioId',
-            element: <FolioPage />,
           },
         ],
       },

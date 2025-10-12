@@ -43,7 +43,7 @@ export class CheckInApiService extends BaseApiService {
     console.log({
       reservaId,
       roomNumber,
-      roomNumberAsInt: parseInt(roomNumber, 10)
+      roomNumberAsInt: Number.parseInt(roomNumber, 10)
     });
   }
   async getHabitacionId(roomNumber: string): Promise<number> {
@@ -58,7 +58,7 @@ export class CheckInApiService extends BaseApiService {
       }
       
       // Si no se encuentra, usar el número como ID (fallback)
-      const parsed = parseInt(roomNumber, 10);
+      const parsed = Number.parseInt(roomNumber, 10);
       console.warn('⚠️ Habitación no encontrada, usando número como ID:', parsed);
       return parsed;
       
@@ -76,7 +76,7 @@ export class CheckInApiService extends BaseApiService {
    * Ahora intenta buscar el ID real en el sistema
    */
   private async parseRoomNumber(roomNumber: string): Promise<number> {
-    const parsed = parseInt(roomNumber, 10);
+    const parsed = Number.parseInt(roomNumber, 10);
     if (isNaN(parsed) || parsed <= 0) {
       throw new Error(`Número de habitación inválido: ${roomNumber}`);
     }

@@ -20,7 +20,7 @@ import {
  */
 export class FrontdeskService {
   private static baseURL = '/frontdesk';
-  private static useMocks = (import.meta.env.VITE_USE_MOCKS === 'true');
+  private static readonly useMocks = (import.meta.env.VITE_USE_MOCKS === 'true');
 
   // =================== ROOMS ===================
   
@@ -201,7 +201,7 @@ export class FrontdeskService {
     checkInDate: string;
     checkOutDate: string;
   }>> {
-    if (this.isDevelopment) {
+    if (this.useMocks) {
       await simulateNetworkDelay();
       
       if (simulateRandomError()) {

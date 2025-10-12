@@ -50,7 +50,7 @@ const getTabConfigs = (folio: any): TabConfig[] => [
     label: 'Distribución',
     icon: Calculator,
     description: 'Asignar cargos a responsables',
-    badge: folio && folio.unassignedCharges && folio.unassignedCharges > 0 ? String(folio.unassignedCharges) : undefined,
+    badge: folio?.unassignedCharges > 0 ? String(folio.unassignedCharges) : undefined,
     badgeColor: 'bg-red-100 text-red-800'
   },
   {
@@ -58,7 +58,7 @@ const getTabConfigs = (folio: any): TabConfig[] => [
     label: 'Pagos',
     icon: CreditCard,
     description: 'Procesar pagos',
-    badge: folio && folio.pendingAmount && folio.pendingAmount > 0 ? `$${folio.pendingAmount.toFixed(2)}` : undefined,
+    badge: folio?.pendingAmount > 0 ? `$${folio.pendingAmount.toFixed(2)}` : undefined,
     badgeColor: 'bg-blue-100 text-blue-800'
   },
   {
@@ -66,7 +66,7 @@ const getTabConfigs = (folio: any): TabConfig[] => [
     label: 'Facturación',
     icon: FileText,
     description: 'Generar facturas',
-    badge: folio && folio.pendingBills && folio.pendingBills > 0 ? String(folio.pendingBills) : undefined,
+    badge: folio?.pendingBills > 0 ? String(folio.pendingBills) : undefined,
     badgeColor: 'bg-purple-100 text-purple-800'
   },
   {
@@ -81,41 +81,45 @@ const getTabConfigs = (folio: any): TabConfig[] => [
 // Función auxiliar para calcular métricas del folio
 const calculateFolioMetrics = (folio: any) => {
   const completionPercentage = folio ? Math.round(((folio.totalAmount - folio.pendingAmount) / folio.totalAmount) * 100) : 0;
-  const isFullyProcessed = folio && folio.pendingAmount === 0 && folio.unassignedCharges === 0;
+  const isFullyProcessed = folio?.pendingAmount === 0 && folio?.unassignedCharges === 0;
   
   return { completionPercentage, isFullyProcessed };
 };
 
-// Función auxiliar para generar acciones rápidas
-const getQuickActions = (folio: any, onNavigate: (tab: TabType) => void) => [
-  {
-    id: 'distribute',
-    label: 'Distribuir Cargos',
-    description: 'Asignar cargos pendientes',
-    icon: Calculator,
-    action: () => onNavigate('distribution'),
-    enabled: folio.unassignedCharges > 0,
-    color: 'bg-blue-50 text-blue-700 border-blue-200'
-  },
-  {
-    id: 'payment',
-    label: 'Procesar Pago',
-    description: 'Registrar nuevo pago',
-    icon: CreditCard,
-    action: () => onNavigate('payments'),
-    enabled: folio.pendingAmount > 0,
-    color: 'bg-green-50 text-green-700 border-green-200'
-  },
-  {
-    id: 'bill',
-    label: 'Generar Factura',
-    description: 'Crear factura pendiente',
-    icon: FileText,
-    action: () => onNavigate('billing'),
-    enabled: folio.pendingBills > 0,
-    color: 'bg-purple-50 text-purple-700 border-purple-200'
-  }
-];
+// Función para generar acciones rápidas basadas en el estado del folio
+const getQuickActions = (folio: any, onNavigate: (tab: TabType) => void) => {
+  const actions = [
+    {
+      id: 'distribution',
+      label: 'Distribuir Cargos',
+      description: 'Asignar responsables de pago',
+      icon: Calculator,
+      color: 'border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800',
+      enabled: folio?.unassignedCharges > 0,
+      action: () => onNavigate('distribution')
+    },
+    {
+      id: 'payments',
+      label: 'Procesar Pagos',
+      description: 'Registrar nuevos pagos',
+      icon: CreditCard,
+      color: 'border-green-200 bg-green-50 hover:bg-green-100 text-green-800',
+      enabled: folio?.pendingAmount > 0,
+      action: () => onNavigate('payments')
+    },
+    {
+      id: 'billing',
+      label: 'Generar Factura',
+      description: 'Crear documentos de facturación',
+      icon: FileText,
+      color: 'border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-800',
+      enabled: folio?.pendingBills > 0,
+      action: () => onNavigate('billing')
+    }
+  ];
+
+  return actions;
+};
 
 interface FolioManagerV2Props {
   folioId: number;
@@ -456,7 +460,7 @@ const FolioOverview: React.FC<{
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Acciones Rápidas</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {quickActions.map((action) => {
+          {quickActions.map((action: any) => {
             const Icon = action.icon;
             return (
               <button

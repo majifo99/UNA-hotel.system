@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { CheckInData } from '../types/checkin';
 import { guestApiService } from '../../guests/services/guestApiService';
-import { FrontdeskService } from '../services/frontdeskService';
 import type { CreateGuestData } from '../../../types/core/forms';
 import type { DocumentType } from '../../../types/core/enums';
 
