@@ -6,7 +6,7 @@
  * Soporte para múltiples estrategias y validación en tiempo real.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Calculator, 
   Users, 
@@ -19,10 +19,29 @@ import {
   RefreshCw
 } from 'lucide-react';
 
+interface FolioResponsible {
+  id: number;
+  name: string;
+}
+
+interface Folio {
+  unassignedCharges?: number;
+  responsibles?: FolioResponsible[];
+}
+
+interface DistributionRequest {
+  strategy: DistributionStrategy;
+  responsibles: Array<{
+    id: number;
+    percentage?: number;
+    amount?: number;
+  }>;
+}
+
 interface DistributionProps {
   folioId: number;
-  folio: any;
-  onDistribute: (request: any) => Promise<boolean>;
+  folio: Folio | null;
+  onDistribute: (request: DistributionRequest) => Promise<boolean>;
   isLoading: boolean;
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
@@ -39,7 +58,7 @@ interface Responsible {
 }
 
 export const FolioDistribution: React.FC<DistributionProps> = ({
-  folioId: _folioId,
+  folioId: _folioId, // eslint-disable-line @typescript-eslint/no-unused-vars
   folio,
   onDistribute,
   isLoading,
@@ -58,7 +77,7 @@ export const FolioDistribution: React.FC<DistributionProps> = ({
   // Initialize with existing responsibles
   useEffect(() => {
     if (folio?.responsibles && folio.responsibles.length > 0) {
-      setResponsibles(folio.responsibles.map((r: any) => ({
+      setResponsibles(folio.responsibles.map((r: FolioResponsible) => ({
         id: r.id,
         name: r.name,
         percentage: strategy === 'percent' ? 0 : undefined,
@@ -128,7 +147,7 @@ export const FolioDistribution: React.FC<DistributionProps> = ({
   };
 
   // Validation
-  const validateDistribution = (): boolean => {
+  const validateDistribution = useCallback((): boolean => {
     const errors: string[] = [];
 
     if (responsibles.length === 0) {
@@ -155,7 +174,7 @@ export const FolioDistribution: React.FC<DistributionProps> = ({
 
     setValidationErrors(errors);
     return errors.length === 0;
-  };
+  }, [responsibles, strategy, availableAmount, setValidationErrors]);
 
   // Execute distribution
   const handleDistribute = async () => {
@@ -176,6 +195,7 @@ export const FolioDistribution: React.FC<DistributionProps> = ({
         onSuccess('Cargos distribuidos exitosamente');
       }
     } catch (error) {
+      console.error('Error distributing charges:', error);
       onError('Error al distribuir los cargos');
     }
   };
@@ -194,7 +214,7 @@ export const FolioDistribution: React.FC<DistributionProps> = ({
     if (strategy === 'equal' && responsibles.length > 0) {
       validateDistribution();
     }
-  }, [strategy, responsibles.length]);
+  }, [strategy, responsibles.length, validateDistribution]);
 
   return (
     <div className="space-y-6">
@@ -300,7 +320,7 @@ export const FolioDistribution: React.FC<DistributionProps> = ({
                           max="100"
                           step="0.01"
                           value={responsible.percentage || ''}
-                          onChange={(e) => handleUpdateResponsible(responsible.id, 'percentage', parseFloat(e.target.value) || 0)}
+                                                    onChange={(e) => handleUpdateResponsible(responsible.id, 'percentage', Number.parseFloat(e.target.value) || 0)}
                           className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
                         />
                         <span className="text-sm text-gray-600">%</span>
@@ -315,7 +335,7 @@ export const FolioDistribution: React.FC<DistributionProps> = ({
                           min="0"
                           step="0.01"
                           value={responsible.amount || ''}
-                          onChange={(e) => handleUpdateResponsible(responsible.id, 'amount', parseFloat(e.target.value) || 0)}
+                          onChange={(e) => handleUpdateResponsible(responsible.id, 'amount', Number.parseFloat(e.target.value) || 0)}
                           className="w-24 px-2 py-1 border border-gray-300 rounded text-center"
                         />
                       </div>
@@ -351,8 +371,8 @@ export const FolioDistribution: React.FC<DistributionProps> = ({
             <span className="font-medium">Errores de Validación</span>
           </div>
           <ul className="space-y-1">
-            {validationErrors.map((error, index) => (
-              <li key={index} className="text-sm text-red-700">• {error}</li>
+            {validationErrors.map((error) => (
+              <li key={error} className="text-sm text-red-700">• {error}</li>
             ))}
           </ul>
         </div>

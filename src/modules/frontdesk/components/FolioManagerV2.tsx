@@ -11,14 +11,14 @@ import {
   Users,
   Clock
 } from 'lucide-react';
-import { useFolioManager } from '../hooks';
+import { useFolioManager } from '../hooks/useFolioManager';
+import type { FolioData } from '../hooks/useFolioManager';
 import { LoadingSpinner } from '../../../components/ui';
 import { FolioDistribution } from './FolioDistributionV2';
 import { FolioPayments } from './FolioPaymentsV2';
 
 interface FolioManagerV2Props {
   folioId: number;
-  onComplete?: (data: any) => void;
   onClose?: () => void;
   className?: string;
   showHeader?: boolean;
@@ -29,14 +29,14 @@ type TabType = 'overview' | 'distribution' | 'payments' | 'billing' | 'history';
 interface TabConfig {
   id: TabType;
   label: string;
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   description: string;
   badge?: string;
   badgeColor: string;
 }
 
 // Configuración de pestañas extraída para reducir complejidad
-const getTabConfigs = (folio: any): TabConfig[] => [
+const getTabConfigs = (folio: FolioData | null): TabConfig[] => [
   {
     id: 'overview',
     label: 'Resumen',
@@ -50,7 +50,7 @@ const getTabConfigs = (folio: any): TabConfig[] => [
     label: 'Distribución',
     icon: Calculator,
     description: 'Asignar cargos a responsables',
-    badge: folio?.unassignedCharges > 0 ? String(folio.unassignedCharges) : undefined,
+    badge: (folio?.unassignedCharges ?? 0) > 0 ? String(folio?.unassignedCharges ?? 0) : undefined,
     badgeColor: 'bg-red-100 text-red-800'
   },
   {
@@ -58,7 +58,7 @@ const getTabConfigs = (folio: any): TabConfig[] => [
     label: 'Pagos',
     icon: CreditCard,
     description: 'Procesar pagos',
-    badge: folio?.pendingAmount > 0 ? `$${folio.pendingAmount.toFixed(2)}` : undefined,
+    badge: (folio?.pendingAmount ?? 0) > 0 ? `$${(folio?.pendingAmount ?? 0).toFixed(2)}` : undefined,
     badgeColor: 'bg-blue-100 text-blue-800'
   },
   {
@@ -66,7 +66,7 @@ const getTabConfigs = (folio: any): TabConfig[] => [
     label: 'Facturación',
     icon: FileText,
     description: 'Generar facturas',
-    badge: folio?.pendingBills > 0 ? String(folio.pendingBills) : undefined,
+    badge: (folio?.pendingBills ?? 0) > 0 ? String(folio?.pendingBills ?? 0) : undefined,
     badgeColor: 'bg-purple-100 text-purple-800'
   },
   {
@@ -79,15 +79,15 @@ const getTabConfigs = (folio: any): TabConfig[] => [
 ];
 
 // Función auxiliar para calcular métricas del folio
-const calculateFolioMetrics = (folio: any) => {
-  const completionPercentage = folio ? Math.round(((folio.totalAmount - folio.pendingAmount) / folio.totalAmount) * 100) : 0;
-  const isFullyProcessed = folio?.pendingAmount === 0 && folio?.unassignedCharges === 0;
+const calculateFolioMetrics = (folio: FolioData | null) => {
+  const completionPercentage = folio ? Math.round(((folio.totalAmount - (folio.pendingAmount ?? 0)) / folio.totalAmount) * 100) : 0;
+  const isFullyProcessed = folio?.pendingAmount === 0 && (folio?.unassignedCharges ?? 0) === 0;
   
   return { completionPercentage, isFullyProcessed };
 };
 
 // Función para generar acciones rápidas basadas en el estado del folio
-const getQuickActions = (folio: any, onNavigate: (tab: TabType) => void) => {
+const getQuickActions = (folio: FolioData | null, onNavigate: (tab: TabType) => void) => {
   const actions = [
     {
       id: 'distribution',
@@ -95,7 +95,7 @@ const getQuickActions = (folio: any, onNavigate: (tab: TabType) => void) => {
       description: 'Asignar responsables de pago',
       icon: Calculator,
       color: 'border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800',
-      enabled: folio?.unassignedCharges > 0,
+      enabled: (folio?.unassignedCharges ?? 0) > 0,
       action: () => onNavigate('distribution')
     },
     {
@@ -104,7 +104,7 @@ const getQuickActions = (folio: any, onNavigate: (tab: TabType) => void) => {
       description: 'Registrar nuevos pagos',
       icon: CreditCard,
       color: 'border-green-200 bg-green-50 hover:bg-green-100 text-green-800',
-      enabled: folio?.pendingAmount > 0,
+      enabled: (folio?.pendingAmount ?? 0) > 0,
       action: () => onNavigate('payments')
     },
     {
@@ -113,7 +113,7 @@ const getQuickActions = (folio: any, onNavigate: (tab: TabType) => void) => {
       description: 'Crear documentos de facturación',
       icon: FileText,
       color: 'border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-800',
-      enabled: folio?.pendingBills > 0,
+      enabled: (folio?.pendingBills ?? 0) > 0,
       action: () => onNavigate('billing')
     }
   ];
@@ -121,17 +121,8 @@ const getQuickActions = (folio: any, onNavigate: (tab: TabType) => void) => {
   return actions;
 };
 
-interface FolioManagerV2Props {
-  folioId: number;
-  onComplete?: (data: any) => void;
-  onClose?: () => void;
-  className?: string;
-  showHeader?: boolean;
-}
-
 export const FolioManagerV2: React.FC<FolioManagerV2Props> = ({
   folioId,
-  onComplete: _onComplete,
   onClose,
   className = '',
   showHeader = true
@@ -147,7 +138,6 @@ export const FolioManagerV2: React.FC<FolioManagerV2Props> = ({
     distributeCargos,
     processPayment,
     generateBill,
-    closeFolio: _closeFolio,
     isDistributing,
     isProcessingPayment,
     isGeneratingBill
@@ -338,7 +328,6 @@ export const FolioManagerV2: React.FC<FolioManagerV2Props> = ({
         {activeTab === 'overview' && (
           <FolioOverview 
             folio={folio}
-            onRefresh={refreshFolio}
             onNavigate={setActiveTab}
           />
         )}
@@ -359,7 +348,6 @@ export const FolioManagerV2: React.FC<FolioManagerV2Props> = ({
         
         {activeTab === 'payments' && (
           <FolioPayments
-            folioId={folioId}
             folio={folio}
             onPayment={processPayment}
             isLoading={isProcessingPayment}
@@ -393,7 +381,6 @@ export const FolioManagerV2: React.FC<FolioManagerV2Props> = ({
           <FolioHistoryV2
             folioId={folioId}
             folio={folio}
-            onRefresh={refreshFolio}
           />
         )}
       </div>
@@ -403,10 +390,9 @@ export const FolioManagerV2: React.FC<FolioManagerV2Props> = ({
 
 // Componente de Resumen del Folio
 const FolioOverview: React.FC<{
-  folio: any;
-  onRefresh: () => void;
+  folio: FolioData | null;
   onNavigate: (tab: TabType) => void;
-}> = ({ folio, onRefresh: _onRefresh, onNavigate }) => {
+}> = ({ folio, onNavigate }) => {
   if (!folio) return null;
 
   const quickActions = getQuickActions(folio, onNavigate);
@@ -460,7 +446,7 @@ const FolioOverview: React.FC<{
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Acciones Rápidas</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {quickActions.map((action: any) => {
+          {quickActions.map((action) => {
             const Icon = action.icon;
             return (
               <button
@@ -487,7 +473,7 @@ const FolioOverview: React.FC<{
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Responsables de Pago</h3>
           <div className="space-y-3">
-            {folio.responsibles.map((responsible: any) => (
+            {folio.responsibles.map((responsible) => (
               <div key={responsible.id} className="bg-gray-50 p-4 rounded-lg border">
                 <div className="flex justify-between items-center">
                   <div>
@@ -515,7 +501,7 @@ const FolioOverview: React.FC<{
 // Placeholder components for billing and history
 const FolioBillingV2: React.FC<{
   folioId: number;
-  folio: any;
+  folio: FolioData | null;
   onGenerateBill: () => void;
   isLoading: boolean;
   onSuccess: (msg: string) => void;
@@ -546,7 +532,7 @@ const FolioBillingV2: React.FC<{
               </label>
               <input
                 type="text"
-                value={folio?.estado || 'N/A'}
+                value={folio?.status || 'N/A'}
                 readOnly
                 className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md"
               />
@@ -576,8 +562,7 @@ const FolioBillingV2: React.FC<{
 
 const FolioHistoryV2: React.FC<{
   folioId: number;
-  folio: any;
-  onRefresh: () => void;
+  folio: FolioData | null;
 }> = ({ folioId }) => {
   return (
     <div className="space-y-6">

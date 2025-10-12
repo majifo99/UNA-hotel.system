@@ -24,11 +24,11 @@ import {
   Receipt,
   RefreshCw
 } from 'lucide-react';
+import type { FolioData, PaymentRequest } from '../hooks/useFolioManager';
 
 interface PaymentProps {
-  folioId: number;
-  folio: any;
-  onPayment: (request: any) => Promise<boolean>;
+  folio: FolioData | null;
+  onPayment: (request: PaymentRequest) => Promise<boolean>;
   isLoading: boolean;
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
@@ -51,7 +51,6 @@ const PAYMENT_METHODS = [
 ];
 
 export const FolioPayments: React.FC<PaymentProps> = ({
-  folioId: _folioId2,
   folio,
   onPayment,
   isLoading,
@@ -68,12 +67,19 @@ export const FolioPayments: React.FC<PaymentProps> = ({
 
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
+  // Get placeholder text for reference input
+  const getReferencePlaceholder = () => {
+    if (form.method === 'check') return 'Número de cheque';
+    if (form.method === 'transfer') return 'Referencia de transferencia';
+    return 'Referencia opcional';
+  };
+
   // Get responsible with pending amount
-  const responsiblesWithDebt = folio?.responsibles?.filter((r: any) => r.pendingAmount > 0) || [];
+  const responsiblesWithDebt = folio?.responsibles?.filter((r) => r.pendingAmount > 0) || [];
   
   // Get selected responsible
   const selectedResponsible = form.responsibleId 
-    ? folio?.responsibles?.find((r: any) => r.id === form.responsibleId)
+    ? folio?.responsibles?.find((r) => r.id === form.responsibleId)
     : null;
 
   // Validation
@@ -115,10 +121,10 @@ export const FolioPayments: React.FC<PaymentProps> = ({
     if (!validatePayment()) return;
 
     try {
-      const request = {
+      const request: PaymentRequest = {
         amount: form.amount,
         method: form.method,
-        responsibleId: form.responsibleId,
+        responsibleId: form.responsibleId || undefined,
         reference: form.reference || undefined,
         notes: form.notes || undefined
       };
@@ -135,7 +141,7 @@ export const FolioPayments: React.FC<PaymentProps> = ({
           notes: ''
         });
       }
-    } catch (error) {
+    } catch {
       onError('Error al procesar el pago');
     }
   };
@@ -219,7 +225,7 @@ export const FolioPayments: React.FC<PaymentProps> = ({
         <div>
           <h4 className="text-md font-medium text-gray-900 mb-3">Seleccionar Responsable</h4>
           <div className="space-y-2">
-            {responsiblesWithDebt.map((responsible: any) => (
+            {responsiblesWithDebt.map((responsible) => (
               <button
                 key={responsible.id}
                 onClick={() => setForm({ ...form, responsibleId: responsible.id })}
@@ -254,18 +260,19 @@ export const FolioPayments: React.FC<PaymentProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Amount */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="payment-amount" className="block text-sm font-medium text-gray-700 mb-2">
               Monto a Pagar <span className="text-red-500">*</span>
             </label>
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <span className="absolute left-3 top-2 text-gray-500">$</span>
                 <input
+                  id="payment-amount"
                   type="number"
                   min="0"
                   step="0.01"
                   value={form.amount || ''}
-                  onChange={(e) => setForm({ ...form, amount: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) => setForm({ ...form, amount: Number.parseFloat(e.target.value) || 0 })}
                   className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="0.00"
                 />
@@ -286,10 +293,11 @@ export const FolioPayments: React.FC<PaymentProps> = ({
 
           {/* Payment Method */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="payment-method" className="block text-sm font-medium text-gray-700 mb-2">
               Método de Pago <span className="text-red-500">*</span>
             </label>
             <select
+              id="payment-method"
               value={form.method}
               onChange={(e) => setForm({ ...form, method: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -305,28 +313,26 @@ export const FolioPayments: React.FC<PaymentProps> = ({
 
           {/* Reference */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="payment-reference" className="block text-sm font-medium text-gray-700 mb-2">
               Referencia {(form.method === 'check' || form.method === 'transfer') && <span className="text-red-500">*</span>}
             </label>
             <input
+              id="payment-reference"
               type="text"
               value={form.reference}
               onChange={(e) => setForm({ ...form, reference: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder={
-                form.method === 'check' ? 'Número de cheque' :
-                form.method === 'transfer' ? 'Referencia de transferencia' :
-                'Referencia opcional'
-              }
+              placeholder={getReferencePlaceholder()}
             />
           </div>
 
           {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="payment-notes" className="block text-sm font-medium text-gray-700 mb-2">
               Notas
             </label>
             <input
+              id="payment-notes"
               type="text"
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -345,8 +351,8 @@ export const FolioPayments: React.FC<PaymentProps> = ({
             <span className="font-medium">Errores de Validación</span>
           </div>
           <ul className="space-y-1">
-            {validationErrors.map((error, index) => (
-              <li key={index} className="text-sm text-red-700">• {error}</li>
+            {validationErrors.map((error) => (
+              <li key={error} className="text-sm text-red-700">• {error}</li>
             ))}
           </ul>
         </div>
