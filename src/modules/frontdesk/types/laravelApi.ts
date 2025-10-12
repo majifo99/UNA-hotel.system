@@ -88,8 +88,8 @@ export function mapLaravelRoomToRoom(laravelRoom: LaravelRoom): import('../../..
     type: mapRoomType(laravelRoom.tipo.nombre),
     floor: laravelRoom.piso,
     capacity: laravelRoom.capacidad,
-    pricePerNight: parseFloat(laravelRoom.precio_base),
-    basePrice: parseFloat(laravelRoom.precio_base),
+    pricePerNight: Number.parseFloat(laravelRoom.precio_base),
+    basePrice: Number.parseFloat(laravelRoom.precio_base),
     status: mapStatus(laravelRoom.estado.nombre),
     isAvailable: laravelRoom.estado.nombre.toLowerCase().includes('disponible'),
     amenities: [], // No viene en la API, se puede añadir después

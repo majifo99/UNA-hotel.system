@@ -104,7 +104,7 @@ export const FolioDistribution: React.FC<DistributionProps> = ({
     if (!newResponsibleId || !newResponsibleName) return;
 
     const newResponsible: Responsible = {
-      id: parseInt(newResponsibleId),
+      id: Number.parseInt(newResponsibleId),
       name: newResponsibleName,
       percentage: strategy === 'percent' ? 0 : undefined,
       amount: strategy === 'fixed' ? 0 : undefined
@@ -215,20 +215,26 @@ export const FolioDistribution: React.FC<DistributionProps> = ({
           {strategies.map((strat) => {
             const Icon = strat.icon;
             const isSelected = strategy === strat.id;
+            const buttonClassName = isSelected
+              ? `border-${strat.color}-500 bg-${strat.color}-50`
+              : 'border-gray-200 hover:border-gray-300';
+            const iconClassName = isSelected
+              ? `text-${strat.color}-600`
+              : 'text-gray-400';
+            const textClassName = isSelected
+              ? `text-${strat.color}-900`
+              : 'text-gray-900';
+
             return (
               <button
                 key={strat.id}
                 onClick={() => setStrategy(strat.id)}
-                className={`p-4 rounded-lg border-2 text-left transition-all ${
-                  isSelected 
-                    ? `border-${strat.color}-500 bg-${strat.color}-50` 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
+                className={`p-4 rounded-lg border-2 text-left transition-all ${buttonClassName}`}
               >
                 <div className="flex items-start gap-3">
-                  <Icon className={`w-6 h-6 mt-1 ${isSelected ? `text-${strat.color}-600` : 'text-gray-400'}`} />
+                  <Icon className={`w-6 h-6 mt-1 ${iconClassName}`} />
                   <div>
-                    <div className={`font-medium ${isSelected ? `text-${strat.color}-900` : 'text-gray-900'}`}>
+                    <div className={`font-medium ${textClassName}`}>
                       {strat.label}
                     </div>
                     <div className="text-sm text-gray-600 mt-1">

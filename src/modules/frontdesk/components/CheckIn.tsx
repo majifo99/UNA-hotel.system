@@ -4,7 +4,7 @@ import { ArrowLeft, LogIn, UserPlus, Calendar, Search, User, CheckCircle, AlertC
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import ReactFlagsSelect from 'react-flags-select';
-import { useCheckIn } from '../hooks/useCheckIn';
+import { useCheckInImproved } from '../hooks/useCheckInImproved';
 import { useGuests } from '../../guests/hooks/useGuests';
 import { useRoomSelection } from '../hooks/useRoomSelection';
 import { useInputValidation } from '../../../hooks/useInputValidation';
@@ -171,7 +171,7 @@ const renderRoomInfoContent = (loadingRoomInfo: boolean, roomInfo: RoomInfo | nu
 
 const CheckIn = () => {
   const navigate = useNavigate();
-  const { validateAndSubmit, isSubmitting, error } = useCheckIn();
+  const { validateAndSubmit, isSubmitting, error } = useCheckInImproved();
   const { guests, searchGuests } = useGuests();
   const { 
     suggestions: roomSuggestions, 
@@ -426,6 +426,17 @@ const CheckIn = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('🚀 Iniciando proceso de check-in...', {
+      checkInType,
+      walkInGuestType,
+      formData: {
+        reservationId: formData.reservationId,
+        roomNumber: formData.roomNumber,
+        firstName: formData.firstName,
+        lastName: formData.lastName
+      }
+    });
+    
     const checkInData: CheckInData = {
       reservationId: checkInType === 'walk-in' 
         ? `WALKIN-${Date.now()}` 
@@ -457,9 +468,16 @@ const CheckIn = () => {
       })
     };
 
-    const success = await validateAndSubmit(checkInData);
-    if (success) {
+    console.log('📋 Datos preparados para check-in:', checkInData);
+
+    const result = await validateAndSubmit(checkInData);
+    
+    if (result.success) {
+      console.log('✅ Check-in exitoso, redirigiendo...');
       navigate(ROUTES.FRONTDESK.BASE);
+    } else {
+      console.error('❌ Check-in falló:', error);
+      // El error ya se maneja en el hook y se muestra en la UI
     }
   };
 

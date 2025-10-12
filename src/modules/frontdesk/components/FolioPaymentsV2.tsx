@@ -88,15 +88,14 @@ export const FolioPayments: React.FC<PaymentProps> = ({
       errors.push('Debe seleccionar un método de pago');
     }
 
-    if (form.responsibleId && selectedResponsible) {
-      if (form.amount > selectedResponsible.pendingAmount) {
-        errors.push(`El monto no puede ser mayor al saldo pendiente ($${selectedResponsible.pendingAmount.toFixed(2)})`);
-      }
-    } else {
-      // General payment validation
-      if (form.amount > folio?.pendingAmount) {
-        errors.push(`El monto no puede ser mayor al saldo total pendiente ($${folio?.pendingAmount.toFixed(2)})`);
-      }
+    // Validate amount against pending balance
+    const maxAmount = form.responsibleId && selectedResponsible
+      ? selectedResponsible.pendingAmount
+      : folio?.pendingAmount || 0;
+
+    if (form.amount > maxAmount) {
+      const balanceType = form.responsibleId && selectedResponsible ? 'saldo pendiente' : 'saldo total pendiente';
+      errors.push(`El monto no puede ser mayor al ${balanceType} ($${maxAmount.toFixed(2)})`);
     }
 
     if (form.method === 'check' && !form.reference) {

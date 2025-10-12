@@ -1,15 +1,3 @@
-/**
- * 🏨 Sistema de Gestión de Folios - Versión 2.0
- * =============================================
- * 
- * Sistema completo y moderno para gestión de folios hoteleros con:
- * - Distribución inteligente de cargos
- * - Gestión de pagos multipersona
- * - Facturación automática
- * - Dashboard en tiempo real
- * - Integración con backend Laravel
- */
-
 import React, { useState, useEffect } from 'react';
 import { 
   CreditCard, 
@@ -37,6 +25,105 @@ interface FolioManagerV2Props {
 }
 
 type TabType = 'overview' | 'distribution' | 'payments' | 'billing' | 'history';
+
+interface TabConfig {
+  id: TabType;
+  label: string;
+  icon: React.ComponentType<any>;
+  description: string;
+  badge?: string;
+  badgeColor: string;
+}
+
+// Configuración de pestañas extraída para reducir complejidad
+const getTabConfigs = (folio: any): TabConfig[] => [
+  {
+    id: 'overview',
+    label: 'Resumen',
+    icon: Eye,
+    description: 'Vista general del folio',
+    badge: folio?.status === 'active' ? 'Activo' : undefined,
+    badgeColor: folio?.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+  },
+  {
+    id: 'distribution',
+    label: 'Distribución',
+    icon: Calculator,
+    description: 'Asignar cargos a responsables',
+    badge: folio && folio.unassignedCharges && folio.unassignedCharges > 0 ? String(folio.unassignedCharges) : undefined,
+    badgeColor: 'bg-red-100 text-red-800'
+  },
+  {
+    id: 'payments',
+    label: 'Pagos',
+    icon: CreditCard,
+    description: 'Procesar pagos',
+    badge: folio && folio.pendingAmount && folio.pendingAmount > 0 ? `$${folio.pendingAmount.toFixed(2)}` : undefined,
+    badgeColor: 'bg-blue-100 text-blue-800'
+  },
+  {
+    id: 'billing',
+    label: 'Facturación',
+    icon: FileText,
+    description: 'Generar facturas',
+    badge: folio && folio.pendingBills && folio.pendingBills > 0 ? String(folio.pendingBills) : undefined,
+    badgeColor: 'bg-purple-100 text-purple-800'
+  },
+  {
+    id: 'history',
+    label: 'Historial',
+    icon: Clock,
+    description: 'Ver transacciones',
+    badgeColor: 'bg-gray-100 text-gray-800'
+  }
+];
+
+// Función auxiliar para calcular métricas del folio
+const calculateFolioMetrics = (folio: any) => {
+  const completionPercentage = folio ? Math.round(((folio.totalAmount - folio.pendingAmount) / folio.totalAmount) * 100) : 0;
+  const isFullyProcessed = folio && folio.pendingAmount === 0 && folio.unassignedCharges === 0;
+  
+  return { completionPercentage, isFullyProcessed };
+};
+
+// Función auxiliar para generar acciones rápidas
+const getQuickActions = (folio: any, onNavigate: (tab: TabType) => void) => [
+  {
+    id: 'distribute',
+    label: 'Distribuir Cargos',
+    description: 'Asignar cargos pendientes',
+    icon: Calculator,
+    action: () => onNavigate('distribution'),
+    enabled: folio.unassignedCharges > 0,
+    color: 'bg-blue-50 text-blue-700 border-blue-200'
+  },
+  {
+    id: 'payment',
+    label: 'Procesar Pago',
+    description: 'Registrar nuevo pago',
+    icon: CreditCard,
+    action: () => onNavigate('payments'),
+    enabled: folio.pendingAmount > 0,
+    color: 'bg-green-50 text-green-700 border-green-200'
+  },
+  {
+    id: 'bill',
+    label: 'Generar Factura',
+    description: 'Crear factura pendiente',
+    icon: FileText,
+    action: () => onNavigate('billing'),
+    enabled: folio.pendingBills > 0,
+    color: 'bg-purple-50 text-purple-700 border-purple-200'
+  }
+];
+
+interface FolioManagerV2Props {
+  folioId: number;
+  onComplete?: (data: any) => void;
+  onClose?: () => void;
+  className?: string;
+  showHeader?: boolean;
+}
 
 export const FolioManagerV2: React.FC<FolioManagerV2Props> = ({
   folioId,
@@ -92,53 +179,11 @@ export const FolioManagerV2: React.FC<FolioManagerV2Props> = ({
     }
   }, [showErrorMessage]);
 
-  // Configuración de pestañas
-  const tabs = [
-    {
-      id: 'overview' as TabType,
-      label: 'Resumen',
-      icon: Eye,
-      description: 'Vista general del folio',
-      badge: folio?.status === 'active' ? 'Activo' : undefined,
-      badgeColor: folio?.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-    },
-    {
-      id: 'distribution' as TabType,
-      label: 'Distribución',
-      icon: Calculator,
-      description: 'Asignar cargos a responsables',
-      badge: folio && folio.unassignedCharges && folio.unassignedCharges > 0 ? String(folio.unassignedCharges) : undefined,
-      badgeColor: 'bg-red-100 text-red-800'
-    },
-    {
-      id: 'payments' as TabType,
-      label: 'Pagos',
-      icon: CreditCard,
-      description: 'Procesar pagos',
-      badge: folio && folio.pendingAmount && folio.pendingAmount > 0 ? `$${folio.pendingAmount.toFixed(2)}` : undefined,
-      badgeColor: 'bg-blue-100 text-blue-800'
-    },
-    {
-      id: 'billing' as TabType,
-      label: 'Facturación',
-      icon: FileText,
-      description: 'Generar facturas',
-      badge: folio && folio.pendingBills && folio.pendingBills > 0 ? String(folio.pendingBills) : undefined,
-      badgeColor: 'bg-purple-100 text-purple-800'
-    },
-    {
-      id: 'history' as TabType,
-      label: 'Historial',
-      icon: Clock,
-      description: 'Ver transacciones'
-    }
-  ];
+  // Configuración de pestañas usando la función helper
+  const tabs = getTabConfigs(folio);
 
-  // Calculaciones para el dashboard
-  const completionPercentage = folio ? 
-    Math.round(((folio.totalAmount - folio.pendingAmount) / folio.totalAmount) * 100) : 0;
-
-  const isFullyProcessed = folio && folio.pendingAmount === 0 && folio.unassignedCharges === 0;
+  // Calculaciones para el dashboard usando la función helper
+  const { completionPercentage, isFullyProcessed } = calculateFolioMetrics(folio);
 
   if (loading && !folio) {
     return (
@@ -360,35 +405,7 @@ const FolioOverview: React.FC<{
 }> = ({ folio, onRefresh: _onRefresh, onNavigate }) => {
   if (!folio) return null;
 
-  const quickActions = [
-    {
-      id: 'distribute',
-      label: 'Distribuir Cargos',
-      description: 'Asignar cargos pendientes',
-      icon: Calculator,
-      action: () => onNavigate('distribution'),
-      enabled: folio.unassignedCharges > 0,
-      color: 'bg-blue-50 text-blue-700 border-blue-200'
-    },
-    {
-      id: 'payment',
-      label: 'Procesar Pago',
-      description: 'Registrar nuevo pago',
-      icon: CreditCard,
-      action: () => onNavigate('payments'),
-      enabled: folio.pendingAmount > 0,
-      color: 'bg-green-50 text-green-700 border-green-200'
-    },
-    {
-      id: 'bill',
-      label: 'Generar Factura',
-      description: 'Crear factura pendiente',
-      icon: FileText,
-      action: () => onNavigate('billing'),
-      enabled: folio.pendingBills > 0,
-      color: 'bg-purple-50 text-purple-700 border-purple-200'
-    }
-  ];
+  const quickActions = getQuickActions(folio, onNavigate);
 
   return (
     <div className="space-y-6">
