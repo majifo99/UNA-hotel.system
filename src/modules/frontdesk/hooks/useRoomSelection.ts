@@ -72,13 +72,11 @@ export const useRoomSelection = () => {
     try {
       // Fetch all rooms for suggestions
       const allRooms = await FrontdeskService.getRooms();
-      
       const filtered = allRooms
-        .filter(room => {
-          const roomNumber = room.number || room.id || '';
-          return roomNumber.toLowerCase().includes(query.toLowerCase());
-        })
-        .map(room => room.number || room.id || 'Sin número')
+        .filter(room => 
+          (room.number || room.id).toLowerCase().includes(query.toLowerCase())
+        )
+        .map(room => room.number || room.id)
         .slice(0, 5);
 
       setSuggestions(filtered);
@@ -92,9 +90,8 @@ export const useRoomSelection = () => {
   const getRoomInfo = useCallback(async (roomNumber: string): Promise<RoomInfo | null> => {
     try {
       const room = await FrontdeskService.getRoomById(roomNumber);
-      
       return {
-        number: room.number || room.id || roomNumber,
+        number: room.number || room.id,
         type: room.type,
         capacity: { 
           adults: Math.floor(room.capacity * 0.7),

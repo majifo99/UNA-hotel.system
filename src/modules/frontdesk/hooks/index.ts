@@ -29,4 +29,6 @@ export { useDeposito } from './useDeposito';
 export { useDivisionCargos } from './useDivisionCargos';
 export { useFacturacion } from './useFacturacion';
 export { useFolioDistribucion } from './useFolioDistribucion';
-export { useFolioManager } from './useFolioManager';
+export { useFolioPagos } from './useFolioPagos';
+export { useFolioCierre } from './useFolioCierre';
+export { useFolioHistorial } from './useFolioHistorial';

@@ -201,7 +201,7 @@ export class FrontdeskService {
     checkInDate: string;
     checkOutDate: string;
   }>> {
-    if (this.useMocks) {
+    if (this.isDevelopment) {
       await simulateNetworkDelay();
       
       if (simulateRandomError()) {
@@ -236,62 +236,6 @@ export class FrontdeskService {
       return response.data || [];
     } catch (error) {
       console.error('Error al obtener asignaciones actuales:', error);
-      throw error;
-    }
-  }
-
-  // =================== CHECK-IN OPERATIONS ===================
-  
-  /**
-   * Realizar check-in desde una reserva existente
-   */
-  static async checkInFromReservation(reservationId: string, checkInData: any): Promise<{ folioId: number }> {
-    if (this.useMocks) {
-      await simulateNetworkDelay();
-      
-      if (simulateRandomError()) {
-        throw new Error('Error al realizar check-in desde reserva');
-      }
-
-      // Simular creación de folio
-      const folioId = Math.floor(Math.random() * 10000) + 1000;
-      console.log(`Check-in simulado para reserva ${reservationId}, folio creado: ${folioId}`);
-      
-      return { folioId };
-    }
-
-    try {
-      const response = await apiClient.post(`${this.baseURL}/reserva/${reservationId}/checkin`, checkInData);
-      return response.data;
-    } catch (error) {
-      console.error('Error al realizar check-in desde reserva:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Crear walk-in (huésped sin reserva previa)
-   */
-  static async createWalkIn(checkInData: any): Promise<{ folioId: number }> {
-    if (this.useMocks) {
-      await simulateNetworkDelay();
-      
-      if (simulateRandomError()) {
-        throw new Error('Error al crear walk-in');
-      }
-
-      // Simular creación de folio para walk-in
-      const folioId = Math.floor(Math.random() * 10000) + 2000;
-      console.log(`Walk-in simulado creado, folio: ${folioId}`);
-      
-      return { folioId };
-    }
-
-    try {
-      const response = await apiClient.post(`${this.baseURL}/walkin`, checkInData);
-      return response.data;
-    } catch (error) {
-      console.error('Error al crear walk-in:', error);
       throw error;
     }
   }
