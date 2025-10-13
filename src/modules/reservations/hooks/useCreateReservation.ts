@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { 
   SimpleReservationFormData, 
   ReservationValidationErrors 
-} from '../types/domain';
+} from '../types';
 import type { Room } from '../../../types/core';
 import type { AdditionalService } from '../../../types/core/domain';
 import { reservationService } from '../services/reservationService';

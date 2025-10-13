@@ -3,48 +3,68 @@
  *
  * All types specific to the reservations module.
  * For shared domain entities (Guest, Room), import from @/types/core
+ * 
+ * Nueva estructura organizada:
+ * - enums/ - Enums y tipos básicos (ReservationStatus, PaymentMethod)
+ * - entities/ - Entidades del dominio (Reservation)
+ * - api/ - Tipos de la API backend (legacy y new)
+ * - forms/ - Tipos de formularios
+ * - mappers/ - Funciones de mapeo entre tipos
  */
 
 // Core domain entities (shared)
 export type { Guest, Room, AdditionalService } from '../../../types/core';
 
-// Reservation-specific domain types
+// === ENUMS ===
+export type { ReservationStatus, PaymentMethod } from './enums';
+
+// === ENTITIES ===
+export type { Reservation } from './entities';
+
+// === FORMS ===
 export type {
-  Reservation,
-  ReservationStatus,
-  PaymentMethod,
   ReservationFormData,
   SimpleReservationFormData,
   ReservationValidationErrors
-} from './domain';
+} from './forms';
 
-// Export backend DTOs and mappers (original - legacy)
-export type { ApiReservation, ApiReservaHabitacion } from './domain';
-export { mapApiReservationToReservation, mapStatusToEstadoId } from './domain';
-export type { ApiCreateReservaPayload } from './domain';
-export { mapSimpleFormToApiPayload } from './domain';
+// === API TYPES ===
+// Legacy API
+export type {
+  ApiReservation,
+  ApiGuest,
+  ApiEstado,
+  ApiFuente,
+  ApiReservaHabitacionLegacy,
+  ApiCreateReservaPayload,
+} from './api';
 
-// Export new backend API types (from /api/reservas/:id endpoint)
-// Note: api-new.ts contains types that match the current backend structure
+// New API
 export type {
   ApiReservaFull,
   ApiCliente,
   ApiEstadoReserva,
   ApiFuenteReserva,
-  ApiReservaHabitacion as ApiReservaHabitacionFull,
+  ApiReservaHabitacion,
   ApiHabitacion,
-  ApiReservasResponse
-} from './api-new';
+  ApiReservasResponse,
+  ApiUpdateReservaHabitacionPayload,
+  ApiCancelReservaPayload
+} from './api';
 
-// Export mappers for new API structure
+// === MAPPERS ===
 export {
+  mapEstadoIdToStatus,
+  mapStatusToEstadoId,
+  mapApiReservationToReservation,
+  mapSimpleFormToApiPayload,
   mapApiClienteToGuest,
   mapApiHabitacionToRoom,
   mapEstadoNombreToStatus,
   mapApiReservaFullToReservation
-} from './mappers-new';
+} from './mappers';
 
-// Export new backend DTOs for API operations
+// === BACKEND DTOs ===
 export type {
   ReservationFilters,
   CreateReservationDto,

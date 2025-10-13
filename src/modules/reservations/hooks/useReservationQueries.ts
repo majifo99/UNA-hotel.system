@@ -279,3 +279,103 @@ export const useAddReservationService = () => {
     },
   });
 };
+
+/**
+ * Hook: useUpdateReservationRoom
+ * 
+ * Mutation para actualizar una habitación específica de una reserva.
+ * PUT /reservas/{reservaId}/habitaciones/{habitacionId}
+ * 
+ * Features:
+ * - Invalida la reserva específica para refrescar los datos
+ * - Actualiza fechas, número de huéspedes y habitación asignada
+ * - Mantiene la integridad de los datos de la reserva
+ */
+export const useUpdateReservationRoom = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ 
+      reservaId, 
+      habitacionId, 
+      updates 
+    }: { 
+      reservaId: string; 
+      habitacionId: string;
+      updates: {
+        roomId?: number;
+        checkInDate?: string;
+        checkOutDate?: string;
+        adults?: number;
+        children?: number;
+        babies?: number;
+      }
+    }) => {
+      return reservationService.updateRoomDetails(reservaId, habitacionId, updates);
+    },
+    onSuccess: (_data, variables) => {
+      // Invalidar la reserva específica
+      queryClient.invalidateQueries({ 
+        queryKey: reservationKeys.detail(variables.reservaId) 
+      });
+
+      // Invalidar la lista de reservas
+      queryClient.invalidateQueries({ 
+        queryKey: reservationKeys.list() 
+      });
+
+      // Invalidar habitaciones disponibles para reflejar cambios
+      queryClient.invalidateQueries({ 
+        queryKey: reservationKeys.rooms() 
+      });
+
+      console.log('[Hook] Reservation room updated successfully:', variables.reservaId);
+    },
+    onError: (error) => {
+      console.error('[Hook] Error updating reservation room:', error);
+    },
+  });
+};
+
+/**
+ * Hook: useUpdateReservationStatus
+ * 
+ * Mutation para actualizar el estado de una reserva.
+ * PUT /reservas/{id}
+ * 
+ * Features:
+ * - Actualiza el estado de la reserva (pending, confirmed, checked_in, etc.)
+ * - Invalida la reserva específica y la lista
+ * - Útil para cambios de estado manuales en el front desk
+ */
+export const useUpdateReservationStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ 
+      reservationId, 
+      status 
+    }: { 
+      reservationId: string; 
+      status: Reservation['status'] 
+    }) => {
+      return reservationService.updateReservationStatus(reservationId, status);
+    },
+    onSuccess: (_data, variables) => {
+      // Invalidar la reserva específica
+      queryClient.invalidateQueries({ 
+        queryKey: reservationKeys.detail(variables.reservationId) 
+      });
+
+      // Invalidar la lista de reservas
+      queryClient.invalidateQueries({ 
+        queryKey: reservationKeys.list() 
+      });
+
+      console.log('[Hook] Reservation status updated successfully:', variables.reservationId, variables.status);
+    },
+    onError: (error) => {
+      console.error('[Hook] Error updating reservation status:', error);
+    },
+  });
+};

@@ -21,7 +21,7 @@
 import type { 
   SimpleReservationFormData, 
   Reservation 
-} from '../types/domain';
+} from '../types';
 import type { 
   AdditionalService 
 } from '../../../types/core/domain';
@@ -117,13 +117,32 @@ class ReservationService {
 
   /**
    * Cancela una reserva
-   * POST /reservas/{id}/cancel
+   * POST /reservas/{id}/cancelar
    */
   async cancelReservation(
     id: string, 
     options?: { penalty?: number; note?: string }
   ): Promise<Reservation | null> {
     return reservationCrudService.cancel(id, options);
+  }
+
+  /**
+   * Actualiza una habitación específica de una reserva
+   * PUT /reservas/{reservaId}/habitaciones/{habitacionId}
+   */
+  async updateRoomDetails(
+    reservaId: string,
+    habitacionId: string,
+    updates: {
+      roomId?: number;
+      checkInDate?: string;
+      checkOutDate?: string;
+      adults?: number;
+      children?: number;
+      babies?: number;
+    }
+  ): Promise<Reservation | null> {
+    return reservationCrudService.updateRoomDetails(reservaId, habitacionId, updates);
   }
 
   // =================== QUERY & FILTER OPERATIONS ===================
