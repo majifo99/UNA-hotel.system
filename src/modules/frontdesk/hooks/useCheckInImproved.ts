@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { checkInApiService } from '../services/checkInApiService';
 import type { CheckInData } from '../types/checkin';
+import type { CheckInResponse } from '../types/checkin-api';
 
 interface CheckInResult {
   success: boolean;
@@ -162,19 +163,102 @@ export const useCheckInImproved = () => {
         throw new Error(`ID de reserva debe ser numérico: ${data.reservationId}`);
       }
 
-      // 3. Llamar al servicio de API con check-in directo
-      // Usar método simple para testing primero
-      console.log('🧪 Usando método simple para testing...');
-      const response = await checkInApiService.performSimpleCheckIn(reservaIdNumerico, {
-        roomNumber: data.roomNumber,
-        checkInDate: data.checkInDate,
-        checkOutDate: data.checkOutDate,
-        observacion_checkin: data.observacion_checkin
-      });
+      // 3. Validar formato de datos localmente (sin hacer GET al backend)
+      console.log('🔍 Validando formato de datos localmente...');
+      
+      // Validaciones básicas adicionales
+      if (!data.roomNumber || data.roomNumber.trim() === '') {
+        throw new Error('El número de habitación es requerido');
+      }
+      
+      if (isNaN(parseInt(data.roomNumber, 10))) {
+        throw new Error('El número de habitación debe ser numérico');
+      }
+      
+      if (!data.checkInDate || !data.checkOutDate) {
+        throw new Error('Las fechas de check-in y check-out son requeridas');
+      }
+      
+      const checkInDate = new Date(data.checkInDate);
+      const checkOutDate = new Date(data.checkOutDate);
+      
+      if (checkOutDate <= checkInDate) {
+        throw new Error('La fecha de salida debe ser posterior a la fecha de llegada');
+      }
+      
+      console.log('✅ Validación local completada');
+
+      // 4. Llamar al servicio de API apropiado según el tipo de check-in
+      let response;
+      
+      // Flag para alternar entre métodos (configurable)
+      const useExactFormat = true; // Cambiar a false para usar métodos originales
+      
+      if (useExactFormat) {
+        // Usar formato exacto como el POST proporcionado
+        console.log('🎯 Usando formato exacto del POST con validación previa...');
+        response = await checkInApiService.performExactCheckIn(reservaIdNumerico, {
+          roomNumber: data.roomNumber,
+          checkInDate: data.checkInDate,
+          checkOutDate: data.checkOutDate,
+          adultos: data.adultos,
+          ninos: data.ninos,
+          bebes: data.bebes,
+          observacion_checkin: data.observacion_checkin
+        });
+      } else if (data.isWalkIn) {
+        // Para walk-ins, usar método simple con datos fijos
+        console.log('🧪 Walk-in: usando método simple...');
+        response = await checkInApiService.performSimpleCheckIn(reservaIdNumerico, {
+          roomNumber: data.roomNumber,
+          checkInDate: data.checkInDate,
+          checkOutDate: data.checkOutDate,
+          adultos: data.adultos,
+          ninos: data.ninos,
+          bebes: data.bebes,
+          observacion_checkin: data.observacion_checkin
+        });
+      } else {
+        // Para reservas existentes, usar método directo
+        console.log('🚀 Reserva existente: usando método directo...');
+        response = await checkInApiService.performDirectCheckIn(reservaIdNumerico, {
+          reservationId: data.reservationId,
+          roomNumber: data.roomNumber,
+          checkInDate: data.checkInDate,
+          checkOutDate: data.checkOutDate,
+          adultos: data.adultos,
+          ninos: data.ninos,
+          bebes: data.bebes,
+          observacion_checkin: data.observacion_checkin
+        });
+      }
 
       console.log('✅ Check-in completado exitosamente:', response);
 
-      // 4. Actualizar estado local
+      // 4. Log detallado de la respuesta con metadatos
+      if ('endpointUsado' in response && 'reservaId' in response && 'origenDatos' in response) {
+        const checkInResponse = response as CheckInResponse;
+        console.log('📊 Metadatos del check-in:', {
+          reservaId: checkInResponse.reservaId,
+          origenDatos: checkInResponse.origenDatos,
+          endpointUsado: checkInResponse.endpointUsado,
+          datosUsados: {
+            clienteId: checkInResponse.data?.id_cliente_titular,
+            habitacionId: checkInResponse.data?.id_hab,
+            fechas: {
+              llegada: checkInResponse.data?.fecha_llegada,
+              salida: checkInResponse.data?.fecha_salida
+            },
+            huespedes: {
+              adultos: checkInResponse.data?.adultos,
+              ninos: checkInResponse.data?.ninos,
+              bebes: checkInResponse.data?.bebes
+            }
+          }
+        });
+      }
+
+      // 5. Actualizar estado local
       const folioId = response.data?.id;
       if (folioId) {
         setFolioId(folioId);

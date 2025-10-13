@@ -239,6 +239,101 @@ export class FrontdeskService {
       throw error;
     }
   }
+
+  /**
+   * Obtener la reserva activa de un huésped específico
+   */
+  static async getActiveReservationByGuest(guestId: string): Promise<{
+    id: string;
+    reservationId: string;
+    roomNumber: string;
+    habitacion: string;
+    adultos: number;
+    ninos: number;
+    bebes: number;
+    numberOfAdults: number;
+    numberOfChildren: number;
+    numberOfBabies: number;
+    checkInDate: string;
+    checkOutDate: string;
+    status: string;
+  } | null> {
+    if (this.useMocks) {
+      await simulateNetworkDelay();
+      
+      if (simulateRandomError()) {
+        throw new Error('Error al obtener reserva del huésped');
+      }
+
+      // Mock active reservation based on guest ID
+      const mockReservations: Record<string, any> = {
+        'guest-001': {
+          id: 'RES-001',
+          reservationId: 'RES-001',
+          roomNumber: '101',
+          habitacion: '101',
+          adultos: 2,
+          ninos: 1,
+          bebes: 0,
+          numberOfAdults: 2,
+          numberOfChildren: 1,
+          numberOfBabies: 0,
+          checkInDate: '2024-10-05',
+          checkOutDate: '2024-10-08',
+          status: 'checked_in'
+        },
+        'guest-002': {
+          id: 'RES-002',
+          reservationId: 'RES-002',
+          roomNumber: '202',
+          habitacion: '202',
+          adultos: 1,
+          ninos: 0,
+          bebes: 1,
+          numberOfAdults: 1,
+          numberOfChildren: 0,
+          numberOfBabies: 1,
+          checkInDate: '2024-10-06',
+          checkOutDate: '2024-10-10',
+          status: 'checked_in'
+        }
+      };
+      
+      return mockReservations[guestId] || null;
+    }
+
+    try {
+      // Intentar múltiples endpoints para encontrar la reserva activa
+      const endpoints = [
+        `/api/guests/${guestId}/active-reservation`,
+        `/api/reservations/by-guest/${guestId}/active`,
+        `/frontdesk/guest/${guestId}/reservation`,
+        `/reservations/guest/${guestId}/current`
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`🔍 Buscando reserva activa en: ${endpoint}`);
+          const response = await apiClient.get(endpoint);
+          
+          if (response.data && response.data.data) {
+            console.log(`✅ Reserva encontrada en: ${endpoint}`, response.data.data);
+            return response.data.data;
+          }
+        } catch (error) {
+          console.log(`❌ No encontrado en: ${endpoint}`);
+          continue;
+        }
+      }
+      
+      console.log('⚠️ No se encontró reserva activa para el huésped');
+      return null;
+      
+    } catch (error) {
+      console.error('Error al obtener reserva del huésped:', error);
+      throw error;
+    }
+  }
 }
 
 export default FrontdeskService;

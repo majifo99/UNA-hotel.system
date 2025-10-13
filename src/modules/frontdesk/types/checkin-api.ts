@@ -8,6 +8,9 @@ export interface CheckInRequestDTO {
   id_cliente_titular: number;
   fecha_llegada: string; // formato YYYY-MM-DD
   fecha_salida: string;  // formato YYYY-MM-DD
+  adultos: number;
+  ninos: number;
+  bebes: number;
   id_hab: number;
   nombre_asignacion: string;
   observacion_checkin?: string;
@@ -22,8 +25,22 @@ export interface CheckInResponseDTO {
     estado: string;
     fecha_llegada: string;
     fecha_salida: string;
+    id_cliente_titular: number;
+    id_hab: number;
+    adultos: number;
+    ninos: number;
+    bebes: number;
+    nombre_asignacion: string;
+    observacion_checkin?: string;
     // ... otros campos según el backend
   };
+}
+
+// Respuesta completa de check-in con detalles
+export interface CheckInResponse extends CheckInResponseDTO {
+  reservaId: number;
+  origenDatos: 'reserva' | 'formulario';
+  endpointUsado: string;
 }
 
 // Error response structure

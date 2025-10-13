@@ -11,10 +11,12 @@ import { useInputValidation } from '../../../hooks/useInputValidation';
 import { useReservationById } from '../../reservations/hooks/useReservationQueries';
 import { ROUTES } from '../../../router/routes';
 import { DEFAULT_CURRENCY } from '../constants/currencies';
+import type { CheckInRequestDTO } from '../types/checkin-api';
 import type { CheckInData, PaymentMethod, Currency } from '../types/checkin';
 import type { Guest } from '../../../types/core/domain';
 import type { RoomInfo } from '../types/room';
 import { CurrencySelector } from './CurrencySelector';
+import { Alert } from '../../../components/ui';
 
 type CheckInType = 'reservation' | 'walk-in';
 type WalkInGuestType = 'new' | 'existing';
@@ -171,7 +173,7 @@ const renderRoomInfoContent = (loadingRoomInfo: boolean, roomInfo: RoomInfo | nu
 
 const CheckIn = () => {
   const navigate = useNavigate();
-  const { validateAndSubmit, isSubmitting, error } = useCheckInImproved();
+  const { validateAndSubmit, isSubmitting, error, clearError: clearCheckInError } = useCheckInImproved();
   const { guests, searchGuests } = useGuests();
   const { 
     suggestions: roomSuggestions, 
@@ -436,48 +438,79 @@ const CheckIn = () => {
         lastName: formData.lastName
       }
     });
-    
-    const checkInData: CheckInData = {
-      reservationId: checkInType === 'walk-in' 
-        ? `WALKIN-${Date.now()}` 
-        : formData.reservationId || `WALKIN-${Date.now()}`,
-      guestName: `${formData.firstName} ${formData.lastName}`,
-      roomNumber: formData.roomNumber,
-      checkInDate: formData.checkInDate,
-      checkOutDate: formData.checkOutDate,
-      numberOfGuests: formData.numberOfGuests,
-      adultos: formData.adultos,
-      ninos: formData.ninos,
-      bebes: formData.bebes,
-      identificationNumber: formData.identificationNumber,
-      paymentStatus: formData.paymentStatus,
-      paymentMethod: formData.paymentMethod || undefined,
-      currency: formData.currency,
-      observacion_checkin: formData.observacion_checkin || undefined,
-      isWalkIn: checkInType === 'walk-in',
-      guestEmail: formData.email,
-      guestPhone: formData.phone,
-      guestNationality: formData.nationality,
-      // ⚖️ División de cargos
-      requiereDivisionCargos: formData.requiereDivisionCargos,
-      notasDivision: formData.requiereDivisionCargos ? formData.notasDivision : undefined,
-      empresaPagadora: formData.requiereDivisionCargos ? formData.empresaPagadora : undefined,
-      // Agregar ID del huésped existente si se seleccionó uno
-      ...(checkInType === 'walk-in' && walkInGuestType === 'existing' && formData.selectedGuestId && {
-        existingGuestId: formData.selectedGuestId
-      })
-    };
 
-    console.log('📋 Datos preparados para check-in:', checkInData);
+    try {
+      // 1. Validar que tenemos ID de reserva numérico
+      if (checkInType === 'reservation' && !formData.reservationId) {
+        throw new Error('El ID de reserva es requerido para reservas existentes');
+      }
 
-    const result = await validateAndSubmit(checkInData);
-    
-    if (result.success) {
-      console.log('✅ Check-in exitoso, redirigiendo...');
-      navigate(ROUTES.FRONTDESK.BASE);
-    } else {
-      console.error('❌ Check-in falló:', error);
-      // El error ya se maneja en el hook y se muestra en la UI
+      if (checkInType === 'walk-in') {
+        throw new Error('Walk-in no está implementado aún. Use reservas existentes.');
+      }
+
+      const reservaId = parseInt(formData.reservationId, 10);
+      if (isNaN(reservaId)) {
+        throw new Error(`El ID de reserva debe ser numérico: ${formData.reservationId}`);
+      }
+
+      // 2. Crear payload exacto para la API según documentación
+      const backendPayload: CheckInRequestDTO = {
+        id_cliente_titular: 1, // El backend lo resolverá desde la reserva
+        fecha_llegada: formData.checkInDate,
+        fecha_salida: formData.checkOutDate,
+        adultos: formData.adultos,
+        ninos: formData.ninos,
+        bebes: formData.bebes,
+        id_hab: parseInt(formData.roomNumber, 10) || 1, // Convertir a número
+        nombre_asignacion: `${formData.firstName} ${formData.lastName} - Check-in desde Frontend`,
+        observacion_checkin: formData.observacion_checkin || 'Check-in realizado desde el sistema frontend'
+      };
+
+      console.log('📋 Payload preparado para API:', backendPayload);
+
+      // 3. Convertir a CheckInData para compatibilidad con el hook
+      const checkInData: CheckInData = {
+        reservationId: formData.reservationId,
+        guestName: `${formData.firstName} ${formData.lastName}`,
+        roomNumber: formData.roomNumber,
+        checkInDate: formData.checkInDate,
+        checkOutDate: formData.checkOutDate,
+        numberOfGuests: formData.numberOfGuests,
+        adultos: formData.adultos,
+        ninos: formData.ninos,
+        bebes: formData.bebes,
+        identificationNumber: formData.identificationNumber,
+        paymentStatus: formData.paymentStatus,
+        paymentMethod: formData.paymentMethod || undefined,
+        currency: formData.currency,
+        observacion_checkin: formData.observacion_checkin || undefined,
+        isWalkIn: (checkInType as string) === 'walk-in',
+        guestEmail: formData.email,
+        guestPhone: formData.phone,
+        guestNationality: formData.nationality,
+        // ⚖️ División de cargos
+        requiereDivisionCargos: formData.requiereDivisionCargos,
+        notasDivision: formData.requiereDivisionCargos ? formData.notasDivision : undefined,
+        empresaPagadora: formData.requiereDivisionCargos ? formData.empresaPagadora : undefined,
+        // Agregar ID del huésped existente si se seleccionó uno
+        ...((checkInType as string) === 'walk-in' && walkInGuestType === 'existing' && formData.selectedGuestId && {
+          existingGuestId: formData.selectedGuestId
+        })
+      };
+
+      const result = await validateAndSubmit(checkInData);
+      
+      if (result.success) {
+        console.log('✅ Check-in exitoso, redirigiendo...');
+        navigate(ROUTES.FRONTDESK.BASE);
+      } else {
+        console.error('❌ Check-in falló:', error);
+        // El error ya se maneja en el hook y se muestra en la UI
+      }
+    } catch (validationError) {
+      console.error('❌ Error de validación:', validationError);
+      // Aquí podrías mostrar el error en la UI usando tu sistema de alertas
     }
   };
 
@@ -522,6 +555,26 @@ const CheckIn = () => {
             </button>
           </div>
 
+          {/* Información importante sobre la API */}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0">
+                <CheckCircle className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-blue-900">API de Check-In Configurada</h3>
+                <p className="text-sm text-blue-700 mt-1">
+                  Este formulario está conectado con <code className="bg-blue-100 px-1 rounded">POST /api/frontdesk/reserva/{'{'}reserva{'}'}/checkin</code>
+                </p>
+                <ul className="text-xs text-blue-600 mt-2 space-y-1">
+                  <li>• Requiere ID de reserva numérico existente</li>
+                  <li>• Valida automáticamente cliente y habitación</li>
+                  <li>• Formatea datos según CheckInRequestDTO</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           {/* Selector de tipo de Check-In */}
           <div className="mb-6">
             <div className="flex justify-center">
@@ -550,14 +603,25 @@ const CheckIn = () => {
             </div>
             {checkInType === 'walk-in' && (
               <p className="text-center text-sm text-gray-600 mt-2">
-                Huésped sin reserva previa
+                Huésped sin reserva previa (No disponible)
               </p>
             )}
           </div>
           
+          {/* Sistema de alertas mejorado */}
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-              {error}
+            <div className="mb-6">
+              <Alert
+                type="error"
+                title="Error en Check-In"
+                message={error}
+                onClose={() => {
+                  // Limpiar error del check-in
+                  if (typeof clearCheckInError === 'function') {
+                    clearCheckInError();
+                  }
+                }}
+              />
             </div>
           )}
 
@@ -577,14 +641,18 @@ const CheckIn = () => {
                         type="text"
                         value={formData.reservationId}
                         onChange={(e) => {
-                          setFormData(prev => ({ ...prev, reservationId: e.target.value }));
-                          if (hasLoadedReservationData) {
-                            setHasLoadedReservationData(false);
+                          // Solo permitir números para ID de reserva
+                          const value = e.target.value;
+                          if (/^\d*$/.test(value)) {
+                            setFormData(prev => ({ ...prev, reservationId: value }));
+                            if (hasLoadedReservationData) {
+                              setHasLoadedReservationData(false);
+                            }
                           }
                         }}
                         className={getInputClasses(false, false)}
                         required={checkInType === 'reservation'}
-                        placeholder="Ingrese el ID de la reserva"
+                        placeholder="Ej: 123 (solo números)"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
@@ -663,6 +731,17 @@ const CheckIn = () => {
                           <div className="col-span-2"><strong>Solicitudes:</strong> {foundReservation.specialRequests}</div>
                         )}
                       </div>
+                      
+                      {/* Instrucciones para el check-in */}
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                        <div className="flex items-center gap-2 text-blue-800 text-sm">
+                          <CheckCircle className="w-4 h-4" />
+                          <span className="font-medium">Listo para Check-In</span>
+                        </div>
+                        <p className="text-blue-700 text-xs mt-1">
+                          Los datos se han cargado automáticamente. Verifique la información y complete el check-in.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -683,12 +762,25 @@ const CheckIn = () => {
               {/* Selector de tipo de huésped para Walk-In */}
               {checkInType === 'walk-in' && (
                 <div className="mb-6">
+                  {/* Mensaje temporal para Walk-In */}
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                    <div className="flex items-center gap-2 text-yellow-800">
+                      <AlertCircle className="w-5 h-5" />
+                      <p className="font-medium">Walk-In en Desarrollo</p>
+                    </div>
+                    <p className="text-yellow-700 text-sm mt-1">
+                      La funcionalidad de Walk-In está en desarrollo. Por ahora, use "Reserva Existente" 
+                      con un ID de reserva válido.
+                    </p>
+                  </div>
+                  
                   <div className="flex justify-center">
                     <div className="bg-gray-100 p-1 rounded-lg flex">
                       <button
                         type="button"
                         onClick={() => handleWalkInGuestTypeChange('new')}
                         className={getButtonClasses(walkInGuestType === 'new', 'green')}
+                        disabled={true}
                       >
                         <div className="flex items-center gap-2">
                           <UserPlus className="w-4 h-4" />
@@ -699,6 +791,7 @@ const CheckIn = () => {
                         type="button"
                         onClick={() => handleWalkInGuestTypeChange('existing')}
                         className={getButtonClasses(walkInGuestType === 'existing', 'green')}
+                        disabled={true}
                       >
                         <div className="flex items-center gap-2">
                           <Search className="w-4 h-4" />
@@ -971,15 +1064,22 @@ const CheckIn = () => {
             {checkInType === 'walk-in' && (
               <div className="border border-yellow-200 bg-yellow-50 rounded-lg p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Información Adicional - Walk-In</h2>
-                <div className="bg-blue-50 border border-blue-200 rounded-md p-3 w-full">
-                  <p className="text-sm text-blue-800">
-                    <strong>Walk-In:</strong> Este huésped no tiene reserva previa. 
-                    Se generará automáticamente un ID de registro.
-                    {walkInGuestType === 'existing' && formData.selectedGuestId && (
-                      <span className="block mt-1">
-                        <strong>Huésped seleccionado:</strong> Los datos del huésped existente se han cargado automáticamente.
-                      </span>
-                    )}
+                <div className="bg-red-50 border border-red-200 rounded-md p-3 w-full">
+                  <div className="flex items-center gap-2 text-red-800">
+                    <AlertCircle className="w-5 h-5" />
+                    <p className="font-medium">Funcionalidad No Disponible</p>
+                  </div>
+                  <p className="text-sm text-red-700 mt-2">
+                    <strong>Walk-In está en desarrollo.</strong> Esta funcionalidad requiere:
+                  </p>
+                  <ul className="text-sm text-red-700 mt-1 ml-4 space-y-1">
+                    <li>• Creación automática de cliente en backend</li>
+                    <li>• Generación de ID de reserva temporal</li>
+                    <li>• Validación de disponibilidad de habitación</li>
+                    <li>• Configuración de precios y políticas</li>
+                  </ul>
+                  <p className="text-sm text-red-700 mt-2">
+                    <strong>Solución temporal:</strong> Use "Reserva Existente" con un ID válido.
                   </p>
                 </div>
               </div>
@@ -1129,8 +1229,8 @@ const CheckIn = () => {
                         maxLength={10}
                         onChange={(e) => {
                           const value = e.target.value;
-                          // Solo permitir alfanumérico y guiones
-                          if (/^[a-zA-Z0-9-]*$/.test(value)) {
+                          // Para la API, solo permitir números para habitación
+                          if (/^\d*$/.test(value)) {
                             setFormData(prev => ({ ...prev, roomNumber: value }));
                             searchRoomSuggestions(value);
                             clearError('roomNumber');
@@ -1144,7 +1244,7 @@ const CheckIn = () => {
                         }}
                         className={getRoomInputClasses(!!errors.roomNumber, isRoomEditable)}
                         required
-                        placeholder="101"
+                        placeholder="101 (solo números)"
                       />
                       
                       {/* Error de validación */}

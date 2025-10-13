@@ -1,20 +1,49 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { RoomChangeData, RoomChangeRequest } from '../types/roomChange';
+import apiClient from '../../../services/apiClient';
 
-// Mock service para cambio de habitación
-const mockRoomChangeService = {
+// Servicio real para cambio de habitación
+const roomChangeService = {
   changeRoom: async (data: RoomChangeRequest): Promise<RoomChangeData> => {
-    return new Promise(resolve => {
-      // Simular llamada a API
-      const changeData: RoomChangeData = {
-        ...data,
-        currentRoomId: 1, // Mock current room
-        guestId: 'guest-123',
-        reservationId: 'RES-001',
-      };
-      setTimeout(() => resolve(changeData), 500);
-    });
+    console.log('🔄 Enviando cambio de habitación:', data);
+    
+    // Intentar múltiples endpoints
+    const endpoints = [
+      '/api/frontdesk/room-change',
+      '/api/reservations/room-change', 
+      '/api/frontdesk/cambio-habitacion',
+      '/frontdesk/room-change'
+    ];
+
+    for (const endpoint of endpoints) {
+      try {
+        console.log(`🎯 Intentando: ${endpoint}`);
+        const response = await apiClient.post(endpoint, data);
+        
+        if (response.data) {
+          console.log(`✅ Cambio exitoso en: ${endpoint}`, response.data);
+          
+          // Mapear respuesta al formato esperado
+          const responseData = response.data.data || response.data;
+          
+          return {
+            ...data,
+            currentRoomId: responseData.currentRoomId || responseData.id_hab_anterior,
+            guestId: responseData.guestId || responseData.id_cliente,
+            reservationId: responseData.reservationId || responseData.id_reserva,
+            motivo: responseData.motivo,
+            observaciones: responseData.observaciones
+          };
+        }
+      } catch (error) {
+        console.log(`❌ Falló: ${endpoint}`, error);
+        continue;
+      }
+    }
+    
+    // Si todos fallan, lanzar error
+    throw new Error('No se pudo procesar el cambio de habitación. Verifique la conexión con el servidor.');
   }
 };
 
@@ -23,7 +52,7 @@ export const useRoomChange = () => {
   const queryClient = useQueryClient();
 
   const changeRoomMutation = useMutation({
-    mutationFn: (data: RoomChangeRequest) => mockRoomChangeService.changeRoom(data),
+    mutationFn: (data: RoomChangeRequest) => roomChangeService.changeRoom(data),
     onSuccess: () => {
       setError(null);
       // Invalidar queries relacionadas
