@@ -8,7 +8,12 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { roomService } from '../../reservations/services/roomService';
 import { ProtectedRoute } from '../components/ProtectedRoute';
+import { useCreateNewReservation } from '../../reservations/hooks/useReservationQueries';
+import { guestApiService } from '../../guests/services/guestApiService';
+import { useRecaptcha } from '../../../hooks/useRecaptcha';
 import type { Room } from '../../../types/core';
+import type { CreateReservationDto, CreateReservationRoomDto } from '../../reservations/types';
+import { toast } from 'sonner';
 
 // Step Components
 import { ReservationStepOne } from '../components/reservation/ReservationStepOne';
@@ -22,6 +27,7 @@ interface ReservationData {
   checkOut: string;
   adults: number;
   children: number;
+  babies: number;
   
   // Step 2: Room Selection
   selectedRoomIds: string[];
@@ -35,7 +41,7 @@ interface ReservationData {
     nationalId: string;
   };
   specialRequests: string;
-  additionalAmenities: string[];
+  selectedServices: Array<{ id_servicio: number; cantidad: number }>;
 }
 
 // Step-specific data types
@@ -44,6 +50,7 @@ interface StepOneData {
   checkOut: string;
   adults: number;
   children: number;
+  babies: number;
 }
 
 interface StepTwoData {
@@ -59,7 +66,7 @@ interface StepThreeData {
     nationalId: string;
   };
   specialRequests: string;
-  additionalAmenities: string[];
+  selectedServices: Array<{ id_servicio: number; cantidad: number }>;
 }
 
 type StepData = StepOneData | StepTwoData | StepThreeData;
@@ -73,11 +80,18 @@ export function WebReservationPage() {
   // Pre-selected room from URL parameters
   const preSelectedRoomId = searchParams.get('room');
   
+  // TanStack Query mutation for creating reservation
+  const { mutate: createReservation, isPending: isCreating } = useCreateNewReservation();
+  
+  // reCAPTCHA v3 integration
+  const { executeRecaptcha, isReady: isRecaptchaReady } = useRecaptcha();
+  
   const [reservationData, setReservationData] = useState<ReservationData>({
     checkIn: '',
     checkOut: '',
     adults: 2,
     children: 0,
+    babies: 0,
     selectedRoomIds: preSelectedRoomId ? [preSelectedRoomId] : [],
     guestInfo: {
       firstName: '',
@@ -87,7 +101,7 @@ export function WebReservationPage() {
       nationalId: ''
     },
     specialRequests: '',
-    additionalAmenities: []
+    selectedServices: []
   });
 
   // Capacity warnings and messages
@@ -105,7 +119,7 @@ export function WebReservationPage() {
         const rooms = await roomService.getAvailableRooms(
           reservationData.checkIn,
           reservationData.checkOut,
-          reservationData.adults + reservationData.children
+          reservationData.adults + reservationData.children + reservationData.babies
         );
         setAvailableRooms(rooms);
       } catch (error) {
@@ -115,14 +129,14 @@ export function WebReservationPage() {
     };
 
     fetchAvailableRooms();
-  }, [reservationData.checkIn, reservationData.checkOut, reservationData.adults, reservationData.children]);
+  }, [reservationData.checkIn, reservationData.checkOut, reservationData.adults, reservationData.children, reservationData.babies]);
 
   // Check if current room selection can accommodate guests
   useEffect(() => {
-    if (reservationData.selectedRoomIds.length > 0 && (reservationData.adults + reservationData.children) > 0) {
+    if (reservationData.selectedRoomIds.length > 0 && (reservationData.adults + reservationData.children + reservationData.babies) > 0) {
       const selectedRooms = availableRooms.filter((room: Room) => reservationData.selectedRoomIds.includes(room.id));
       const totalCapacity = selectedRooms.reduce((sum: number, room: Room) => sum + room.capacity, 0);
-      const totalGuests = reservationData.adults + reservationData.children;
+      const totalGuests = reservationData.adults + reservationData.children + reservationData.babies;
       
       if (totalGuests > totalCapacity) {
         const shortage = totalGuests - totalCapacity;
@@ -134,7 +148,7 @@ export function WebReservationPage() {
         setShowSpecialRequestsHint(false);
       }
     }
-  }, [reservationData.selectedRoomIds, reservationData.adults, reservationData.children, availableRooms]);
+  }, [reservationData.selectedRoomIds, reservationData.adults, reservationData.children, reservationData.babies, availableRooms]);
 
   const updateReservationData = (updates: Partial<ReservationData>) => {
     setReservationData(prev => ({ ...prev, ...updates }));
@@ -148,7 +162,8 @@ export function WebReservationPage() {
           checkIn: step1Data.checkIn,
           checkOut: step1Data.checkOut,
           adults: step1Data.adults,
-          children: step1Data.children
+          children: step1Data.children,
+          babies: step1Data.babies
         });
         setCurrentStep(2);
         break;
@@ -168,7 +183,7 @@ export function WebReservationPage() {
           ...reservationData,
           guestInfo: step3Data.guestInfo,
           specialRequests: step3Data.specialRequests,
-          additionalAmenities: step3Data.additionalAmenities
+          selectedServices: step3Data.selectedServices
         });
         break;
       }
@@ -177,15 +192,92 @@ export function WebReservationPage() {
 
   const handleSubmitReservation = async (finalData: ReservationData) => {
     try {
-      // Here you would submit to your API
-      console.log('Submitting reservation:', finalData);
+      // Step 0: Generate reCAPTCHA token
+      toast.info('Verificando seguridad...', { duration: 1500 });
       
-      // For now, just show success message and redirect
-      alert('¡Reserva creada exitosamente! Pronto recibirá un email de confirmación.');
-      navigate('/mis-reservas');
-    } catch (error) {
-      console.error('Error creating reservation:', error);
-      alert('Error al crear la reserva. Por favor intente de nuevo.');
+      let recaptchaToken: string | null = null;
+      
+      if (isRecaptchaReady) {
+        recaptchaToken = await executeRecaptcha('submit_reservation');
+        
+        if (!recaptchaToken) {
+          toast.error('Error de verificación de seguridad', {
+            description: 'Por favor recargue la página e intente nuevamente.',
+            duration: 5000
+          });
+          return;
+        }
+      } else {
+        console.warn('[WebReservationPage] reCAPTCHA not ready, proceeding without token');
+      }
+      
+      // Step 1: Create the guest/client first
+      toast.info('Creando información del cliente...', { duration: 2000 });
+      
+      const guestData = {
+        firstName: finalData.guestInfo.firstName,
+        firstLastName: finalData.guestInfo.lastName,
+        secondLastName: '', // Optional
+        email: finalData.guestInfo.email,
+        phone: finalData.guestInfo.phone,
+        documentType: 'id_card' as const, // Default to ID card
+        documentNumber: finalData.guestInfo.nationalId,
+        nationality: 'Costa Rica', // Default, could be enhanced
+      };
+      
+      const createdGuest = await guestApiService.createGuest(guestData);
+      
+      if (!createdGuest || !createdGuest.id) {
+        throw new Error('No se pudo crear el cliente');
+      }
+      
+      toast.info('Creando reserva...', { duration: 2000 });
+      
+      // Step 2: Create the reservation with proper DTO format (including reCAPTCHA token)
+      const habitaciones: CreateReservationRoomDto[] = finalData.selectedRoomIds.map(roomId => ({
+        id_habitacion: Number(roomId),
+        fecha_llegada: finalData.checkIn,
+        fecha_salida: finalData.checkOut,
+        adultos: finalData.adults,
+        ninos: finalData.children,
+        bebes: finalData.babies
+      }));
+      
+      const reservationPayload: CreateReservationDto & { recaptcha_token?: string } = {
+        id_cliente: Number(createdGuest.id),
+        id_estado_res: 1, // Estado "Pendiente" o "Confirmada"
+        id_fuente: 2, // Fuente "Sitio Web" (adjust based on your backend IDs)
+        notas: finalData.specialRequests || undefined,
+        habitaciones,
+        ...(recaptchaToken && { recaptcha_token: recaptchaToken })
+      };
+      
+      createReservation(reservationPayload, {
+        onSuccess: (reservation) => {
+          toast.success('¡Reserva creada exitosamente!', {
+            description: `Reserva #${reservation.id} confirmada. Recibirá un email de confirmación.`,
+            duration: 5000
+          });
+          navigate('/web/confirmation', {
+            state: { reservation }
+          });
+        },
+        onError: (error: unknown) => {
+          console.error('Error creating reservation:', error);
+          toast.error('Error al crear la reserva', {
+            description: 'Por favor intente nuevamente o contacte con soporte.',
+            duration: 5000
+          });
+        }
+      });
+      
+    } catch (error: unknown) {
+      console.error('Error preparing reservation:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      toast.error('Error al preparar la reserva', {
+        description: errorMessage,
+        duration: 5000
+      });
     }
   };
 
@@ -274,7 +366,8 @@ export function WebReservationPage() {
                 checkIn: reservationData.checkIn,
                 checkOut: reservationData.checkOut,
                 adults: reservationData.adults,
-                children: reservationData.children
+                children: reservationData.children,
+                babies: reservationData.babies
               }}
               onComplete={handleStepComplete}
             />
@@ -302,6 +395,7 @@ export function WebReservationPage() {
               onComplete={handleStepComplete}
               onBack={goToPreviousStep}
               capacityWarning={capacityWarning}
+              isSubmitting={isCreating}
             />
           )}
         </div>

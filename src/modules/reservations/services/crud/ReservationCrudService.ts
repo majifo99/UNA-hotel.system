@@ -60,10 +60,12 @@ export class ReservationCrudService {
 
       const reservation = mapApiReservationToReservation(createdApiReserva as ApiReservation);
       return reservation;
-    } catch (error: any) {
-      console.error('[API] Error creating reserva:', error?.message || error);
-      if (error?.response?.data) {
-        console.error('[API] /reservas error response body:', error.response.data);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[API] Error creating reserva:', errorMessage);
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: unknown } };
+        console.error('[API] /reservas error response body:', axiosError.response?.data);
       }
       throw error;
     }
@@ -79,7 +81,9 @@ export class ReservationCrudService {
       
       const res = await apiClient.post<ApiReservaFull | { data: ApiReservaFull }>('/reservas', payload);
       
-      const apiReserva: ApiReservaFull = (res.data as any)?.data ?? res.data;
+      // Extract data from response - backend may wrap in data property
+      const responseData = res.data as { data?: ApiReservaFull } | ApiReservaFull;
+      const apiReserva: ApiReservaFull = 'data' in responseData && responseData.data ? responseData.data : responseData as ApiReservaFull;
       
       if (!apiReserva || !apiReserva.id_reserva) {
         throw new Error('Invalid API response structure');
@@ -106,7 +110,9 @@ export class ReservationCrudService {
     try {
       const res = await apiClient.get<ApiReservaFull | { data: ApiReservaFull }>(`/reservas/${id}`);
       
-      const apiReserva: ApiReservaFull = (res.data as any)?.data ?? res.data;
+      // Extract data from response - backend may wrap in data property
+      const responseData = res.data as { data?: ApiReservaFull } | ApiReservaFull;
+      const apiReserva: ApiReservaFull = 'data' in responseData && responseData.data ? responseData.data : responseData as ApiReservaFull;
       
       if (!apiReserva || !apiReserva.id_reserva) {
         console.error('Invalid API response structure:', res.data);
@@ -137,10 +143,16 @@ export class ReservationCrudService {
       
       if (!data || data.length === 0) return null;
       
-      const apiRes = data[0] as ApiReservation & { cliente?: any };
+      // Type for API reservation with optional habitaciones field
+      type ApiReservationWithHabitaciones = ApiReservation & { 
+        cliente?: unknown;
+        habitaciones?: ApiReservaHabitacion[];
+      };
+      
+      const apiRes = data[0] as ApiReservationWithHabitaciones;
 
-      if ((apiRes as any).habitaciones && Array.isArray((apiRes as any).habitaciones)) {
-        return mapApiReservationToReservation(apiRes, undefined, undefined, (apiRes as any).habitaciones);
+      if (apiRes.habitaciones && Array.isArray(apiRes.habitaciones)) {
+        return mapApiReservationToReservation(apiRes, undefined, undefined, apiRes.habitaciones);
       }
 
       return mapApiReservationToReservation(apiRes);
@@ -159,32 +171,41 @@ export class ReservationCrudService {
       const res = await apiClient.get('/reservas');
       const payload = res.data as { data?: ApiReservation[] } | ApiReservation[] | undefined;
       
+      // Extract array from response
       let apiList: ApiReservation[] = [];
-      if (Array.isArray((payload as any)?.data)) {
-        apiList = (payload as any).data as ApiReservation[];
+      if (payload && typeof payload === 'object' && 'data' in payload && Array.isArray(payload.data)) {
+        apiList = payload.data;
       } else if (Array.isArray(payload)) {
-        apiList = payload as ApiReservation[];
+        apiList = payload;
       }
 
-      const reservations = await Promise.all((apiList as ApiReservation[]).map(async (apiReservation) => {
+      // Type for API reservation with optional habitaciones field
+      type ApiReservationWithHabitaciones = ApiReservation & {
+        habitaciones?: ApiReservaHabitacion[];
+      };
+
+      const reservations = await Promise.all(apiList.map(async (apiReservation) => {
+        const apiReservationExt = apiReservation as ApiReservationWithHabitaciones;
         let habitaciones: ApiReservaHabitacion[] | undefined;
 
-        if (Array.isArray((apiReservation as any).habitaciones)) {
-          habitaciones = (apiReservation as any).habitaciones as ApiReservaHabitacion[];
+        if (Array.isArray(apiReservationExt.habitaciones)) {
+          habitaciones = apiReservationExt.habitaciones;
         } else {
           try {
             const habitacionesRes = await apiClient.get(`/reservas/${apiReservation.id_reserva}/habitaciones`);
             const habitacionesPayload = habitacionesRes.data as { data?: ApiReservaHabitacion[] } | ApiReservaHabitacion[] | undefined;
             
+            // Extract array from habitaciones response
             let habitacionesList: ApiReservaHabitacion[] = [];
-            if (Array.isArray((habitacionesPayload as any)?.data)) {
-              habitacionesList = (habitacionesPayload as any).data as ApiReservaHabitacion[];
+            if (habitacionesPayload && typeof habitacionesPayload === 'object' && 'data' in habitacionesPayload && Array.isArray(habitacionesPayload.data)) {
+              habitacionesList = habitacionesPayload.data;
             } else if (Array.isArray(habitacionesPayload)) {
-              habitacionesList = habitacionesPayload as ApiReservaHabitacion[];
+              habitacionesList = habitacionesPayload;
             }
-            habitaciones = habitacionesList as ApiReservaHabitacion[];
-          } catch (error: any) {
-            console.warn(`[API] No se pudieron obtener las habitaciones para la reserva ${apiReservation.id_reserva}:`, error?.message || error);
+            habitaciones = habitacionesList;
+          } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.warn(`[API] No se pudieron obtener las habitaciones para la reserva ${apiReservation.id_reserva}:`, errorMessage);
           }
         }
 
@@ -266,8 +287,9 @@ export class ReservationCrudService {
         penalidad: options?.penalty,
       });
       cancelledReservation = await this.getById(id);
-    } catch (error: any) {
-      console.warn('[API] Endpoint /reservas/:id/cancel no disponible, usando actualización estándar:', error?.message || error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.warn('[API] Endpoint /reservas/:id/cancel no disponible, usando actualización estándar:', errorMessage);
     }
 
     if (cancelledReservation && cancelledReservation.status === 'cancelled') {
@@ -289,8 +311,14 @@ export class ReservationCrudService {
     if (payload.id_estado_res !== undefined) return;
 
     try {
+      // Type for estado reserva from API
+      interface EstadoReserva {
+        id_estado_res: number;
+        nombre?: string;
+      }
+
       const estadosRes = await apiClient.get('/estados-reserva');
-      const list: any[] = estadosRes.data?.data || estadosRes.data || [];
+      const list: EstadoReserva[] = estadosRes.data?.data || estadosRes.data || [];
       
       const preferred = list.find(e => Number(e.id_estado_res) === 2)
         || list.find(e => Number(e.id_estado_res) === 7)
@@ -308,12 +336,28 @@ export class ReservationCrudService {
     }
   }
 
-  private extractCreatedApiReserva(res: any): ApiReservation | null {
-    const apiRes: ApiReservation = res.data?.data ? res.data.data : res.data;
-
-    if (!apiRes) return null;
-    if (Array.isArray(apiRes)) return apiRes[0] as ApiReservation;
-    return apiRes as ApiReservation;
+  private extractCreatedApiReserva(res: { data?: unknown }): ApiReservation | null {
+    // Type guard to check if data has the expected structure
+    const responseData = res.data as { data?: unknown } | ApiReservation | ApiReservation[] | undefined;
+    
+    if (!responseData) return null;
+    
+    // Check if response has nested data property
+    if (typeof responseData === 'object' && 'data' in responseData) {
+      const nestedData = responseData.data;
+      if (Array.isArray(nestedData) && nestedData.length > 0) {
+        return nestedData[0] as ApiReservation;
+      }
+      return nestedData as ApiReservation;
+    }
+    
+    // Check if response is array
+    if (Array.isArray(responseData)) {
+      return responseData[0] as ApiReservation;
+    }
+    
+    // Assume it's the reservation object directly
+    return responseData as ApiReservation;
   }
 
   private async postHabitacionIfNeeded(
@@ -332,8 +376,9 @@ export class ReservationCrudService {
       
       console.debug('[API] POST /reservas/' + reservaId + '/habitaciones payload:', habitacionPayload);
       await apiClient.post(`/reservas/${reservaId}/habitaciones`, habitacionPayload);
-    } catch (err: any) {
-      console.error('[API] Failed to create reserva_habitacion:', err?.message || err);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error('[API] Failed to create reserva_habitacion:', errorMessage);
     }
   }
 
@@ -398,8 +443,9 @@ export class ReservationCrudService {
       if (Object.keys(payload).length > 0) {
         await apiClient.put(`/reservas/${id}`, payload);
       }
-    } catch (error: any) {
-      console.error('[API] Error actualizando /reservas/:id', error?.message || error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[API] Error actualizando /reservas/:id', errorMessage);
     }
   }
 
@@ -430,8 +476,9 @@ export class ReservationCrudService {
 
     try {
       await apiClient.put(`/reservas/${id}/habitaciones`, habitacionPayload);
-    } catch (error: any) {
-      console.warn('[API] No se pudo actualizar la reserva_habitacion:', error?.message || error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.warn('[API] No se pudo actualizar la reserva_habitacion:', errorMessage);
     }
   }
 }
