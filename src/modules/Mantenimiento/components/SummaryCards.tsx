@@ -1,7 +1,8 @@
-import type { MaintenanceStatus } from "../types/mantenimiento";
+// src/modules/Mantenimiento/components/SummaryChips.tsx
+import type { StatusFilter } from "../../Mantenimiento/types/mantenimiento";
 
-/** Estados permitidos para el filtro */
-export type AllOrStatus = MaintenanceStatus | "Todos";
+/** Estados permitidos para el filtro en la UI */
+export type AllOrStatus = StatusFilter; // "Pendiente" | "En Proceso" | "Completado" | "Todos"
 
 /** Contadores por estado */
 export type StatusCounts = Readonly<{
@@ -66,10 +67,7 @@ export default function SummaryChips({
   counts,
 }: SummaryChipsProps) {
   return (
-    <div
-      aria-label="Filtros por estado (resumen)"
-      className="flex flex-wrap items-center gap-2"
-    >
+    <div aria-label="Filtros por estado (resumen)" className="flex flex-wrap items-center gap-2">
       <Chip
         active={status === "Todos"}
         label="Todos"
