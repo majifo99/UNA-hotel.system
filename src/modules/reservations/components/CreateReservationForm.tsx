@@ -42,13 +42,8 @@ export const CreateReservationForm: React.FC = () => {
   }, [location.state, setValue]);
 
   const onSubmit = handleSubmit(async (data) => {
-    const success = await submitReservation(data);
-    if (success) {
-      // navigate('/frontdesk');
-    }
+    await submitReservation(data);
   });
-
-
 
   const handleCreateNewGuest = () => {
     navigate('/guests/create');
@@ -125,7 +120,11 @@ export const CreateReservationForm: React.FC = () => {
               selectedRoomIds={formData.roomIds}
               onRoomSelect={(roomIds: string[]) => {
                 // Only update if the selection actually changed
-                if (JSON.stringify(roomIds.sort()) !== JSON.stringify(formData.roomIds.sort())) {
+                // Use toSorted() to avoid mutating the original arrays and provide compare function
+                const sortedNewRoomIds = [...roomIds].sort((a, b) => a.localeCompare(b));
+                const sortedCurrentRoomIds = [...formData.roomIds].sort((a, b) => a.localeCompare(b));
+                
+                if (JSON.stringify(sortedNewRoomIds) !== JSON.stringify(sortedCurrentRoomIds)) {
                   setValue('roomIds', roomIds);
                   
                   // For backwards compatibility, also set roomId and roomType with the first selected room
