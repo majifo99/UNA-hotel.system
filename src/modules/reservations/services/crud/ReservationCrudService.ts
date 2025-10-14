@@ -61,7 +61,7 @@ export class ReservationCrudService {
       const reservaId = String(createdApiReserva.id_reserva);
       await this.postHabitacionIfNeeded(reservaId, reservationData);
 
-      const reservation = mapApiReservationToReservation(createdApiReserva as ApiReservation);
+      const reservation = mapApiReservationToReservation(createdApiReserva);
       return reservation;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
