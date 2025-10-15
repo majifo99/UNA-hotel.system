@@ -54,10 +54,12 @@ const mapRoomTypeToFrontdesk = (type: Room['type']): FrontdeskRoomType => {
 const mapFrontdeskStatusToRoom = (status: FrontdeskRoomStatus): Room['status'] => {
   const statusMap: Record<FrontdeskRoomStatus, Room['status']> = {
     'available': 'available',
+    'occupied': 'occupied',
     'reserved': 'available', // Reserved rooms are technically available in core
     'checked-in': 'occupied',
     'checked-out': 'cleaning',
     'maintenance': 'maintenance',
+    'cleaning': 'cleaning',
   };
   return statusMap[status];
 };
@@ -65,18 +67,22 @@ const mapFrontdeskStatusToRoom = (status: FrontdeskRoomStatus): Room['status'] =
 // =================== CONSTANTS ===================
 const ROOM_STATUS_COLORS = {
   available: 'bg-green-100 text-green-800 border-green-200',
+  occupied: 'bg-red-100 text-red-800 border-red-200',
   reserved: 'bg-purple-100 text-purple-800 border-purple-200',
   'checked-in': 'bg-red-100 text-red-800 border-red-200',
   'checked-out': 'bg-orange-100 text-orange-800 border-orange-200',
-  maintenance: 'bg-yellow-100 text-yellow-800 border-yellow-200'
+  maintenance: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  cleaning: 'bg-purple-100 text-purple-800 border-purple-200'
 } as const;
 
 const ROOM_STATUS_LABELS = {
   available: 'Disponible',
+  occupied: 'Ocupada',
   reserved: 'Reservada',
   'checked-in': 'Ocupada',
   'checked-out': 'Check-out',
-  maintenance: 'Mantenimiento'
+  maintenance: 'Mantenimiento',
+  cleaning: 'Limpieza'
 } as const;
 
 // =================== INTERFACES ===================

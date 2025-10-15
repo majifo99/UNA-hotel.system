@@ -14,10 +14,12 @@ import type { Guest, Room } from '../../../types/core/domain';
  */
 export type FrontdeskRoomStatus = 
   | 'available' 
+  | 'occupied'
   | 'reserved' 
   | 'checked-in' 
   | 'checked-out' 
-  | 'maintenance';
+  | 'maintenance'
+  | 'cleaning';
 
 /**
  * Room types as used in frontdesk operations

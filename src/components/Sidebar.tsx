@@ -17,12 +17,15 @@
  */
 
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   ChevronRight,
   ChevronLeft,
   Keyboard,
   Search,
+  User,
+  LogOut,
+  Settings,
 } from 'lucide-react';
 import SolLogo from '../assets/Sol nav.png';
 import {
@@ -38,6 +41,7 @@ import {
 } from '../hooks/useNavigationShortcuts';
 import { CommandPalette, useCommandPalette } from './CommandPalette';
 import { ShortcutGuide } from './ShortcutGuide';
+import { useAdminAuth } from '../modules/admin';
 
 /**
  * Props for NavigationItem component
@@ -247,13 +251,16 @@ function SidebarNavigationItem({
  */
 function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [showUserMenu, setShowUserMenu] = useState(false);
   
   // Hooks for enhanced functionality
   const shortcutState = useNavigationShortcuts();
   const commandPalette = useCommandPalette();
   const shortcutsAvailable = useShortcutsAvailable();
+  const { user, logout } = useAdminAuth();
   
   // Get grouped navigation items from config
   const groupedItems = getNavigationByCategory();
@@ -290,6 +297,18 @@ function Sidebar() {
       }
       return newSet;
     });
+  };
+
+  /**
+   * Handle logout
+   */
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/admin/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   return (
@@ -421,6 +440,72 @@ function Sidebar() {
               })}
           </ul>
         </div>
+        
+        {/* User Profile Section */}
+        {user && (
+          <div className="flex-shrink-0 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="w-full px-4 py-4 flex items-center gap-3 text-white/90 hover:bg-black/10 transition-colors"
+                aria-label="Menú de usuario"
+              >
+                <div className="w-10 h-10 rounded-full bg-[#D6BD98] flex items-center justify-center flex-shrink-0">
+                  <User className="w-5 h-5 text-[#1A3636]" />
+                </div>
+                
+                {!isCollapsed && (
+                  <div className="flex-1 text-left min-w-0">
+                    <div className="text-sm font-medium truncate">{user.firstName} {user.lastName}</div>
+                    <div className="text-xs text-white/60 truncate">{user.role}</div>
+                  </div>
+                )}
+              </button>
+
+              {/* User Menu Dropdown */}
+              {showUserMenu && !isCollapsed && (
+                <div 
+                  className="absolute bottom-full left-0 right-0 mb-2 mx-4 bg-white rounded-lg shadow-xl overflow-hidden"
+                  style={{ zIndex: 100 }}
+                >
+                  <div className="p-4 border-b border-gray-200">
+                    <div className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</div>
+                    <div className="text-xs text-gray-500 mt-1">{user.email}</div>
+                    <div className="mt-2">
+                      <span className="inline-block px-2 py-1 text-xs font-medium rounded-full bg-[#E1F2E2] text-[#1A3636]">
+                        {user.role}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="py-2">
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        navigate('/perfil');
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3"
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span>Configuración</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        handleLogout();
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Cerrar Sesión</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         
         {/* Footer (preserved from original) */}
         {!isCollapsed && (

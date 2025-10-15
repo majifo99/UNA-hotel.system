@@ -32,3 +32,4 @@ export { useFolioDistribucion } from './useFolioDistribucion';
 export { useFolioPagos } from './useFolioPagos';
 export { useFolioCierre } from './useFolioCierre';
 export { useFolioHistorial } from './useFolioHistorial';
+export { useFolioManager } from './useFolioManager';
