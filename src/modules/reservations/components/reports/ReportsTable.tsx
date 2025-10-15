@@ -46,8 +46,8 @@ export const ReportsTable: React.FC<ReportsTableProps> = ({
         <div className="animate-pulse space-y-4">
           <div className="h-4 bg-neutral-200 rounded w-1/4" />
           <div className="space-y-3">
-            {[...Array(5)].map((_, i) => (
-              <div key={`skeleton-row-${i}`} className="h-12 bg-neutral-200 rounded" />
+            {Array.from({ length: 5 }, (_, i) => (
+              <div key={`skeleton-${i + 1}`} className="h-12 bg-neutral-200 rounded" />
             ))}
           </div>
         </div>

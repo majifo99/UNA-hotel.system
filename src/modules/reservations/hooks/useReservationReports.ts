@@ -115,6 +115,8 @@ export function useReservationReports(): UseReservationReportsReturn {
     setFilters,
     exportData,
     exportStatus,
-    refetch: () => void refetch(),
+    refetch: () => {
+      refetch();
+    },
   };
 }
