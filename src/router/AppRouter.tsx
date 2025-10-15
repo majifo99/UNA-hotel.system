@@ -4,6 +4,9 @@ import { MainLayout } from '../layouts/MainLayout';
 import { Home } from '../pages/Home';
 import { ReservationsListPage } from '../modules/reservations/pages/ReservationsListPage';
 import { CreateReservationPage } from '../modules/reservations/pages/CreateReservationPage';
+import { ReservationDetailFullPage } from '../modules/reservations/pages/ReservationDetailFullPage';
+import { ReservationEditPage } from '../modules/reservations/pages/ReservationEditPage';
+import { ReservationCancelPage } from '../modules/reservations/pages/ReservationCancelPage';
 import HousekeepingDashboard from '../modules/housekeeping/pages/HousekeepingDashboard';
 import { GuestsPage } from '../modules/guests/pages/GuestsPage';
 import { CreateGuestPage } from '../modules/guests/pages/CreateGuestPage';
@@ -150,7 +153,21 @@ const router = createBrowserRouter([
             path: 'create',
             element: <CreateReservationPage />,
           },
-          // Future detail routes can be added here, e.g. /reservations/:id
+          {
+            // View reservation detail
+            path: ':id/detail',
+            element: <ReservationDetailFullPage />,
+          },
+          {
+            // Edit reservation
+            path: ':id/edit',
+            element: <ReservationEditPage />,
+          },
+          {
+            // Cancel reservation
+            path: ':id/cancel',
+            element: <ReservationCancelPage />,
+          },
           {
             // Reports and analytics
             path: 'reports',
