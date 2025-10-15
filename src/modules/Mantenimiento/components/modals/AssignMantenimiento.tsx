@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Home, Clock3, Calendar as CalendarIcon, UserRound } from "lucide-react";
 import type { MantenimientoItem } from "../../types/mantenimiento";
-import { getUsers } from "../../services/users";
+import { getUsers } from "../../services/usersMantenimiento";
 import mantenimientoService from "../../services/maintenanceService";
 import { combineDateTimeToISO } from "../../utils/datetime";
 
