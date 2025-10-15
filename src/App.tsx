@@ -3,19 +3,44 @@ import AppRouter from './router/AppRouter'
 import { WebRouter } from './router/WebRouter'
 
 function App() {
-  // Determine which router to use
-  // Check for admin mode via URL parameter or environment variable
-  const urlParams = new URLSearchParams(window.location.search);
-  const isAdminMode = urlParams.get('admin') === 'true' || 
-                     window.location.pathname.startsWith('/admin') ||
-                     import.meta.env.VITE_MODE === 'admin';
+  // Determine which router to use based on the current path
+  const currentPath = window.location.pathname;
+  
+  // Admin routes - any route starting with /admin or admin system routes
+  const isAdminRoute = currentPath.startsWith('/admin') ||
+                       currentPath.startsWith('/frontdesk') ||
+                       currentPath.startsWith('/reservations') ||
+                       currentPath.startsWith('/housekeeping') ||
+                       currentPath.startsWith('/guests') ||
+                       currentPath.startsWith('/mantenimiento');
+  
+  // Public web routes - marketing site and public auth
+  const isPublicRoute = currentPath === '/' ||
+                        currentPath.startsWith('/login') ||
+                        currentPath.startsWith('/registro') ||
+                        currentPath.startsWith('/acerca') ||
+                        currentPath.startsWith('/habitaciones') ||
+                        currentPath.startsWith('/servicios') ||
+                        currentPath.startsWith('/contacto') ||
+                        currentPath.startsWith('/reservar') ||
+                        currentPath.startsWith('/perfil') ||
+                        currentPath.startsWith('/mis-reservas');
 
-  // For development, you can switch between modes:
-  // - Public site: http://localhost:5173/
-  // - Admin system: http://localhost:5173/?admin=true
-  // - Or set VITE_MODE=admin in .env file
+  // Use admin router for admin routes, otherwise use public web router
+  const useAdminRouter = isAdminRoute && !isPublicRoute;
 
-  return isAdminMode ? <AppRouter /> : <WebRouter />;
+  // Development debug logging
+  if (import.meta.env.VITE_DEBUG === 'true') {
+    console.log('🔍 Router Debug:', {
+      currentPath,
+      isAdminRoute,
+      isPublicRoute,
+      useAdminRouter,
+      activeRouter: useAdminRouter ? 'AppRouter (Admin)' : 'WebRouter (Public)'
+    });
+  }
+
+  return useAdminRouter ? <AppRouter /> : <WebRouter />;
 }
 
 export default App

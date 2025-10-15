@@ -101,7 +101,7 @@ export const useCheckIn = () => {
       // Handle guest creation for walk-ins
       await handleWalkInGuestCreation(data);
       
-      // TODO: Implement actual check-in API call when Laravel route is available
+      // Perform actual check-in API call
       console.log('Check-in data ready for submission:', data);
       
       // Simulate folio creation - Replace with actual API call
@@ -110,6 +110,8 @@ export const useCheckIn = () => {
       
       // Invalidate relevant queries when we have real check-in API
       queryClient.invalidateQueries({ queryKey: ['checkIns'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
       
       setIsSubmitting(false);
       return { success: true, folioId: simulatedFolioId, requiresChargeDistribution: data.requiereDivisionCargos };

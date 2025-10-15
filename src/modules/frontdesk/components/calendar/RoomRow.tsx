@@ -27,19 +27,23 @@ interface RoomRowProps {
 // Room status colors
 const ROOM_STATUS_COLORS: Record<FrontdeskRoomStatus, string> = {
   available: '#10B981',
+  occupied: '#EF4444',
   reserved: '#8B5CF6',
   'checked-in': '#EF4444', 
   'checked-out': '#F97316',
-  maintenance: '#F59E0B'
+  maintenance: '#F59E0B',
+  cleaning: '#A855F7'
 };
 
 // Room status translations for accessibility
 const ROOM_STATUS_LABELS: Record<FrontdeskRoomStatus, string> = {
   available: 'disponible',
+  occupied: 'ocupada',
   reserved: 'reservada',
   'checked-in': 'ocupada',
   'checked-out': 'liberada',
-  maintenance: 'en mantenimiento'
+  maintenance: 'en mantenimiento',
+  cleaning: 'en limpieza'
 };
 
 const RoomRow: React.FC<RoomRowProps> = ({ room, calendarDays, onRoomClick }) => {

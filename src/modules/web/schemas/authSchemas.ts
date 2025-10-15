@@ -49,15 +49,10 @@ export const registerSchema = z
       .string()
       .min(1, 'La contraseña es requerida')
       .min(8, 'La contraseña debe tener al menos 8 caracteres')
-      .refine((password) => {
-        // More secure validation without vulnerable regex
-        const hasLowercase = /[a-z]/.test(password);
-        const hasUppercase = /[A-Z]/.test(password);
-        const hasNumber = /\d/.test(password);
-        return hasLowercase && hasUppercase && hasNumber;
-      }, {
-        message: 'La contraseña debe contener al menos una minúscula, una mayúscula y un número'
-      }),
+      .regex(/[a-z]/, 'La contraseña debe contener al menos una minúscula')
+      .regex(/[A-Z]/, 'La contraseña debe contener al menos una mayúscula')
+      .regex(/\d/, 'La contraseña debe contener al menos un número')
+      .regex(/[!@#$%^&*]/, 'La contraseña debe contener al menos un carácter especial (!@#$%^&*)'),
     
     confirmPassword: z
       .string()
@@ -65,14 +60,8 @@ export const registerSchema = z
     
     phone: z
       .string()
-      .optional()
-      .refine((val) => !val || val.length >= 10, {
-        message: 'El teléfono debe tener al menos 10 dígitos',
-      }),
-    
-    nationality: z
-      .string()
-      .optional(),
+      .min(1, 'El teléfono es requerido')
+      .regex(/^\+?\d{1,4}[\s-]?\d{4,}[\s-]?\d{4,}$/, 'Formato de teléfono inválido (ej: +506 8888 7777)'),
     
     acceptTerms: z
       .boolean()
