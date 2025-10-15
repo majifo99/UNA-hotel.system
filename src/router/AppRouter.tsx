@@ -4,10 +4,7 @@ import { MainLayout } from '../layouts/MainLayout';
 import { Home } from '../pages/Home';
 import { ReservationsListPage } from '../modules/reservations/pages/ReservationsListPage';
 import { CreateReservationPage } from '../modules/reservations/pages/CreateReservationPage';
-import { ReservationEditPage } from '../modules/reservations/pages/ReservationEditPage';
-import { ReservationCancelPage } from '../modules/reservations/pages/ReservationCancelPage';
-import { ReservationDetailFullPage } from '../modules/reservations/pages/ReservationDetailFullPage';
-import { ReservationReportsPage } from '../modules/reservations/pages/ReservationReportsPage';
+import { SelectServicesPage } from '../modules/reservations/pages/SelectServicesPage';
 import HousekeepingDashboard from '../modules/housekeeping/pages/HousekeepingDashboard';
 import { GuestsPage } from '../modules/guests/pages/GuestsPage';
 import { CreateGuestPage } from '../modules/guests/pages/CreateGuestPage';
@@ -18,6 +15,8 @@ import RoomChange from '../modules/frontdesk/components/RoomChange';
 import { FolioPage } from '../modules/frontdesk/pages/FolioPage';
 import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
 import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
+import { AdminLoginPage, AdminAuthProvider } from '../modules/admin';
+import { ReservationReportsPage } from '../modules/reservations/pages/ReservationReportsPage';
 
 /**
  * TanStack Query Client Configuration
@@ -45,6 +44,7 @@ const queryClient = new QueryClient({
  *
  * Wraps all routes with:
  * - TanStack Query Provider (for server state management)
+ * - Admin Auth Provider (for admin authentication)
  * - Main Layout (sidebar, header, main content area)
  *
  * The Outlet component renders the matched child route
@@ -52,9 +52,11 @@ const queryClient = new QueryClient({
 function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
-      <MainLayout>
-        <Outlet />
-      </MainLayout>
+      <AdminAuthProvider>
+        <MainLayout>
+          <Outlet />
+        </MainLayout>
+      </AdminAuthProvider>
     </QueryClientProvider>
   );
 }
@@ -63,6 +65,7 @@ function RootLayout() {
  * Application Router Configuration
  *
  * Route Structure:
+ * /admin/login              - Admin authentication page (no layout)
  * /                          - Dashboard/Home page
  * /reservations              - Reservations list and management
  * /reservations/create       - Create new reservation form
@@ -76,6 +79,17 @@ function RootLayout() {
  * 3. Update the Sidebar navigation items
  */
 const router = createBrowserRouter([
+  {
+    // Admin login route - standalone without layout
+    path: '/admin/login',
+    element: (
+      <QueryClientProvider client={queryClient}>
+        <AdminAuthProvider>
+          <AdminLoginPage />
+        </AdminAuthProvider>
+      </QueryClientProvider>
+    ),
+  },
   {
     path: '/',
     element: <RootLayout />,
@@ -134,21 +148,7 @@ const router = createBrowserRouter([
             path: 'create',
             element: <CreateReservationPage />,
           },
-          {
-            // View full reservation details (pantalla completa)
-            path: ':id/detail',
-            element: <ReservationDetailFullPage />,
-          },
-          {
-            // Edit existing reservation
-            path: ':id/edit',
-            element: <ReservationEditPage />,
-          },
-          {
-            // Cancel existing reservation
-            path: ':id/cancel',
-            element: <ReservationCancelPage />,
-          },
+          // Future detail routes can be added here, e.g. /reservations/:id
           {
             // Reports and analytics
             path: 'reports',
