@@ -71,6 +71,10 @@ export interface CheckoutFormData {
   taxRate: number;
   splitBill: boolean;
   numberOfSplits: number;
+  // ⚖️ División de cargos
+  requiereDivisionCargos?: boolean;
+  notasDivision?: string;
+  empresaPagadora?: string;
 }
 
 export interface ReceiptData {

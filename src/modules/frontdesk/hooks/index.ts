@@ -22,3 +22,13 @@ export { useCalendarNavigation } from './useCalendarNavigation';
 // Check-in and Check-out
 export { useCheckIn } from './useCheckIn';
 export { useCheckout } from './useCheckout';
+export { useCheckoutRefactored } from './useCheckoutRefactored';
+
+// 🏨 Folio Management Hooks
+export { useDeposito } from './useDeposito';
+export { useDivisionCargos } from './useDivisionCargos';
+export { useFacturacion } from './useFacturacion';
+export { useFolioDistribucion } from './useFolioDistribucion';
+export { useFolioPagos } from './useFolioPagos';
+export { useFolioCierre } from './useFolioCierre';
+export { useFolioHistorial } from './useFolioHistorial';
