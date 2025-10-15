@@ -20,7 +20,6 @@ import type {
   ApiReservaHabitacionLegacy,
   SimpleReservationFormData,
   ApiUpdateReservaHabitacionPayload, 
-  ApiCancelReservaPayload,
   ApiReservaFull, 
   CreateReservationDto
 } from '../../types';
@@ -278,14 +277,49 @@ export class ReservationCrudService {
   // =================== DELETE/CANCEL OPERATIONS ===================
 
   /**
-   * Cancela una reserva usando el endpoint específico de cancelación
-   * POST /reservas/{id}/cancelar
+   * Confirma una reserva
+   * POST /reservas/{id}/confirmar
+   * ⚠️ NOTA: El backend tiene este endpoint configurado para cambiar a estado 2
    */
-  async cancel(id: string, options?: { penalty?: number; note?: string }): Promise<Reservation | null> {
+  async confirm(id: string, notas?: string): Promise<Reservation | null> {
     try {
-      const payload: ApiCancelReservaPayload = {
-        motivo: options?.note,
-        penalidad: options?.penalty,
+      const payload: { id_estado_res: number; notas?: string } = {
+        id_estado_res: 2, // Backend: /confirmar → estado 2
+        ...(notas && { notas }),
+      };
+
+      console.debug('[API] POST /reservas/:id/confirmar payload:', payload);
+      await apiClient.post(`/reservas/${id}/confirmar`, payload);
+      
+      // Obtener la reserva actualizada
+      const confirmedReservation = await this.getById(id);
+      
+      if (confirmedReservation) {
+        return {
+          ...confirmedReservation,
+          status: 'confirmed',
+          updatedAt: new Date().toISOString(),
+        };
+      }
+
+      return null;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[API] Error confirmando reserva:', errorMessage);
+      throw error;
+    }
+  }
+
+  /**
+   * Cancela una reserva
+   * POST /reservas/{id}/cancelar
+   * ⚠️ NOTA: El backend tiene este endpoint configurado para cambiar a estado 3
+   */
+  async cancel(id: string, notas?: string): Promise<Reservation | null> {
+    try {
+      const payload: { id_estado_res: number; notas?: string } = {
+        id_estado_res: 3, // Backend: /cancelar → estado 3
+        ...(notas && { notas }),
       };
 
       console.debug('[API] POST /reservas/:id/cancelar payload:', payload);
@@ -297,26 +331,25 @@ export class ReservationCrudService {
       if (cancelledReservation) {
         return {
           ...cancelledReservation,
+          status: 'cancelled',
           updatedAt: new Date().toISOString(),
         };
       }
 
-      // Fallback: si el endpoint no existe, actualizar el estado manualmente
-      console.warn('[API] Endpoint /reservas/:id/cancelar no disponible, usando actualización estándar');
-      return this.update(id, {
-        status: 'cancelled',
-        updatedAt: new Date().toISOString(),
-      });
+      return null;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('[API] Error cancelando reserva:', errorMessage);
-      
-      // Fallback: intentar actualizar el estado si el endpoint de cancelación falla
-      return this.update(id, {
-        status: 'cancelled',
-        updatedAt: new Date().toISOString(),
-      });
+      throw error;
     }
+  }
+
+  /**
+   * @deprecated Use confirm() or cancel() instead
+   * Cancela una reserva usando el endpoint específico de cancelación (legacy)
+   */
+  async cancelLegacy(id: string, options?: { penalty?: number; note?: string }): Promise<Reservation | null> {
+    return this.cancel(id, options?.note);
   }
 
   /**

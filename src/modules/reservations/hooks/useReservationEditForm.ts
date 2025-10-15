@@ -98,32 +98,37 @@ export const useReservationEditForm = ({
    */
   React.useEffect(() => {
     const totalGuests = (numberOfAdultsValue || 0) + (numberOfChildrenValue || 0) + (numberOfInfantsValue || 0);
-    if (totalGuests <= 0) {
+    const currentError = formState.errors.numberOfGuests;
+    
+    if (totalGuests <= 0 && (!currentError || currentError.message !== 'Debe registrar al menos 1 huésped.')) {
+      // Solo establece el error si no existe o es diferente
       setError('numberOfGuests', { type: 'manual', message: 'Debe registrar al menos 1 huésped.' });
-    } else {
-      // Solo limpia el error si existe
-      const currentError = formState.errors.numberOfGuests;
-      if (currentError?.type === 'manual' && currentError.message?.includes('al menos 1 huésped')) {
-        clearErrors('numberOfGuests');
-      }
+    } else if (totalGuests > 0 && currentError?.type === 'manual' && currentError.message?.includes('al menos 1 huésped')) {
+      // Solo limpia el error si existe y es del tipo manual
+      clearErrors('numberOfGuests');
     }
-  }, [numberOfAdultsValue, numberOfChildrenValue, numberOfInfantsValue, setError, clearErrors, formState.errors.numberOfGuests]);
+    // ⚠️ NO incluir formState.errors en dependencias para evitar loop infinito
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [numberOfAdultsValue, numberOfChildrenValue, numberOfInfantsValue, setError, clearErrors]);
 
   /**
    * Efecto: valida que los huéspedes no excedan la capacidad de la habitación
    */
   React.useEffect(() => {
     if (!maxGuests) return;
-    if (numberOfGuestsValue > maxGuests) {
-      setError('numberOfGuests', { type: 'manual', message: `La habitación seleccionada admite máximo ${maxGuests} huéspedes.` });
-    } else {
-      // Solo limpia el error si existe
-      const currentError = formState.errors.numberOfGuests;
-      if (currentError?.type === 'manual' && currentError.message?.includes('habitación seleccionada')) {
-        clearErrors('numberOfGuests');
-      }
+    const currentError = formState.errors.numberOfGuests;
+    const expectedMessage = `La habitación seleccionada admite máximo ${maxGuests} huéspedes.`;
+    
+    if (numberOfGuestsValue > maxGuests && (!currentError || currentError.message !== expectedMessage)) {
+      // Solo establece el error si no existe o es diferente
+      setError('numberOfGuests', { type: 'manual', message: expectedMessage });
+    } else if (numberOfGuestsValue <= maxGuests && currentError?.type === 'manual' && currentError.message?.includes('habitación seleccionada')) {
+      // Solo limpia el error si existe y es del tipo manual de capacidad
+      clearErrors('numberOfGuests');
     }
-  }, [numberOfGuestsValue, maxGuests, setError, clearErrors, formState.errors.numberOfGuests]);
+    // ⚠️ NO incluir formState.errors en dependencias para evitar loop infinito
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [numberOfGuestsValue, maxGuests, setError, clearErrors]);
 
   /**
    * Handler: envía la actualización de la reserva con validaciones finales

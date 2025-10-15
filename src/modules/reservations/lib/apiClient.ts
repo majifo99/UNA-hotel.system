@@ -10,20 +10,12 @@ export const apiClient = axios.create({
 });
 
 // Debug baseURL once at startup
-// eslint-disable-next-line no-console
 console.debug('[API INIT] baseURL =', apiClient.defaults.baseURL);
 
 // Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    // Add auth token if available
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    // eslint-disable-next-line no-console
-    const fullUrl = `${config.baseURL || ''}${config.url || ''}`;
-    console.debug('[API REQUEST]', (config.method || 'GET').toUpperCase(), fullUrl);
+    console.debug('[API REQUEST]', (config.method || 'GET').toUpperCase(), `${config.baseURL || ''}${config.url || ''}`);
     return config;
   },
   (error) => {
@@ -39,11 +31,13 @@ apiClient.interceptors.response.use(
   (error) => {
     // Handle common errors
     if (error.response?.status === 401) {
-      // Handle unauthorized
-      localStorage.removeItem('authToken');
-      // Solo redirigir a login en modo web (no en modo admin)
+      // Handle unauthorized - clear auth and redirect to login
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_user');
+      
+      // Redirigir a login en modo admin
       const isAdminMode = import.meta.env.VITE_MODE === 'admin';
-      if (!isAdminMode) {
+      if (isAdminMode) {
         window.location.href = '/login';
       }
     }

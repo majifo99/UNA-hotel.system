@@ -115,14 +115,25 @@ class ReservationService {
   }
 
   /**
-   * Cancela una reserva
+   * Confirma una reserva (cambia estado a Confirmada)
+   * POST /reservas/{id}/confirmar
+   */
+  async confirmReservation(
+    id: string, 
+    notas?: string
+  ): Promise<Reservation | null> {
+    return reservationCrudService.confirm(id, notas);
+  }
+
+  /**
+   * Cancela una reserva (cambia estado a Cancelada)
    * POST /reservas/{id}/cancelar
    */
   async cancelReservation(
     id: string, 
-    options?: { penalty?: number; note?: string }
+    notas?: string
   ): Promise<Reservation | null> {
-    return reservationCrudService.cancel(id, options);
+    return reservationCrudService.cancel(id, notas);
   }
 
   /**
@@ -152,6 +163,30 @@ class ReservationService {
    */
   async getReservations(filters?: ReservationFilters): Promise<Reservation[]> {
     return reservationQueryService.getWithFilters(filters);
+  }
+
+  /**
+   * Obtiene reservas pendientes
+   * GET /reservas?estado=Pendiente
+   */
+  async getPendingReservations(): Promise<Reservation[]> {
+    return reservationQueryService.getPendingReservations();
+  }
+
+  /**
+   * Obtiene reservas canceladas
+   * GET /reservas?estado=Cancelada
+   */
+  async getCancelledReservations(): Promise<Reservation[]> {
+    return reservationQueryService.getCancelledReservations();
+  }
+
+  /**
+   * Obtiene reservas confirmadas
+   * GET /reservas?estado=Confirmada
+   */
+  async getConfirmedReservations(): Promise<Reservation[]> {
+    return reservationQueryService.getConfirmedReservations();
   }
 
   /**

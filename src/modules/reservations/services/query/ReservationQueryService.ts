@@ -73,6 +73,33 @@ export class ReservationQueryService {
   }
 
   /**
+   * Obtiene reservas pendientes
+   * GET /reservas?estado=Pendiente
+   */
+  async getPendingReservations(): Promise<Reservation[]> {
+    console.debug('[API] Fetching pending reservations');
+    return this.getWithFilters({ estado: 'Pendiente' });
+  }
+
+  /**
+   * Obtiene reservas canceladas
+   * GET /reservas?estado=Cancelada
+   */
+  async getCancelledReservations(): Promise<Reservation[]> {
+    console.debug('[API] Fetching cancelled reservations');
+    return this.getWithFilters({ estado: 'Cancelada' });
+  }
+
+  /**
+   * Obtiene reservas confirmadas
+   * GET /reservas?estado=Confirmada
+   */
+  async getConfirmedReservations(): Promise<Reservation[]> {
+    console.debug('[API] Fetching confirmed reservations');
+    return this.getWithFilters({ estado: 'Confirmada' });
+  }
+
+  /**
    * Busca reservas según múltiples criterios
    * 
    * Esta es una búsqueda local sobre datos ya cargados,

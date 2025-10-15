@@ -59,6 +59,48 @@ export const useReservationsList = (filters?: ReservationFilters) => {
 };
 
 /**
+ * Hook: usePendingReservations
+ * 
+ * Obtiene reservas con estado "Pendiente"
+ * GET /reservas?estado=Pendiente
+ */
+export const usePendingReservations = () => {
+  return useQuery({
+    queryKey: [...reservationKeys.list(), { estado: 'Pendiente' }] as const,
+    queryFn: () => reservationService.getPendingReservations(),
+    staleTime: 60 * 1000,
+  });
+};
+
+/**
+ * Hook: useCancelledReservations
+ * 
+ * Obtiene reservas con estado "Cancelada"
+ * GET /reservas?estado=Cancelada
+ */
+export const useCancelledReservations = () => {
+  return useQuery({
+    queryKey: [...reservationKeys.list(), { estado: 'Cancelada' }] as const,
+    queryFn: () => reservationService.getCancelledReservations(),
+    staleTime: 60 * 1000,
+  });
+};
+
+/**
+ * Hook: useConfirmedReservations
+ * 
+ * Obtiene reservas con estado "Confirmada"
+ * GET /reservas?estado=Confirmada
+ */
+export const useConfirmedReservations = () => {
+  return useQuery({
+    queryKey: [...reservationKeys.list(), { estado: 'Confirmada' }] as const,
+    queryFn: () => reservationService.getConfirmedReservations(),
+    staleTime: 60 * 1000,
+  });
+};
+
+/**
  * Hook: useReservationById
  *
  * Fetches a single reservation by ID.
@@ -176,20 +218,26 @@ export const useUpdateReservation = () => {
 };
 
 // Cancel Reservation Mutation
-interface CancelReservationVariables {
+/**
+ * Variables para confirmar/cancelar reserva
+ */
+interface ConfirmCancelVariables {
   id: string;
-  options?: {
-    penalty?: number;
-    note?: string;
-  };
+  notas?: string;
 }
 
-export const useCancelReservation = () => {
+/**
+ * Hook: useConfirmReservation
+ * 
+ * Mutation para confirmar una reserva (cambia estado a Confirmada)
+ * POST /reservas/{id}/confirmar
+ */
+export const useConfirmReservation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, options }: CancelReservationVariables) =>
-      reservationService.cancelReservation(id, options),
+    mutationFn: ({ id, notas }: ConfirmCancelVariables) =>
+      reservationService.confirmReservation(id, notas),
     onSuccess: (updated) => {
       if (!updated) return;
 
@@ -198,9 +246,38 @@ export const useCancelReservation = () => {
         if (!current) return current;
         return current.map(reservation => (reservation.id === updated.id ? { ...reservation, ...updated } : reservation));
       });
+      console.log('[Hook] Reservation confirmed:', updated);
     },
     onError: (error) => {
-      console.error('Error cancelling reservation:', error);
+      console.error('[Hook] Error confirming reservation:', error);
+    },
+  });
+};
+
+/**
+ * Hook: useCancelReservation
+ * 
+ * Mutation para cancelar una reserva (cambia estado a Cancelada)
+ * POST /reservas/{id}/cancelar
+ */
+export const useCancelReservation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, notas }: ConfirmCancelVariables) =>
+      reservationService.cancelReservation(id, notas),
+    onSuccess: (updated) => {
+      if (!updated) return;
+
+      queryClient.setQueryData(reservationKeys.detail(updated.id), updated);
+      queryClient.setQueryData(reservationKeys.list(), (current: Reservation[] | undefined) => {
+        if (!current) return current;
+        return current.map(reservation => (reservation.id === updated.id ? { ...reservation, ...updated } : reservation));
+      });
+      console.log('[Hook] Reservation cancelled:', updated);
+    },
+    onError: (error) => {
+      console.error('[Hook] Error cancelling reservation:', error);
     },
   });
 };

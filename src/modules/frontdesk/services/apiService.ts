@@ -42,7 +42,7 @@ async function apiRequest<T>(
   };
 
   // Add authentication token if available
-  const token = localStorage.getItem('authToken');
+  const token = localStorage.getItem('auth_token');
   if (token) {
     config.headers = {
       ...config.headers,
