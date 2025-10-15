@@ -15,6 +15,7 @@ import RoomChange from '../modules/frontdesk/components/RoomChange';
 import { FolioPage } from '../modules/frontdesk/pages/FolioPage';
 import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
 import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
+import { AdminLoginPage, AdminAuthProvider } from '../modules/admin';
 
 /**
  * TanStack Query Client Configuration
@@ -42,6 +43,7 @@ const queryClient = new QueryClient({
  *
  * Wraps all routes with:
  * - TanStack Query Provider (for server state management)
+ * - Admin Auth Provider (for admin authentication)
  * - Main Layout (sidebar, header, main content area)
  *
  * The Outlet component renders the matched child route
@@ -49,9 +51,11 @@ const queryClient = new QueryClient({
 function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
-      <MainLayout>
-        <Outlet />
-      </MainLayout>
+      <AdminAuthProvider>
+        <MainLayout>
+          <Outlet />
+        </MainLayout>
+      </AdminAuthProvider>
     </QueryClientProvider>
   );
 }
@@ -60,6 +64,7 @@ function RootLayout() {
  * Application Router Configuration
  *
  * Route Structure:
+ * /admin/login              - Admin authentication page (no layout)
  * /                          - Dashboard/Home page
  * /reservations              - Reservations list and management
  * /reservations/create       - Create new reservation form
@@ -73,6 +78,17 @@ function RootLayout() {
  * 3. Update the Sidebar navigation items
  */
 const router = createBrowserRouter([
+  {
+    // Admin login route - standalone without layout
+    path: '/admin/login',
+    element: (
+      <QueryClientProvider client={queryClient}>
+        <AdminAuthProvider>
+          <AdminLoginPage />
+        </AdminAuthProvider>
+      </QueryClientProvider>
+    ),
+  },
   {
     path: '/',
     element: <RootLayout />,

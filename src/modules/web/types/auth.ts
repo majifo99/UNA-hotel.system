@@ -17,6 +17,7 @@ export interface AuthUser {
   email: string;
   firstName: string;
   lastName: string;
+  phone?: string;
   isActive: boolean;
   
   // Reference to full guest profile (populated when needed)

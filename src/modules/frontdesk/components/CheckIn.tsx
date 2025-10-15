@@ -555,25 +555,7 @@ const CheckIn = () => {
             </button>
           </div>
 
-          {/* Información importante sobre la API */}
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="flex-shrink-0">
-                <CheckCircle className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-blue-900">API de Check-In Configurada</h3>
-                <p className="text-sm text-blue-700 mt-1">
-                  Este formulario está conectado con <code className="bg-blue-100 px-1 rounded">POST /api/frontdesk/reserva/{'{'}reserva{'}'}/checkin</code>
-                </p>
-                <ul className="text-xs text-blue-600 mt-2 space-y-1">
-                  <li>• Requiere ID de reserva numérico existente</li>
-                  <li>• Valida automáticamente cliente y habitación</li>
-                  <li>• Formatea datos según CheckInRequestDTO</li>
-                </ul>
-              </div>
-            </div>
-          </div>
+
 
           {/* Selector de tipo de Check-In */}
           <div className="mb-6">
