@@ -7,6 +7,7 @@ import { CreateReservationPage } from '../modules/reservations/pages/CreateReser
 import { ReservationEditPage } from '../modules/reservations/pages/ReservationEditPage';
 import { ReservationCancelPage } from '../modules/reservations/pages/ReservationCancelPage';
 import { ReservationDetailFullPage } from '../modules/reservations/pages/ReservationDetailFullPage';
+import { ReservationReportsPage } from '../modules/reservations/pages/ReservationReportsPage';
 import HousekeepingDashboard from '../modules/housekeeping/pages/HousekeepingDashboard';
 import { GuestsPage } from '../modules/guests/pages/GuestsPage';
 import { CreateGuestPage } from '../modules/guests/pages/CreateGuestPage';
@@ -137,6 +138,11 @@ const router = createBrowserRouter([
             // Cancel existing reservation
             path: ':id/cancel',
             element: <ReservationCancelPage />,
+          },
+          {
+            // Reports and analytics
+            path: 'reports',
+            element: <ReservationReportsPage />,
           },
         ],
       },

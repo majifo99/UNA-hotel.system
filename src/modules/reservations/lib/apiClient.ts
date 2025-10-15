@@ -41,7 +41,11 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       // Handle unauthorized
       localStorage.removeItem('authToken');
-      window.location.href = '/login';
+      // Solo redirigir a login en modo web (no en modo admin)
+      const isAdminMode = import.meta.env.VITE_MODE === 'admin';
+      if (!isAdminMode) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

@@ -13,8 +13,8 @@
  * @module services/query
  */
 
-import type { Reservation } from '../../types';
-import type { ApiReservaFull, ReservationFilters } from '../../types';
+import type { Reservation, ApiReservaFull, ReservationFilters } from '../../types';
+
 import { mapApiReservaFullToReservation } from '../../types';
 import apiClient from '../../lib/apiClient';
 

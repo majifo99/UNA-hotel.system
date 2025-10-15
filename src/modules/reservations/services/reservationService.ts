@@ -21,15 +21,14 @@
 import type { 
   SimpleReservationFormData, 
   Reservation 
-} from '../types';
-import type { 
-  AdditionalService 
-} from '../../../types/core/domain';
-import type { 
+,
   ReservationFilters, 
   CreateReservationDto, 
   AddReservationServiceDto 
 } from '../types';
+import type { 
+  AdditionalService 
+} from '../../../types/core/domain';
 
 // Servicios especializados (solo API real)
 import { reservationCrudService } from './crud/ReservationCrudService';

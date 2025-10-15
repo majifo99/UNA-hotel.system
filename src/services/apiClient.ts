@@ -44,8 +44,11 @@ apiClient.interceptors.response.use(
       // Manejar errores de autenticación
       if (error.response.status === 401) {
         localStorage.removeItem('authToken');
-        // Redirigir a login si es necesario
-        window.location.href = '/login';
+        // Solo redirigir a login en modo web (no en modo admin)
+        const isAdminMode = import.meta.env.VITE_MODE === 'admin';
+        if (!isAdminMode) {
+          window.location.href = '/login';
+        }
       }
     } else if (error.request) {
       // La petición fue hecha pero no se recibió respuesta

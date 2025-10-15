@@ -28,6 +28,21 @@ export type {
   ReservationValidationErrors
 } from './forms';
 
+// === REPORTS ===
+export type {
+  ReservationKpiDto,
+  TimeSeriesDataPoint,
+  DistributionDataPoint,
+  ReservationChartDataDto,
+  ReservationReportRow,
+  ReservationReportDto,
+  ChartMetric,
+  ReservationReportFilters,
+  ExportFormat,
+  ExportConfig,
+  ExportStatus
+} from './reports';
+
 // === API TYPES ===
 // Legacy API
 export type {
