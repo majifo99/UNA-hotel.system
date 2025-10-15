@@ -4,7 +4,6 @@ import { MainLayout } from '../layouts/MainLayout';
 import { Home } from '../pages/Home';
 import { ReservationsListPage } from '../modules/reservations/pages/ReservationsListPage';
 import { CreateReservationPage } from '../modules/reservations/pages/CreateReservationPage';
-import { SelectServicesPage } from '../modules/reservations/pages/SelectServicesPage';
 import HousekeepingDashboard from '../modules/housekeeping/pages/HousekeepingDashboard';
 import { GuestsPage } from '../modules/guests/pages/GuestsPage';
 import { CreateGuestPage } from '../modules/guests/pages/CreateGuestPage';
@@ -15,7 +14,7 @@ import RoomChange from '../modules/frontdesk/components/RoomChange';
 import { FolioPage } from '../modules/frontdesk/pages/FolioPage';
 import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
 import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
-import { AdminLoginPage, AdminAuthProvider } from '../modules/admin';
+import { AdminLoginPage, AdminAuthProvider, ProtectedRoute } from '../modules/admin';
 import { ReservationReportsPage } from '../modules/reservations/pages/ReservationReportsPage';
 
 /**
@@ -45,6 +44,7 @@ const queryClient = new QueryClient({
  * Wraps all routes with:
  * - TanStack Query Provider (for server state management)
  * - Admin Auth Provider (for admin authentication)
+ * - Protected Route (requires authentication)
  * - Main Layout (sidebar, header, main content area)
  *
  * The Outlet component renders the matched child route
@@ -53,9 +53,11 @@ function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AdminAuthProvider>
-        <MainLayout>
-          <Outlet />
-        </MainLayout>
+        <ProtectedRoute>
+          <MainLayout>
+            <Outlet />
+          </MainLayout>
+        </ProtectedRoute>
       </AdminAuthProvider>
     </QueryClientProvider>
   );

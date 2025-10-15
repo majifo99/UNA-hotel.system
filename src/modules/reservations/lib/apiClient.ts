@@ -15,6 +15,16 @@ console.debug('[API INIT] baseURL =', apiClient.defaults.baseURL);
 // Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
+    // Add admin auth token if available (reservations module is admin-only)
+    const token = localStorage.getItem('adminAuthToken');
+    
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+      console.debug('[API REQUEST] Admin token attached:', token.substring(0, 20) + '...');
+    } else {
+      console.debug('[API REQUEST] No admin token found');
+    }
+    
     console.debug('[API REQUEST]', (config.method || 'GET').toUpperCase(), `${config.baseURL || ''}${config.url || ''}`);
     return config;
   },
@@ -31,15 +41,14 @@ apiClient.interceptors.response.use(
   (error) => {
     // Handle common errors
     if (error.response?.status === 401) {
-      // Handle unauthorized - clear auth and redirect to login
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('auth_user');
+      // Handle unauthorized - clear admin auth and redirect to admin login
+      localStorage.removeItem('adminAuthToken');
+      localStorage.removeItem('adminAuthUser');
       
-      // Redirigir a login en modo admin
-      const isAdminMode = import.meta.env.VITE_MODE === 'admin';
-      if (isAdminMode) {
-        window.location.href = '/login';
-      }
+      console.debug('[API] 401 Unauthorized - redirecting to /admin/login');
+      
+      // Redirect to admin login
+      window.location.href = '/admin/login';
     }
     return Promise.reject(error);
   }
