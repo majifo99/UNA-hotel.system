@@ -1,4 +1,3 @@
-// src/ui/PrintStyles.tsx
 "use client";
 
 type Props = Readonly<{
@@ -6,67 +5,81 @@ type Props = Readonly<{
   pageSize?: "A4" | "Letter" | "Legal";
   margin?: string;
   tableFontSize?: number;
+  brandColor?: string;
 }>;
 
 export default function PrintStyles({
   areaId = "print-area",
   pageSize = "A4",
-  margin = "12mm",
+  margin = "8mm",
   tableFontSize = 11,
+  brandColor = "#1F392A",
 }: Props) {
   const css = `
   @media print {
-    @page { size: ${pageSize} portrait; margin: ${margin}; }
-
-    /* Oculta todo y deja sólo el área a imprimir */
-    body * { visibility: hidden !important; }
-    #${areaId}, #${areaId} * { visibility: visible !important; }
+    @page {
+      size: ${pageSize} portrait;
+      margin: ${margin} !important;
+    }
 
     html, body {
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
       background: #fff !important;
       color: #0f172a !important;
-    }
-
-    #${areaId} {
-      position: static !important;
-      inset: auto !important;
       margin: 0 !important;
       padding: 0 !important;
-      box-shadow: none !important;
-      background: #fff !important;
-      width: 100% !important;
-      max-width: none !important;
+      zoom: 0.94 !important; /* Corrige corte y centrado */
     }
 
-    /* Oculta todo lo que no sea tabla o header de impresión */
-    .no-print, [data-print-hide] { display: none !important; }
-    .print-only { display: block !important; }
+    /* Eliminar sidebar y elementos no imprimibles */
+    aside, nav, header.sticky, .no-print, [data-print-hide] {
+      display: none !important;
+    }
 
-    /* --- Encabezado bonito --- */
+    /* Asegurar 100% de ancho sin desplazamientos */
+    #${areaId}, html, body, main, section, article, #root, #__next {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 auto !important;
+      padding: 0 !important;
+      background: #fff !important;
+      box-shadow: none !important;
+    }
+    [class*="max-w-"] { max-width: 100% !important; }
+
+    /* Header visible solo en impresión */
+    .print-only { display: block !important; }
     .print-header {
       display: flex !important;
       align-items: center !important;
       gap: 12px !important;
       margin: 0 0 10px 0 !important;
-      padding: 0 0 8px 0 !important;
-      border-bottom: 1px solid #e5e7eb !important;
+      padding: 8px 12px !important;
+      background: ${brandColor} !important;
+      color: #fff !important;
     }
-    .print-logo { width: 90px !important; height: auto !important; object-fit: contain !important; }
-    .print-title { font-size: 18px !important; font-weight: 800 !important; line-height: 1.2 !important; margin: 0 !important; }
-    .print-sub { font-size: 12px !important; color: #475569 !important; margin-top: 2px !important; }
+    .print-logo {
+      width: 90px !important;
+      height: auto !important;
+      object-fit: contain !important;
+      background: #fff !important;
+      border-radius: 6px !important;
+      padding: 6px !important;
+    }
+    .print-title { font-size: 18px !important; font-weight: 800 !important; color: #fff !important; }
+    .print-sub { font-size: 12px !important; color: #f1f5f9 !important; }
 
-    /* Permitir overflow normal (evitar recortes) */
-    .overflow-x-auto, .overflow-x-scroll, .print-allow-overflow { overflow: visible !important; }
-
-    /* --- Tabla --- */
+    /* --- TABLA --- */
     .hist-table {
       width: 100% !important;
+      max-width: 100% !important;
       border-collapse: collapse !important;
-      table-layout: fixed !important; /* usamos colgroup para anchos */
+      table-layout: auto !important;
       font-size: ${tableFontSize}px !important;
+      margin: 0 auto !important;
     }
+
     .hist-table thead { display: table-header-group !important; }
     .hist-table th, .hist-table td {
       border-bottom: 1px solid #e5e7eb !important;
@@ -74,38 +87,34 @@ export default function PrintStyles({
       vertical-align: top !important;
       text-align: left !important;
       line-height: 1.35 !important;
-    }
-
-    /* Cabeceras SIN romper palabra por letra */
-    .hist-table th {
-      white-space: nowrap !important;
-      word-break: normal !important;
-      overflow-wrap: normal !important;
-      color: #334155 !important;
-      font-weight: 700 !important;
-      background: #fff !important;
-    }
-
-    /* Celdas de texto: que rompan por palabra/frase, no por letra */
-    .hist-table td {
       white-space: normal !important;
-      word-break: break-word !important;
-      overflow-wrap: anywhere !important;
+      word-break: normal !important;
+      overflow-wrap: break-word !important;
     }
 
-    /* Evitar cortes de fila entre páginas */
+    .hist-table th {
+      background: ${brandColor} !important;
+      color: #fff !important;
+      font-weight: 700 !important;
+      white-space: nowrap !important;
+    }
+
+    /* Ancho cómodo de las columnas de valores */
+    .hist-table th:nth-child(5),
+    .hist-table td:nth-child(5),
+    .hist-table th:nth-child(6),
+    .hist-table td:nth-child(6) {
+      width: 46% !important;
+    }
+
     tr { page-break-inside: avoid; break-inside: avoid; }
+    .kv-label { width: 5rem !important; }
 
-    /* Simplificar badges/pastillas a texto simple */
-    .badge, .pill {
-      background: none !important; border: 0 !important; color: inherit !important; padding: 0 !important;
-    }
-
-    /* Quitar anchos utilitarios que ensanchan de más */
-    #${areaId} .w-\\[360px\\] { width: auto !important; max-width: none !important; }
+    /* Sin márgenes extra */
+    .rounded-2xl, .shadow, .ring-1 { box-shadow: none !important; border: none !important; }
   }
 
-  /* En pantalla: oculto el header de impresión */
+  /* En pantalla: ocultar el encabezado de impresión */
   .print-only { display: none; }
   `;
   return <style>{css}</style>;

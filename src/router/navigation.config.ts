@@ -409,23 +409,16 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
         shortcut: [8, 1], // ALT+8, luego 1
       },
       {
-        id: 'maintenance-preventive',
-        label: 'Preventivo',
-        path: ROUTES.MANTENIMIENTO.PREVENTIVO,
-        icon: Clock,
-        description: 'Mantenimiento preventivo programado',
+        id: 'maintenance-history',
+        label: 'Historiales',
+        path: ROUTES.MANTENIMIENTO.HISTORIALES,
+        icon: History,                 
+        description: 'Eventos y cambios de mantenimiento',
         category: 'management',
-        shortcut: [8, 2], // ALT+8, luego 2
+        shortcut: [8, 2],              
       },
-      {
-        id: 'maintenance-reports',
-        label: 'Reportes Mantenimiento',
-        path: ROUTES.MANTENIMIENTO.REPORTS,
-        icon: BarChart3,
-        description: 'Reportes de mantenimiento',
-        category: 'management',
-        shortcut: [8, 3], // ALT+8, luego 3
-      },
+
+     
     ],
   },
 

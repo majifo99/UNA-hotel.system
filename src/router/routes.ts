@@ -113,8 +113,8 @@ export const ROUTES = {
     BASE: '/mantenimiento',
     DASHBOARD: '/mantenimiento/dashboard',
     SOLICITUDES: '/mantenimiento/solicitudes',
-    PREVENTIVO: '/mantenimiento/preventivo',
-    REPORTS: '/mantenimiento/reports',
+    HISTORIALES: '/mantenimiento/historiales',
+    
   },
 
 } as const;

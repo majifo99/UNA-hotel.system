@@ -12,6 +12,9 @@ import { BarLoader, TableLoader } from "./UI/Loaders";
 import HabitacionCell from "./UI/HabitacionCell";
 import { EstadoBadge, PrioridadBadge } from "./UI/Badges";
 
+// ✅ Modal de éxito
+import SuccessModal from "./Modals/SuccessModal";
+
 const cn = (...xs: Array<string | false | null | undefined>) => xs.filter(Boolean).join(" ");
 const PRIORIDAD_CLEAN_MODE: "dash" | "finishedAt" = "dash";
 
@@ -91,6 +94,10 @@ export default function LimpiezasTable({ controller, onSelectionChange, filters 
     []
   );
 
+  // ✅ Estado del modal de éxito
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("Operación realizada correctamente.");
+
   // Optimista local para el toggle
   const [optimisticCleanIds, setOptimisticCleanIds] = useState<Set<number>>(new Set());
   const addOptimistic = useCallback((id: number) => setOptimisticCleanIds((prev) => new Set(prev).add(id)), []);
@@ -107,6 +114,7 @@ export default function LimpiezasTable({ controller, onSelectionChange, filters 
       addOptimistic(id);
       try {
         await finalizarLimpieza(id, { fecha_final: payload.fecha_final, notas: null });
+        // El mensaje se setea desde la fila (tenemos el número allí)
       } catch (e) {
         console.error("[RoomsTable] Error al finalizar limpieza", e);
         removeOptimistic(id);
@@ -121,6 +129,7 @@ export default function LimpiezasTable({ controller, onSelectionChange, filters 
       removeOptimistic(id);
       try {
         await reabrirLimpieza(id);
+        // El mensaje se setea desde la fila (tenemos el número allí)
       } catch (e) {
         console.error("[RoomsTable] Error al reabrir limpieza", e);
         throw e;
@@ -226,198 +235,220 @@ export default function LimpiezasTable({ controller, onSelectionChange, filters 
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-      {loading && hasPageData && <BarLoader />}
+    <>
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        {loading && hasPageData && <BarLoader />}
 
-      <div className="overflow-x-auto">
-        <table className="w-full table-fixed">
-          <colgroup>
-            <col className="w-12" />
-            <col className="w-[22%]" />
-            <col className="w-[12%]" />
-            <col className="w-[12%]" />
-            <col className="w-[22%]" />
-            <col className="w-[22%]" />
-            <col className="w-[110px]" />
-          </colgroup>
+        <div className="overflow-x-auto">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col className="w-12" />
+              <col className="w-[22%]" />
+              <col className="w-[12%]" />
+              <col className="w-[12%]" />
+              <col className="w-[22%]" />
+              <col className="w-[22%]" />
+              <col className="w-[110px]" />
+            </colgroup>
 
-          <thead className="bg-[#304D3C] text-white border-b border-slate-200">
-            <tr>
-              <th className="px-4 py-3">
-                <input
-                  type="checkbox"
-                  checked={false}
-                  disabled
-                  className="h-4 w-4 rounded border-white/40 text-white bg-white/20 cursor-not-allowed"
-                />
-              </th>
-              {columns.map((c) => (
-                <th key={c.key} className={HEAD_BASE + " text-white"}>
-                  <span>{c.label}</span>
+            <thead className="bg-[#304D3C] text-white border-b border-slate-200">
+              <tr>
+                <th className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={false}
+                    disabled
+                    className="h-4 w-4 rounded border-white/40 text-white bg-white/20 cursor-not-allowed"
+                  />
                 </th>
-              ))}
-              <th className={HEAD_BASE + " text-right text-white"}>Acciones</th>
-            </tr>
-          </thead>
+                {columns.map((c) => (
+                  <th key={c.key} className={HEAD_BASE + " text-white"}>
+                    <span>{c.label}</span>
+                  </th>
+                ))}
+                <th className={HEAD_BASE + " text-right text-white"}>Acciones</th>
+              </tr>
+            </thead>
 
-          <tbody className="bg-white divide-y divide-slate-100">
-            {viewItems.map((item: any) => {
-              const id = getRowId(item);
-              const isSelected = selectedIds.includes(id);
-              const numero = item.habitacion?.numero ?? "—";
-              const pisoVal = item.habitacion?.piso;
-              const tipoNombre = item.habitacion?.tipo?.nombre ?? undefined;
-              const estado = getEstado(item);
-              const estadoNombre = estado?.nombre;
-              const clean =
-                optimisticCleanIds.has(id) || Boolean(item.fecha_final) || (estadoNombre ?? "").toLowerCase() === "limpia";
+            <tbody className="bg-white divide-y divide-slate-100">
+              {viewItems.map((item: any) => {
+                const id = getRowId(item);
+                const isSelected = selectedIds.includes(id);
+                const numero = item.habitacion?.numero ?? "—";
+                const pisoVal = item.habitacion?.piso;
+                const tipoNombre = item.habitacion?.tipo?.nombre ?? undefined;
+                const estado = getEstado(item);
+                const estadoNombre = estado?.nombre;
+                const clean =
+                  optimisticCleanIds.has(id) || Boolean(item.fecha_final) || (estadoNombre ?? "").toLowerCase() === "limpia";
 
-              const asignadoNombre = item?.usuario_asignado?.nombre ?? item?.asignador?.name ?? null;
+                const asignadoNombre = item?.usuario_asignado?.nombre ?? item?.asignador?.name ?? null;
 
-              return (
-                <tr key={id} className={cn("hover:bg-slate-50/50 transition-colors", isSelected && "bg-emerald-50/30")}>
-                  <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleOne(id)}
-                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                    />
-                  </td>
-                  <td className="p-4">
-                    <HabitacionCell numero={numero} tipoNombre={tipoNombre} piso={pisoVal} />
-                  </td>
-                  <td className="p-4">
-                    <EstadoBadge clean={clean} />
-                  </td>
-                  <td className="p-4">{renderPrioridadCell(clean, item.fecha_final, item.prioridad ?? null)}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">
-                    {asignadoNombre ? (
-                      <div className="flex items-center gap-2">
-                        <UserCheck className="w-4 h-4 text-emerald-600" />
-                        <span className="text-sm font-medium text-slate-700">{asignadoNombre}</span>
-                      </div>
-                    ) : (
-                      <span className="text-slate-400 text-sm">Sin asignar</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-700 truncate" title={item.notas ?? ""}>
-                    {item.notas ?? <span className="text-slate-400">—</span>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2 justify-end">
-                      <CleanToggle
-                        id={id}
-                        clean={clean}
-                        notas={item.notas ?? null}
-                        onFinalize={handleFinalizeForToggle}
-                        onReopen={handleReopenForToggle}
-                        onOptimisticAdd={(x) => setOptimisticCleanIds((s) => new Set(s).add(x))}
-                        onOptimisticRemove={(x) =>
-                          setOptimisticCleanIds((s) => {
-                            const nx = new Set(s);
-                            nx.delete(x);
-                            return nx;
-                          })
-                        }
+                return (
+                  <tr key={id} className={cn("hover:bg-slate-50/50 transition-colors", isSelected && "bg-emerald-50/30")}>
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleOne(id)}
+                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                       />
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuId((prev) => (prev === id ? null : id));
+                    </td>
+                    <td className="p-4">
+                      <HabitacionCell numero={numero} tipoNombre={tipoNombre} piso={pisoVal} />
+                    </td>
+                    <td className="p-4">
+                      <EstadoBadge clean={clean} />
+                    </td>
+                    <td className="p-4">{renderPrioridadCell(clean, item.fecha_final, item.prioridad ?? null)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {asignadoNombre ? (
+                        <div className="flex items-center gap-2">
+                          <UserCheck className="w-4 h-4 text-emerald-600" />
+                          <span className="text-sm font-medium text-slate-700">{asignadoNombre}</span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 text-sm">Sin asignar</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700 truncate" title={item.notas ?? ""}>
+                      {item.notas ?? <span className="text-slate-400">—</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2 justify-end">
+                        {/* ✅ Aquí seteamos el modal de éxito una vez termine OK */}
+                        <CleanToggle
+                          id={id}
+                          clean={clean}
+                          notas={item.notas ?? null}
+                          onFinalize={async (xid, payload) => {
+                            await handleFinalizeForToggle(xid, payload);
+                            setSuccessMsg(`Habitación ${numero} marcada como LIMPIA.`);
+                            setShowSuccess(true);
                           }}
-                          aria-haspopup="menu"
-                          aria-expanded={openMenuId === id}
-                          aria-label="Más acciones"
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-slate-300 text-slate-700 hover:bg-slate-50 transition hover:scale-105"
-                        >
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
-                        {openMenuId === id && (
-                          <div
-                            role="menu"
-                            aria-label="Acciones de limpieza"
-                            tabIndex={-1}
-                            onKeyDown={(e) => {
-                              if (e.key === "Escape") setOpenMenuId(null);
+                          onReopen={async (xid) => {
+                            await handleReopenForToggle(xid);
+                            setSuccessMsg(`Habitación ${numero} marcada como SUCIA.`);
+                            setShowSuccess(true);
+                          }}
+                          onOptimisticAdd={(x) => setOptimisticCleanIds((s) => new Set(s).add(x))}
+                          onOptimisticRemove={(x) =>
+                            setOptimisticCleanIds((s) => {
+                              const nx = new Set(s);
+                              nx.delete(x);
+                              return nx;
+                            })
+                          }
+                        />
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId((prev) => (prev === id ? null : id));
                             }}
-                            className="absolute right-0 mt-2 w-44 rounded-xl border border-slate-200 bg-white shadow-lg py-1 z-20"
-                            onClick={(e) => e.stopPropagation()}
+                            aria-haspopup="menu"
+                            aria-expanded={openMenuId === id}
+                            aria-label="Más acciones"
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-slate-300 text-slate-700 hover:bg-slate-50 transition hover:scale-105"
                           >
-                            <button
-                              role="menuitem"
-                              className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
-                              onClick={() => {
-                                setOpenMenuId(null);
-                                setDetailId(id);
-                                setDetailOpen(true);
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
+                          {openMenuId === id && (
+                            <div
+                              role="menu"
+                              aria-label="Acciones de limpieza"
+                              tabIndex={-1}
+                              onKeyDown={(e) => {
+                                if (e.key === "Escape") setOpenMenuId(null);
                               }}
+                              className="absolute right-0 mt-2 w-44 rounded-xl border border-slate-200 bg-white shadow-lg py-1 z-20"
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              <Eye className="w-4 h-4 text-slate-600" />
-                              Ver detalles
-                            </button>
+                              <button
+                                role="menuitem"
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  setDetailId(id);
+                                  setDetailOpen(true);
+                                }}
+                              >
+                                <Eye className="w-4 h-4 text-slate-600" />
+                                Ver detalles
+                              </button>
 
-                            <button
-                              role="menuitem"
-                              className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
-                              onClick={() => {
-                                setOpenMenuId(null);
-                                alert(`Reasignar tarea de la habitación ${numero}`);
-                              }}
-                            >
-                              <RefreshCw className="w-4 h-4 text-slate-600" />
-                              Reasignar
-                            </button>
-                          </div>
-                        )}
+                              <button
+                                role="menuitem"
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  alert(`Reasignar tarea de la habitación ${numero}`);
+                                }}
+                              >
+                                <RefreshCw className="w-4 h-4 text-slate-600" />
+                                Reasignar
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
 
-      {/* Paginación */}
-      <div className="flex justify-center items-center gap-1 py-5 bg-white border-t border-slate-100">
-        <button
-          onClick={() => gotoPage(pagination.current_page - 1)}
-          disabled={pagination.current_page <= 1}
-          className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-emerald-600 disabled:opacity-30"
-          aria-label="Página anterior"
-        >
-          ←
-        </button>
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+        {/* Paginación */}
+        <div className="flex justify-center items-center gap-1 py-5 bg-white border-t border-slate-100">
           <button
-            key={p}
-            onClick={() => gotoPage(p)}
-            className={cn(
-              "w-8 h-8 rounded-md text-sm transition-colors",
-              pagination.current_page === p
-                ? "text-emerald-700 font-semibold bg-slate-100"
-                : "text-slate-500 hover:text-emerald-600"
-            )}
+            onClick={() => gotoPage(pagination.current_page - 1)}
+            disabled={pagination.current_page <= 1}
+            className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-emerald-600 disabled:opacity-30"
+            aria-label="Página anterior"
           >
-            {p}
+            ←
           </button>
-        ))}
-        <button
-          onClick={() => gotoPage(pagination.current_page + 1)}
-          disabled={pagination.current_page >= totalPages}
-          className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-emerald-600 disabled:opacity-30"
-          aria-label="Página siguiente"
-        >
-          →
-        </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <button
+              key={p}
+              onClick={() => gotoPage(p)}
+              className={cn(
+                "w-8 h-8 rounded-md text-sm transition-colors",
+                pagination.current_page === p
+                  ? "text-emerald-700 font-semibold bg-slate-100"
+                  : "text-slate-500 hover:text-emerald-600"
+              )}
+            >
+              {p}
+            </button>
+          ))}
+          <button
+            onClick={() => gotoPage(pagination.current_page + 1)}
+            disabled={pagination.current_page >= totalPages}
+            className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-emerald-600 disabled:opacity-30"
+            aria-label="Página siguiente"
+          >
+            →
+          </button>
+        </div>
+
+        {/* Modal de detalles */}
+        <LimpiezaDetailModal open={detailOpen} limpiezaId={detailId} onClose={() => setDetailOpen(false)} />
       </div>
 
-      {/* Modal de detalles */}
-      <LimpiezaDetailModal open={detailOpen} limpiezaId={detailId} onClose={() => setDetailOpen(false)} />
-    </div>
+      {/* ✅ Modal de éxito global de la tabla */}
+      <SuccessModal
+        isOpen={showSuccess}
+        title="¡Operación Exitosa!"
+        message={successMsg}
+        actionLabel="Continuar"
+        autoCloseMs={1500}
+        onAction={() => setShowSuccess(false)}
+        onClose={() => setShowSuccess(false)}
+      />
+    </>
   );
 }

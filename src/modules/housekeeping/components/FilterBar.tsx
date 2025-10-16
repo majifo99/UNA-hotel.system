@@ -53,13 +53,15 @@ function SegItem(props: Readonly<{
         color: active ? "#FFFFFF" : undefined,
       }}
       onMouseEnter={(e) => {
-        if (!disabled && active) (e.currentTarget.style.backgroundColor = BRAND_GREEN_HOVER);
+        // ✅ Eliminado el uso de negación (!disabled && active)
+        if (disabled) return;
+        if (active) e.currentTarget.style.backgroundColor = BRAND_GREEN_HOVER;
       }}
       onMouseLeave={(e) => {
-        if (active) (e.currentTarget.style.backgroundColor = BRAND_GREEN);
+        if (active) e.currentTarget.style.backgroundColor = BRAND_GREEN;
       }}
     >
-      {!active && <span className="text-slate-600 group-hover:text-slate-700" />}
+      {active ? null : <span className="text-slate-600 group-hover:text-slate-700" />}
       {children}
     </button>
   );
@@ -95,7 +97,9 @@ export default function FilterBar({
 
   const totalFmt = Number.isFinite(totalRooms) && totalRooms > 0 ? totalRooms : 0;
   const headerText =
-    shownRooms != null ? `${shownRooms} de ${totalFmt} habitaciones` : `${totalFmt} habitaciones`;
+      shownRooms === null || shownRooms === undefined
+    ? `${totalFmt} habitaciones`
+    : `${shownRooms} de ${totalFmt} habitaciones`;
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white/70 backdrop-blur-sm">

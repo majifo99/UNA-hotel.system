@@ -1,4 +1,3 @@
-// src/modules/Mantenimiento/hooks/useMaintenance.ts
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { fetchMaintenance } from "../services/maintenanceService";
 import type {
@@ -19,19 +18,13 @@ const sanitizeStatus = (raw?: string | null): MaintenanceStatus | "" => {
   return "";
 };
 
-/** Extrae filas de cualquier shape común usando optional chaining (S6582) */
+/** Extrae filas de cualquier shape común usando optional chaining */
 function extractRows(resp: unknown): MantenimientoItem[] {
-  // 1) Array directo
   if (Array.isArray(resp)) return resp as MantenimientoItem[];
-
-  // 2) AxiosResponse | objeto con data: []
   const lvl1 = (resp as any)?.data;
   if (Array.isArray(lvl1)) return lvl1 as MantenimientoItem[];
-
-  // 3) AxiosResponse con data: { data: [] }
   const lvl2 = (resp as any)?.data?.data;
   if (Array.isArray(lvl2)) return lvl2 as MantenimientoItem[];
-
   return [];
 }
 
@@ -72,7 +65,6 @@ export function useMaintenance() {
   /** Filtrado por texto (query) + estado */
   const filtered = useMemo(() => {
     const q = norm(query);
-
     return items.filter((i) => {
       const matchesQ =
         !q ||
@@ -124,6 +116,6 @@ export function useMaintenance() {
     metrics,
     counts,
 
-    refetch,
+    refetch, // 👈 importante exponerlo
   };
 }

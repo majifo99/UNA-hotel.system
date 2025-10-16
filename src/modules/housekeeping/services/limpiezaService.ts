@@ -8,7 +8,7 @@ import type {
 } from "../types/limpieza";
 import { ESTADO_HAB } from "../types/limpieza";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
+const API_URL = import.meta.env.VITE_API_URL ;
 
 /* ─────────── Query helpers (evita S6551: "[object Object]") ─────────── */
 function serializeParam(v: unknown): string {

@@ -35,7 +35,7 @@ function extractTime(iso?: string | null, horaCruda?: string | null) {
   if (typeof horaCruda === "string" && /^\d{2}:\d{2}/.test(horaCruda)) return horaCruda.slice(0, 5);
   if (!iso) return "";
   const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
+  if (Number.isNaN(d.getTime())) return ""; // ✅ fix Sonar
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
@@ -46,7 +46,8 @@ type Props = Readonly<{
   isOpen: boolean;
   onClose: () => void;
   item?: MantenimientoItem | null;
-  onSaved?: () => void; // avisa éxito al padre
+  /** Avisar éxito al padre; enviamos el item actualizado para optimismo opcional */
+  onSaved?: (updated?: MantenimientoItem) => void;
 }>;
 
 /* --------------------------------- Modal --------------------------------- */
@@ -86,7 +87,7 @@ export default function AssignMaintenanceModal({ isOpen, onClose, item, onSaved 
     }
   }, [item]);
 
-  // cargar usuarios al abrir (FIX: setLoadingUsers en finally)
+  // cargar usuarios al abrir
   useEffect(() => {
     if (!isOpen) return;
     let alive = true;
@@ -95,15 +96,11 @@ export default function AssignMaintenanceModal({ isOpen, onClose, item, onSaved 
       try {
         setLoadingUsers(true);
         setErrorUsers(null);
-
         const data = await getUsers();
         if (!alive) return;
-
-        console.log("[AssignMantenimiento] users loaded:", Array.isArray(data) ? data.length : 0);
         setUsers(Array.isArray(data) ? data : []);
       } catch (err: unknown) {
         if (!alive) return;
-        console.error("[AssignMantenimiento] getUsers failed:", err);
         setErrorUsers(err instanceof Error ? err.message : "No se pudieron cargar los usuarios");
         setUsers([]);
       } finally {
@@ -138,9 +135,10 @@ export default function AssignMaintenanceModal({ isOpen, onClose, item, onSaved 
       const iso = combineDateTimeToISO(fecha, hora);
       if (iso) body.fecha_inicio = iso;
 
-      await mantenimientoService.updateMantenimiento(item.id, body);
-      onSaved?.();   // refrescar padre
-      onClose();     // cerrar modal
+      const resp = await mantenimientoService.updateMantenimiento(item.id, body);
+      const updated = resp?.data;
+      onSaved?.(updated); // ✅ devolvemos el item actualizado
+      onClose();          // cerrar modal
     } catch (err: unknown) {
       console.error("[AssignMantenimiento] updateMantenimiento failed:", err);
       alert(err instanceof Error ? err.message : "No se pudo guardar la asignación");

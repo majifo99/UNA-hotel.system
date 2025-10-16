@@ -19,7 +19,7 @@ type Options = {
 // cache en memoria por sesión (clave = JSON.stringify(params))
 const _cache = new Map<string, HistorialPagination>();
 
-export function useHistorialLimpiezas(initial: Params = {}, opts: Options = { keepPreviousData: true }) {
+export function useHistorialLimpiezas(initial: Params = {}, opts?: Options) {
   const [page, setPage] = useState<number>(initial.page ?? 1);
   const [perPage, setPerPage] = useState<number>(initial.per_page ?? 20);
   const [q, setQ] = useState<string>(initial.q ?? "");
@@ -33,6 +33,9 @@ export function useHistorialLimpiezas(initial: Params = {}, opts: Options = { ke
 
   const prevDataRef = useRef<HistorialLimpieza[]>([]);
   const prevTotalRef = useRef<number>(0);
+
+  // ✅ evita objeto literal por defecto en la firma
+  const keepPreviousData = opts?.keepPreviousData ?? true;
 
   const params = useMemo(
     () => ({ page, per_page: perPage, q: q.trim() || undefined, desde, hasta }),
@@ -60,7 +63,7 @@ export function useHistorialLimpiezas(initial: Params = {}, opts: Options = { ke
     }
 
     // Si no hay cache: carga, pero mantén data previa si se pidió
-    setLoading(!opts.keepPreviousData || prevDataRef.current.length === 0);
+    setLoading(!keepPreviousData || prevDataRef.current.length === 0);
 
     fetchHistorialLimpiezas(params)
       .then((res: HistorialPagination) => {
@@ -83,15 +86,25 @@ export function useHistorialLimpiezas(initial: Params = {}, opts: Options = { ke
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.page, params.per_page, params.q, params.desde, params.hasta]);
+  }, [
+    params.page,
+    params.per_page,
+    params.q,
+    params.desde,
+    params.hasta,
+    keepPreviousData, // 🔁 dependemos de la opción efectiva
+  ]);
 
   // dataset para UI: si está cargando y había previos, muestra los previos
-  const uiData = loading && opts.keepPreviousData && prevDataRef.current.length > 0
-    ? prevDataRef.current
-    : data;
-  const uiTotal = loading && opts.keepPreviousData && prevTotalRef.current > 0
-    ? prevTotalRef.current
-    : total;
+  const uiData =
+    loading && keepPreviousData && prevDataRef.current.length > 0
+      ? prevDataRef.current
+      : data;
+
+  const uiTotal =
+    loading && keepPreviousData && prevTotalRef.current > 0
+      ? prevTotalRef.current
+      : total;
 
   return {
     data: uiData,
@@ -107,7 +120,7 @@ export function useHistorialLimpiezas(initial: Params = {}, opts: Options = { ke
     setDesde,
     setHasta,
     loading,
-    rawLoading: loading, // por si necesitas saberlo explícitamente
+    rawLoading: loading,
     error,
   };
 }

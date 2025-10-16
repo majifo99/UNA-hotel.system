@@ -1,14 +1,14 @@
-// src/modules/housekeeping/pages/HistorialLimpiezasPage.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import { useHistorialLimpiezas } from "../hooks/useHistorialLimpiezas";
-import FilterBarHistoriales from "../components/FilterBarHistoriales";
-import SolLogo from "../../../assets/Lanaku.png";
-import PrintStyles from "../../housekeeping/components/UI/PrintStyles";
+import { useHistorialMantenimientos } from "../hooks/useHistorialMantenimientos";
+import PrintStyles from "../../housekeeping/components/UI/PrintStyles"; // reutilizado
+import SolLogo from "../../../assets/Lanaku.png"; // ajusta import
+// Si ya tienes FilterBarHistoriales genérica, reutilízala:
+import FilterBarHistoriales from "../../housekeeping/components/FilterBarHistoriales";
 
 const HOUR12 = false;
-const BRAND_GREEN = "#1F392A"; // verde sidebar
+const BRAND_GREEN = "#1F392A";
 
 function fmtDatetime(v?: string | null) {
   if (!v || v === "—" || v === "-") return "—";
@@ -20,21 +20,17 @@ function fmtDatetime(v?: string | null) {
     hour: "2-digit", minute: "2-digit", hour12: HOUR12,
   }).format(d);
 }
-
 type KV = Record<string, unknown>;
-
 const FIELDS_ORDER = [
   "notas","prioridad","fecha_inicio","fecha_final",
   "id_usuario_asigna","id_usuario_reporta","inicio","final",
   "asignado","reporte","estado",
 ];
-
-const LABELS: Record<string, string> = {
+const LABELS: Record<string,string> = {
   notas:"Notas", prioridad:"Prioridad", fecha_inicio:"Fecha Inicio", fecha_final:"Fecha Final",
   id_usuario_asigna:"Id Usuario Asigna", id_usuario_reporta:"Id Usuario Reporta",
   inicio:"Inicio", final:"Final", asignado:"Asignado", reporte:"Reporte", estado:"Estado",
 };
-
 const HIDDEN_KEYS = new Set<string>(["fecha_reporte"]);
 
 function parseJsonSafe(value?: string | KV | null): KV | null {
@@ -70,28 +66,21 @@ function PriorityPill({ value }: Readonly<{ value?: string }>) {
 function ValueBlock({ json }: Readonly<{ json: string | KV | null | undefined }>) {
   const original = parseJsonSafe(json) ?? {};
   const obj: KV = Object.fromEntries(Object.entries(original).filter(([k]) => !HIDDEN_KEYS.has(k)));
-
   const orderedKnown = FIELDS_ORDER.filter((k) => k in obj);
   const remaining = Object.keys(obj).filter((k) => !FIELDS_ORDER.includes(k));
   const keys = [...orderedKnown, ...remaining];
-
   if (Object.keys(obj).length === 0) return <span className="text-slate-500">—</span>;
 
   return (
     <div className="space-y-1.5">
       {keys.map((k) => {
-        const label =
-          LABELS[k] ??
-          k.replaceAll("_", " ").replaceAll(/\b\w/g, (s) => s.toUpperCase());
-
+        const label = LABELS[k] ?? k.replaceAll("_"," ").replaceAll(/\b\w/g, s => s.toUpperCase());
         const val = obj[k];
         const isDateKey = /fecha|inicio|final|reporte/i.test(k);
-
         let content: React.ReactNode;
         if (k === "prioridad") content = <PriorityPill value={asPrimitiveString(val)} />;
         else if (isDateKey) content = fmtDatetime(asPrimitiveString(val) ?? undefined);
         else content = toDisplay(val);
-
         return (
           <div key={k} className="flex items-center gap-2 break-inside-avoid">
             <span className="kv-label shrink-0 text-[11px] font-medium text-slate-500 w-32">{label}</span>
@@ -103,19 +92,16 @@ function ValueBlock({ json }: Readonly<{ json: string | KV | null | undefined }>
   );
 }
 
-function getRoomNumber(h: any): string {
-  return (
-    h.numero_habitacion ?? h.habitacion_num ?? h.habitacion?.numero ??
-    h.room_number ?? h.num_habitacion ?? h.id_habitacion ?? "—"
-  ).toString();
+function getMantCode(h: any): string {
+  return (h.id_mantenimiento ?? h.mantenimiento?.id_mantenimiento ?? "—").toString();
 }
 
-export default function HistorialLimpiezasPage() {
+export default function HistorialMantenimientosPage() {
   const {
     data, total, perPage, q, desde, hasta,
     setPage, setPerPage, setQ, setDesde, setHasta,
     loading, error,
-  } = useHistorialLimpiezas({ page: 1, per_page: 20, q: "" }, { keepPreviousData: true });
+  } = useHistorialMantenimientos({ page: 1, per_page: 20, q: "" }, { keepPreviousData: true });
 
   const rows = data ?? [];
   const [printAll, setPrintAll] = useState(false);
@@ -150,13 +136,13 @@ export default function HistorialLimpiezasPage() {
     }
 
     return rows.map((h: any, idx: number) => (
-      <tr key={h.id_historial_limp ?? `${getRoomNumber(h)}-${idx}`} className="align-top odd:bg-slate-50/50 hover:bg-slate-100/60 transition-colors break-inside-avoid">
+      <tr key={h.id_historial_mant ?? `${getMantCode(h)}-${idx}`} className="align-top odd:bg-slate-50/50 hover:bg-slate-100/60 transition-colors break-inside-avoid">
         <td className="px-4 py-2">
           <span className="inline-flex min-w-[40px] justify-center rounded-md bg-slate-100 px-2 py-1 text-sm font-semibold ring-1 ring-slate-200">
-            {getRoomNumber(h)}
+            {getMantCode(h)}
           </span>
         </td>
-        <td className="px-4 py-2 whitespace-nowrap text-slate-700">{fmtDatetime(asPrimitiveString(h.fecha))}</td>
+        <td className="px-4 py-2 whitespace-nowrap text-slate-700">{fmtDatetime(h.fecha)}</td>
         <td className="px-4 py-2 font-medium text-slate-800">{h.evento ?? "—"}</td>
         <td className="px-4 py-2 text-slate-700">{h.actor?.nombre ?? h.actor?.email ?? "—"}</td>
         <td className="px-4 py-2"><ValueBlock json={h.valor_anterior} /></td>
@@ -167,10 +153,8 @@ export default function HistorialLimpiezasPage() {
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
-      {/* Config impresión (oculta sidebar, thead verde, anchos correctos) */}
       <PrintStyles areaId="print-area" pageSize="A4" margin="10mm" tableFontSize={10} brandColor={BRAND_GREEN} />
 
-      {/* Header UI (no se imprime) */}
       <header className="no-print bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-6 py-4 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -178,7 +162,7 @@ export default function HistorialLimpiezasPage() {
               <img src={SolLogo} alt="Lanaku" className="w-10 h-10 object-contain" />
             </div>
             <div>
-              <h1 className="text-3xl font-extrabold tracking-tight">Historiales de limpieza</h1>
+              <h1 className="text-3xl font-extrabold tracking-tight">Historiales de mantenimiento</h1>
               <p className="text-sm text-slate-600">Hoja consolidada • lista para imprimir</p>
             </div>
           </div>
@@ -194,7 +178,6 @@ export default function HistorialLimpiezasPage() {
         </div>
       </header>
 
-      {/* Contenido */}
       <main className="px-4 py-6">
         <div className="max-w-7xl mx-auto space-y-4">
           <div className="no-print">
@@ -210,12 +193,11 @@ export default function HistorialLimpiezasPage() {
             />
           </div>
 
-          {/* Área que se imprime */}
           <section id="print-area" className="rounded-2xl bg-white shadow ring-1 ring-slate-200 p-0 print:shadow-none print:ring-0">
             <div className="print-header print-only">
               <img src={SolLogo} alt="Lanaku" className="print-logo" />
               <div>
-                <div className="print-title">Historiales de limpieza</div>
+                <div className="print-title">Historiales de mantenimiento</div>
                 <div className="print-sub">Listado consolidado</div>
               </div>
             </div>
@@ -224,7 +206,7 @@ export default function HistorialLimpiezasPage() {
               <table className="hist-table w-full text-sm">
                 <thead style={{ backgroundColor: BRAND_GREEN, color: "white" }}>
                   <tr>
-                    {["Habitación", "Fecha", "Evento", "Actor", "Valor anterior", "Valor nuevo"].map((h) => (
+                    {["Mantenimiento", "Fecha", "Evento", "Actor", "Valor anterior", "Valor nuevo"].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>

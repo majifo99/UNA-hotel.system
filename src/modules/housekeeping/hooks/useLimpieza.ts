@@ -1,4 +1,3 @@
-// src/modules/housekeeping/hooks/useLimpieza.ts
 import { useCallback, useMemo, useState, useEffect } from "react";
 import type { Prioridad, LimpiezaItem } from "../types/limpieza";
 import { PRIORIDADES } from "../types/limpieza";
@@ -7,13 +6,13 @@ import { limpiezaService } from "../services/limpiezaService";
 type UseAssignFormParams = {
   id_habitacion: number | null;
   editingId?: number | null;
-  initialItem?: Partial<LimpiezaItem> | null; // compat
+  initialItem?: Partial<LimpiezaItem> | null;
   onSuccess?: () => void;
-  onClose?: () => void;
+  onClose?: () => void;          // se mantiene por compat, pero no lo usamos para cerrar
   onPatched?: (updated: any) => void;
 };
 
-/* ------------------------- helpers “free” para Sonar ------------------------ */
+/* ------------------------- helpers ------------------------ */
 const trim = (s?: string) => (s ?? "").trim();
 const isYMD = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
 const isHM  = (s?: string) => !!s && /^\d{2}:\d{2}$/.test(s);
@@ -64,16 +63,16 @@ const anyFieldChanged = (ctx: {
   if (typeof ctx.asignadoA === "number") return true;
   return false;
 };
-/* --------------------------------------------------------------------------- */
+/* --------------------------------------------------------- */
 
 export function useAssignForm(params: UseAssignFormParams) {
-  const { id_habitacion: initialRoomId, editingId, onSuccess, onClose, onPatched } = params;
+  const { id_habitacion: initialRoomId, editingId, onSuccess,  onPatched } = params;
 
   // ----- State del formulario -----
   const [idHabitacion, setIdHabitacion] = useState<number | null>(initialRoomId);
   const [asignadoA, setAsignadoA] = useState<number | null>(null);
 
-  // Todos vacíos por diseño (solo edición por PATCH)
+  // Solo edición por PATCH (todos vacíos por diseño)
   const [prioridad, setPrioridad] = useState<Prioridad | null>(null);
   const [nombre, setNombre] = useState<string>("");
   const [descripcion, setDescripcion] = useState<string>("");
@@ -85,12 +84,12 @@ export function useAssignForm(params: UseAssignFormParams) {
     if (initialRoomId != null) setIdHabitacion(initialRoomId);
   }, [initialRoomId]);
 
-  // ----- UI state -----
+  // ----- UI -----
   const [loading, setLoading] = useState<boolean>(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
-  // ----- Helper fecha → ISO -----
+  // fecha + hora → ISO
   const buildISO = useCallback((d?: string, t?: string) => {
     if (!d || !t) return undefined;
     const [Y, M, D] = d.split("-").map(Number);
@@ -99,7 +98,6 @@ export function useAssignForm(params: UseAssignFormParams) {
     return js.toISOString();
   }, []);
 
-  /* ------------------------ canSave con predicado simple ------------------------ */
   const canSave = useMemo(() => {
     if (invalidRoom(idHabitacion)) return false;
     return anyFieldChanged({
@@ -113,45 +111,44 @@ export function useAssignForm(params: UseAssignFormParams) {
     });
   }, [idHabitacion, prioridad, nombre, descripcion, notas, fecha, hora, asignadoA]);
 
-  /* --------------------- VALIDATE sin anidaciones ni mixes --------------------- */
   const validate = useCallback(() => {
-  const e: Record<string, string> = {};
+    const e: Record<string, string> = {};
 
-  const tNombre = trim(nombre);
-  const tDesc   = trim(descripcion);
-  const tNotas  = trim(notas);
-  const faltaPar = missingDatePair(fecha, hora);
+    const tNombre = trim(nombre);
+    const tDesc   = trim(descripcion);
+    const tNotas  = trim(notas);
+    const faltaPar = missingDatePair(fecha, hora);
 
-  const checks = [
-    { cond: invalidRoom(idHabitacion),           key: "id_habitacion", msg: "Selecciona una habitación válida." },
-    { cond: faltaPar,                            key: "fecha",         msg: "Si cambias la programación, llena fecha y hora." },
-    { cond: invalidFechaFmt(fecha, faltaPar),    key: "fecha",         msg: "Formato inválido (yyyy-MM-dd)." },
-    { cond: invalidHoraFmt(hora, faltaPar),      key: "hora",          msg: "Formato inválido (HH:mm)." },
-    { cond: invalidNombre(tNombre),              key: "nombre",        msg: "El nombre debe tener entre 3 y 100 caracteres." },
-    { cond: invalidDescripcion(tDesc),           key: "descripcion",   msg: "Máximo 500 caracteres." },
-    { cond: invalidNotas(tNotas),                key: "notas",         msg: "Máximo 500 caracteres." },
-    { cond: invalidPrioridad(prioridad),         key: "prioridad",     msg: "Prioridad inválida." },
-    { cond: invalidAsignado(asignadoA),          key: "asignadoA",     msg: "Selecciona un usuario válido." },
-    {
-      cond: !anyFieldChanged({
-        prioridad,
-        nombre: tNombre,
-        descripcion: tDesc,
-        notas: tNotas,
-        fecha,
-        hora,
-        asignadoA,
-      }),
-      key: "form",
-      msg: "No hay cambios para guardar.",
-    },
-  ] as const;
+    const checks = [
+      { cond: invalidRoom(idHabitacion),           key: "id_habitacion", msg: "Selecciona una habitación válida." },
+      { cond: faltaPar,                            key: "fecha",         msg: "Si cambias la programación, llena fecha y hora." },
+      { cond: invalidFechaFmt(fecha, faltaPar),    key: "fecha",         msg: "Formato inválido (yyyy-MM-dd)." },
+      { cond: invalidHoraFmt(hora, faltaPar),      key: "hora",          msg: "Formato inválido (HH:mm)." },
+      { cond: invalidNombre(tNombre),              key: "nombre",        msg: "El nombre debe tener entre 3 y 100 caracteres." },
+      { cond: invalidDescripcion(tDesc),           key: "descripcion",   msg: "Máximo 500 caracteres." },
+      { cond: invalidNotas(tNotas),                key: "notas",         msg: "Máximo 500 caracteres." },
+      { cond: invalidPrioridad(prioridad),         key: "prioridad",     msg: "Prioridad inválida." },
+      { cond: invalidAsignado(asignadoA),          key: "asignadoA",     msg: "Selecciona un usuario válido." },
+      {
+        cond: !anyFieldChanged({
+          prioridad,
+          nombre: tNombre,
+          descripcion: tDesc,
+          notas: tNotas,
+          fecha,
+          hora,
+          asignadoA,
+        }),
+        key: "form",
+        msg: "No hay cambios para guardar.",
+      },
+    ] as const;
 
-  for (const c of checks) if (c.cond) e[c.key] = c.msg;
+    for (const c of checks) if (c.cond) e[c.key] = c.msg;
 
-  setErrors(e);
-  return Object.keys(e).length === 0;
-}, [idHabitacion, nombre, descripcion, notas, prioridad, fecha, hora, asignadoA]);
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }, [idHabitacion, nombre, descripcion, notas, prioridad, fecha, hora, asignadoA]);
 
   const reset = useCallback(() => {
     setPrioridad(null);
@@ -175,7 +172,7 @@ export function useAssignForm(params: UseAssignFormParams) {
     setLoading(true);
     setToast(null);
     try {
-      // solo PATCH: si no llega editingId, buscamos por habitación
+      // targetId: si no llega editingId, buscamos por habitación
       let targetId: number | null =
         editingId != null && !Number.isNaN(Number(editingId)) ? editingId : null;
 
@@ -187,7 +184,7 @@ export function useAssignForm(params: UseAssignFormParams) {
 
       if (targetId == null) throw new Error("No se encontró una limpieza existente para esta habitación.");
 
-      // payload SOLO con lo que cambiaste
+      // payload solo con lo cambiado
       const payload: Record<string, any> = {};
       const tNombre = trim(nombre);
       const tDesc   = trim(descripcion);
@@ -208,11 +205,9 @@ export function useAssignForm(params: UseAssignFormParams) {
 
       onPatched?.(updated);
       setToast({ type: "success", msg: "Cambios guardados." });
+
+      // 👇 ya NO cerramos el modal aquí
       onSuccess?.();
-      setTimeout(() => {
-        onClose?.();
-        reset();
-      }, 500);
     } catch (err: any) {
       const msg = typeof err?.message === "string" ? err.message : "No se pudo actualizar.";
       setToast({ type: "error", msg });
@@ -232,28 +227,21 @@ export function useAssignForm(params: UseAssignFormParams) {
     asignadoA,
     editingId,
     onSuccess,
-    onClose,
-    reset,
     buildISO,
     onPatched,
   ]);
 
   return {
-    // nombres “canónicos”
     idHabitacion,
     setIdHabitacion,
-    // alias para no romper consumidores existentes
     id_habitacion: idHabitacion,
 
-    // resto (todos opcionales)
     prioridad, setPrioridad,
     nombre, setNombre,
     descripcion, setDescripcion,
     fecha, setFecha,
     hora, setHora,
     notas, setNotas,
-
-    // asignación
     asignadoA, setAsignadoA,
 
     errors,

@@ -18,6 +18,9 @@ import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
 
 import HistorialLimpiezasPage from '../modules/housekeeping/pages/HistorialLimpiezasPage';
 
+import HistorialMantenimientosPage from '../modules/Mantenimiento/pages/HistorialMantenimientosPage';
+
+
 
 import { AdminLoginPage, AdminAuthProvider } from '../modules/admin';
 
@@ -170,8 +173,12 @@ const router = createBrowserRouter([
 
       {
         path: 'mantenimiento',
-        element: <Mantenimiento />,
+        children: [
+          { index: true, element: <Mantenimiento /> },                 // /mantenimiento
+          { path: 'historiales', element: <HistorialMantenimientosPage /> }, // /mantenimiento/historiales
+        ],
       },
+
       {
         path: 'guests',
         children: [

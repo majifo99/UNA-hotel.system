@@ -1,4 +1,3 @@
-// src/modules/Mantenimiento/services/maintenanceService.ts
 import type {
   MantenimientoItem,
   MantenimientoPaginatedResponse,
@@ -6,7 +5,7 @@ import type {
   MantenimientoCreateDTO,
 } from "../types/mantenimiento";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+const API_URL = import.meta.env.VITE_API_URL;
 
 async function handleJson(res: Response) {
   const text = await res.text();
@@ -42,12 +41,11 @@ export const mantenimientoService = {
     if (filters.id_habitacion) params.append("id_habitacion", String(filters.id_habitacion));
     if (filters.estado_id) params.append("estado_id", String(filters.estado_id));
     if (filters.tipo) params.append("tipo", filters.tipo);
-  
     if (filters.desde) params.append("desde", filters.desde);
     if (filters.hasta) params.append("hasta", filters.hasta);
 
     const url = `${API_URL}/mantenimientos?${params.toString()}`;
-    const res = await fetch(url, { method: "GET" });
+    const res = await fetch(url, { method: "GET", cache: "no-store" }); // 👈 evita cache
 
     if (!res.ok) {
       const payload = await handleJson(res);
@@ -61,7 +59,7 @@ export const mantenimientoService = {
    * GET /mantenimientos/{id}
    */
   async getMantenimientoById(id: number): Promise<{ data: MantenimientoItem }> {
-    const res = await fetch(`${API_URL}/mantenimientos/${id}`, { method: "GET" });
+    const res = await fetch(`${API_URL}/mantenimientos/${id}`, { method: "GET", cache: "no-store" });
     if (!res.ok) {
       const payload = await handleJson(res);
       throw new Error(`GET /mantenimientos/${id} falló (${res.status}): ${JSON.stringify(payload)}`);
@@ -142,7 +140,7 @@ export const mantenimientoService = {
    * (Opcional) GET /mantenimientos/{id}/historial
    */
   async getHistorial(id: number): Promise<{ data: any[] }> {
-    const res = await fetch(`${API_URL}/mantenimientos/${id}/historial`, { method: "GET" });
+    const res = await fetch(`${API_URL}/mantenimientos/${id}/historial`, { method: "GET", cache: "no-store" });
     if (!res.ok) {
       const payload = await handleJson(res);
       throw new Error(
@@ -164,6 +162,3 @@ export async function fetchMaintenance(
 }
 
 export default mantenimientoService;
-
-
-

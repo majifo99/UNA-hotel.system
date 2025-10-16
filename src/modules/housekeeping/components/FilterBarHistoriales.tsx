@@ -1,7 +1,7 @@
 // src/modules/housekeeping/components/FilterBarHistoriales.tsx
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Props = Readonly<{
   q: string;
@@ -17,17 +17,29 @@ export default function FilterBarHistoriales({
   q, desde, hasta, perPage, total = 0, onChange,
 }: Props) {
   const [localQ, setLocalQ] = useState(q);
+  // En entorno browser (use client), setTimeout devuelve number
   const debounceRef = useRef<number | null>(null);
 
   const onChangeQ = useCallback((value: string) => {
     setLocalQ(value);
-    if (debounceRef.current) {
-      window.clearTimeout(debounceRef.current);
+
+    if (debounceRef.current !== null) {
+      globalThis.clearTimeout(debounceRef.current);
     }
-    debounceRef.current = window.setTimeout(() => {
+
+    debounceRef.current = globalThis.setTimeout(() => {
       onChange({ q: value });
     }, 350);
   }, [onChange]);
+
+  // Limpieza del timeout al desmontar
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current !== null) {
+        globalThis.clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
 
   return (
     <section className="rounded-2xl bg-white shadow ring-1 ring-slate-200 p-4">
@@ -57,7 +69,7 @@ export default function FilterBarHistoriales({
 
         <select
           value={perPage}
-          onChange={(e) => onChange({ perPage: parseInt(e.target.value, 10) })}
+          onChange={(e) => onChange({ perPage: Number.parseInt(e.target.value, 10) })}
           className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
           title="Elementos por página"
         >

@@ -1,4 +1,3 @@
-// src/modules/Mantenimiento/pages/MantenimientoPage.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -9,23 +8,45 @@ import { useMaintenance } from "../hooks/useMaintenance";
 import type { MantenimientoItem } from "../types/mantenimiento";
 import NotificationBell, { type NotificationItem } from "../components/NotificationBell";
 import { NOTIFICATIONS_MOCK } from "../data/notifications.mock";
-import SolLogo from "../../../assets/Lanaku.png"; // ✅ logo igual que en Limpieza
+import SolLogo from "../../../assets/Lanaku.png";
 import { FiLogOut } from "react-icons/fi";
+import SuccessModal from "../components/modals/SuccessModalMantenimiento";
 
 export default function MantenimientoPage() {
-  const { filtered, query, setQuery, status, setStatus, loading } = useMaintenance();
+  const {
+    filtered,
+    query, setQuery,
+    status, setStatus,
+    loading,
+    refetch, // 👈 IMPORTANTE: traemos refetch para refrescar tras guardar
+  } = useMaintenance();
+
   const navigate = useNavigate();
 
-  // 🔗 Ref a la tabla para poder abrir el modal de asignación desde el botón
+  // Ref a la tabla para abrir modales internos
   const tableRef = useRef<MaintenanceTableRef>(null);
 
-  // 🔢 Cantidad seleccionada (para habilitar botón y mostrar contador)
+  // Cantidad seleccionada
   const [selectedCount, setSelectedCount] = useState(0);
 
-  // 🔔 Notificaciones
+  // Notificaciones
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [localPendings, setLocalPendings] = useState<MantenimientoItem[]>([]);
 
+  // Modal de éxito global
+  const [successModal, setSuccessModal] = useState({
+    open: false,
+    title: "",
+    message: "",
+  });
+
+  const openSuccessModal = (title: string, message: string) =>
+    setSuccessModal({ open: true, title, message });
+
+  const closeSuccessModal = () =>
+    setSuccessModal((prev) => ({ ...prev, open: false }));
+
+  // Inicializar notificaciones
   useEffect(() => {
     setNotifications(NOTIFICATIONS_MOCK);
   }, []);
@@ -55,39 +76,59 @@ export default function MantenimientoPage() {
     updated_at: new Date().toISOString(),
   });
 
+  // Cuando se acepta una notificación
   const handleAccept = (n: NotificationItem) => {
     setLocalPendings((prev) => [mapNotifToRow(n), ...prev]);
-    setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+    setNotifications((prev) =>
+      prev.map((x) => (x.id === n.id ? { ...x, read: true } : x))
+    );
+    openSuccessModal("¡Solicitud aceptada!", "La tarea fue agregada a pendientes correctamente.");
   };
 
+  // Cuando se rechaza
   const handleReject = (n: NotificationItem) => {
     setNotifications((prev) =>
-      prev.map((x) => (x.id === n.id ? { ...x, read: true, dismissed: true } : x))
+      prev.map((x) =>
+        x.id === n.id ? { ...x, read: true, dismissed: true } : x
+      )
     );
   };
 
-  const allRows = useMemo(() => [...localPendings, ...filtered], [localPendings, filtered]);
+  // Combinar tareas pendientes locales con las del backend
+  const allRows = useMemo(
+    () => [...localPendings, ...filtered],
+    [localPendings, filtered]
+  );
 
+  // Cuando se abre una notificación
   const handleNotificationClick = (n: NotificationItem) => {
-    setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+    setNotifications((prev) =>
+      prev.map((x) => (x.id === n.id ? { ...x, read: true } : x))
+    );
     navigate(`/mantenimientos/detalle/${n.id}`);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 text-[#0f172a] font-sans">
-      {/* =======================
-          HEADER
-      ======================== */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 text-[#0f172a] font-sans relative">
+      {/* HEADER */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-6 py-4 sticky top-0 z-10">
         <div className="flex items-center justify-between">
           {/* IZQUIERDA: logo + título */}
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg ring-1 ring-slate-200 bg-slate-50">
-              <img src={SolLogo} alt="Lanaku Sol" className="w-12 h-12 object-contain drop-shadow" />
+              <img
+                src={SolLogo}
+                alt="Lanaku Sol"
+                className="w-12 h-12 object-contain drop-shadow"
+              />
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">Sistema de Mantenimiento</h1>
-              <p className="text-sm text-slate-600">Gestión integral de tareas · Dashboard</p>
+              <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
+                Sistema de Mantenimiento
+              </h1>
+              <p className="text-sm text-slate-600">
+                Gestión integral de tareas · Dashboard
+              </p>
             </div>
           </div>
 
@@ -97,7 +138,11 @@ export default function MantenimientoPage() {
               notifications={notifications}
               onItemClick={handleNotificationClick}
               onOpenAll={() => navigate("/notificaciones")}
-              markAllAsRead={() => setNotifications((prev) => prev.map((x) => ({ ...x, read: true })))}
+              markAllAsRead={() =>
+                setNotifications((prev) =>
+                  prev.map((x) => ({ ...x, read: true }))
+                )
+              }
               onAccept={handleAccept}
               onReject={handleReject}
             />
@@ -110,9 +155,7 @@ export default function MantenimientoPage() {
         </div>
       </header>
 
-      {/* =======================
-          FILTROS
-      ======================== */}
+      {/* FILTROS */}
       <div className="px-6 sm:px-6 py-4">
         <FilterBar
           query={query}
@@ -124,13 +167,11 @@ export default function MantenimientoPage() {
           onOpenDate={() => {
             /* lógica fecha */
           }}
-          onNew={() => tableRef.current?.openAssign()} // ✅ abre modal usando la selección de la tabla
+          onNew={() => tableRef.current?.openAssign()}
         />
       </div>
 
-      {/* =======================
-          TABLA
-      ======================== */}
+      {/* TABLA */}
       <section className="mt-6">
         {loading ? (
           <div className="mx-4 sm:mx-6 grid place-items-center rounded-2xl bg-white p-16 text-gray-500 border border-slate-200">
@@ -141,11 +182,27 @@ export default function MantenimientoPage() {
             <MaintenanceTable
               ref={tableRef}
               items={allRows}
-              onSelectionChange={setSelectedCount} // ✅ reporta cantidad seleccionada
+              onSelectionChange={setSelectedCount}
+              onSuccess={(msg?: string) =>
+                openSuccessModal(
+                  "¡Operación Exitosa!",
+                  msg ?? "Cambios guardados correctamente."
+                )
+              }
+              onRequestRefresh={refetch} // ✅ ahora la tabla puede refrescar datos tras el modal
             />
           </div>
         )}
       </section>
+
+      {/* MODAL DE ÉXITO GLOBAL */}
+      <SuccessModal
+        isOpen={successModal.open}
+        onClose={closeSuccessModal}
+        title={successModal.title}
+        message={successModal.message}
+        autoCloseMs={2200}
+      />
     </div>
   );
 }

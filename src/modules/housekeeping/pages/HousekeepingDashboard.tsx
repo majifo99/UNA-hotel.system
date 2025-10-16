@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { FiLogOut } from "react-icons/fi";
 import { Users, ClipboardCheck, AlertTriangle } from "lucide-react";
 
-
 import SolLogo from "../../../assets/Lanaku.png";
 import { useLimpiezasTable } from "../hooks/useLimpiezasTable";
 import LimpiezasTable, { type SelectedRoom } from "../components/RoomsTable";
@@ -12,6 +11,7 @@ import FilterBar, { type RoomFilters } from "../components/FilterBar";
 import type { LimpiezaItem } from "../types/limpieza";
 import { InitialDashSkeleton } from "../components/UI/Loaders";
 import HKCounterCards from "../components//UI/HKMetricCard";
+import SuccessModal from "../components/Modals/SuccessModal"; // 👈 NUEVO
 
 export default function HousekeepingDashboard() {
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -19,6 +19,10 @@ export default function HousekeepingDashboard() {
   const [selectedRoom, setSelectedRoom] = useState<SelectedRoom | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingItem, setEditingItem] = useState<Partial<LimpiezaItem> | null>(null);
+
+  // 👇 Estado del modal de éxito a nivel dashboard
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("La limpieza fue actualizada correctamente.");
 
   const [filters, setFilters] = useState<RoomFilters>({
     search: "",
@@ -126,7 +130,6 @@ export default function HousekeepingDashboard() {
 
           {/* DERECHA: Acciones */}
           <div className="flex items-center gap-2">
-            
             <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 bg-white/80 hover:bg-white shadow-sm">
               <FiLogOut className="h-4 w-4" />
               Cerrar sesión
@@ -214,10 +217,15 @@ export default function HousekeepingDashboard() {
           setEditingItem(null);
         }}
         onSuccess={() => {
+          // 1) refresco la data
+          refetch();
+          // 2) cierro el modal de asignación
           setShowAssignModal(false);
           setEditingId(null);
           setEditingItem(null);
-          refetch();
+          // 3) muestro el modal de éxito SOBRE el dashboard
+          setSuccessMsg("La limpieza fue actualizada correctamente.");
+          setShowSuccess(true);
         }}
         selectedRoom={selectedRoom}
         selectedRoomId={selectedRoomIdStr}
@@ -230,6 +238,17 @@ export default function HousekeepingDashboard() {
         onClose={() => setShowDamageModal(false)}
         selectedRoomId={selectedRoomIdStr}
         onSent={refetch}
+      />
+
+      {/* ✅ Success global arriba del dashboard */}
+      <SuccessModal
+        isOpen={showSuccess}
+        title="¡Operación Exitosa!"
+        message={successMsg}
+        actionLabel="Continuar"
+        autoCloseMs={1500}               // opcional; quítalo si prefieres click manual
+        onAction={() => setShowSuccess(false)}
+        onClose={() => setShowSuccess(false)}
       />
     </div>
   );

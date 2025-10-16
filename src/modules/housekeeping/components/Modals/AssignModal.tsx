@@ -1,4 +1,3 @@
-// src/modules/housekeeping/components/Modals/AssignModal.tsx
 import { X, Save, BadgeCheck, Calendar, Clock, AlertCircle } from "lucide-react";
 import { PRIORIDADES, type Prioridad, type LimpiezaItem } from "../../types/limpieza";
 import { useAssignForm } from "../../hooks/useLimpieza";
@@ -119,7 +118,9 @@ export default function AssignModal({
                 </p>
                 <p className="text-xs text-[#304D3C]/90">
                   {selectedRoom?.tipoNombre ? `Tipo: ${selectedRoom.tipoNombre}` : "Tipo: —"} ·{" "}
-                  {typeof selectedRoom?.piso !== "undefined" ? `Piso: ${String(selectedRoom?.piso)}` : "Piso: —"}
+                  {selectedRoom?.piso == null
+                    ? "Piso: —"
+                    : `Piso: ${String(selectedRoom.piso)}`}
                 </p>
               </div>
               <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-medium text-[#304D3C] ring-1 ring-[#304D3C]/40">
