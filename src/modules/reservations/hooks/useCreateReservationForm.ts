@@ -6,6 +6,7 @@ import { simpleReservationSchema, type SimpleReservationFormData } from '../sche
 import type { Room, AdditionalService } from '../../../types/core';
 import { reservationService } from '../services/reservationService';
 import { roomService } from '../services/roomService';
+import { guestService } from '../services/guestService';
 import { useAlert } from '../../../components/ui/Alert';
 import { COSTA_RICA_IVA_RATE, DEFAULT_DEPOSIT_PERCENTAGE, calculatePricing as calculateBusinessPricing } from '../constants/businessRules';
 
@@ -225,9 +226,25 @@ export const useCreateReservationForm = () => {
         return false;
       }
 
+      // Validate and convert guestId to number using guestService
+      const guestValidation = await guestService.validateGuestId(data.guestId);
+      if (!guestValidation.isValid) {
+        toast.error(`ID de huésped inválido: "${data.guestId}". ${Number.isNaN(guestValidation.id) ? 'Debe ser un número positivo.' : 'El cliente no existe en el sistema.'}`);
+        console.error('[FORM VALIDATION] Invalid guestId:', {
+          original: data.guestId,
+          parsed: guestValidation.id,
+          type: typeof data.guestId,
+          exists: !!guestValidation.guest,
+          isNaN: Number.isNaN(guestValidation.id)
+        });
+        return false;
+      }
+
+      const guestIdNumber = guestValidation.id;
+
       // Convert form data to the new CreateReservationDto format
       const createReservationPayload = {
-        id_cliente: parseInt(data.guestId, 10), // Include guest ID as required by backend
+        id_cliente: guestIdNumber, // Validated guest ID as required by backend
         id_estado_res: 1, // Default to "Confirmada" or similar initial status
         id_fuente: 1, // Default source (could be "Web" or "Sistema")
         notas: data.specialRequests || undefined,

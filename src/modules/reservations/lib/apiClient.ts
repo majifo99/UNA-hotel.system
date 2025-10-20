@@ -26,6 +26,29 @@ apiClient.interceptors.request.use(
     }
     
     console.debug('[API REQUEST]', (config.method || 'GET').toUpperCase(), `${config.baseURL || ''}${config.url || ''}`);
+    
+    // Debug: Log request details for POST requests
+    if (config.method?.toUpperCase() === 'POST' && config.data) {
+      console.debug('[AXIOS INTERCEPTOR] POST request data:', {
+        url: `${config.baseURL || ''}${config.url || ''}`,
+        headers: config.headers,
+        dataType: typeof config.data,
+        dataContent: config.data,
+        dataStringified: JSON.stringify(config.data)
+      });
+      
+      // Check if data has id_cliente
+      if (config.data && typeof config.data === 'object' && 'id_cliente' in config.data) {
+        console.debug('[AXIOS INTERCEPTOR] id_cliente detected:', {
+          value: config.data.id_cliente,
+          type: typeof config.data.id_cliente,
+          isNull: config.data.id_cliente === null,
+          isUndefined: config.data.id_cliente === undefined,
+          isNaN: Number.isNaN(config.data.id_cliente)
+        });
+      }
+    }
+    
     return config;
   },
   (error) => {

@@ -30,6 +30,7 @@ import {
   mapApiReservaFullToReservation 
 } from '../../types';
 import apiClient from '../../lib/apiClient';
+import { httpDiagnostic } from '../../lib/HttpClientDiagnostic';
 
 /**
  * Servicio CRUD para reservas
@@ -79,9 +80,31 @@ export class ReservationCrudService {
    */
   async createNew(payload: CreateReservationDto): Promise<Reservation> {
     try {
-      console.log('[API] POST /reservas with payload:', payload);
+      // Debug: Detailed payload logging with types
+      console.log('[ReservationCrudService] POST /reservas with SANITIZED payload:', {
+        id_cliente: payload.id_cliente,
+        id_estado_res: payload.id_estado_res,
+        id_fuente: payload.id_fuente,
+        notas: payload.notas,
+        habitaciones: `[${payload.habitaciones.length} rooms]`
+      });
       
-      const res = await apiClient.post<ApiReservaFull | { data: ApiReservaFull }>('/reservas', payload);
+      console.log('[PAYLOAD FINAL]', JSON.stringify(payload, null, 2));
+      console.log('[TIPOS]', { 
+        id_cliente: typeof payload.id_cliente, 
+        id_cliente_value: payload.id_cliente,
+        id_cliente_isNaN: Number.isNaN(payload.id_cliente),
+        habitaciones: typeof payload.habitaciones 
+      });
+      
+      // Validate payload before sending
+      if (!payload.id_cliente || Number.isNaN(payload.id_cliente)) {
+        throw new Error(`Invalid id_cliente: ${payload.id_cliente} (type: ${typeof payload.id_cliente})`);
+      }
+      
+      // Use MultiHttpClient with automatic fallback
+      const { multiHttpClient } = await import('../../lib/MultiHttpClient');
+      const res = await multiHttpClient.postReservation(payload);
       
       // Extract data from response - backend may wrap in data property
       const responseData = res.data as { data?: ApiReservaFull } | ApiReservaFull;
@@ -98,6 +121,19 @@ export class ReservationCrudService {
       return reservation;
     } catch (error) {
       console.error('[API] Error creating reservation:', error);
+      
+      // Enhanced error logging for debugging
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { status?: number; data?: unknown; statusText?: string } };
+        console.error('[API] Error 500 Internal Server Error');
+        console.error('[Request Body]:', JSON.stringify(payload, null, 2));
+        console.error('[Response]:', {
+          status: axiosError.response?.status,
+          statusText: axiosError.response?.statusText,
+          data: axiosError.response?.data
+        });
+      }
+      
       throw error;
     }
   }
