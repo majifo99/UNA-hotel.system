@@ -13,7 +13,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 /**
  * Respuesta HTTP normalizada
  */
-export interface HttpResponse<T = any> {
+export interface HttpResponse<T = unknown> {
   data: T;
   status: number;
   statusText: string;
@@ -50,7 +50,7 @@ export class MultiHttpClient {
   /**
    * POST usando Fetch (método más confiable)
    */
-  private async postWithFetch<T>(endpoint: string, data: any, useReservationHeaders = false): Promise<HttpResponse<T>> {
+  private async postWithFetch<T>(endpoint: string, data: unknown, useReservationHeaders = false): Promise<HttpResponse<T>> {
     const url = `${BASE_URL}${endpoint}`;
     
     console.log('[FETCH CLIENT] POST', url);
@@ -81,8 +81,14 @@ export class MultiHttpClient {
     });
     
     if (!response.ok) {
-      const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
-      (error as any).response = {
+      const error = new Error(`HTTP ${response.status}: ${response.statusText}`) as Error & {
+        response?: {
+          status: number;
+          statusText: string;
+          data: T;
+        };
+      };
+      error.response = {
         status: response.status,
         statusText: response.statusText,
         data: parsedData
@@ -100,7 +106,7 @@ export class MultiHttpClient {
   /**
    * POST usando Axios (método actual)
    */
-  private async postWithAxios<T>(endpoint: string, data: any, useReservationHeaders = false): Promise<HttpResponse<T>> {
+  private async postWithAxios<T>(endpoint: string, data: unknown, useReservationHeaders = false): Promise<HttpResponse<T>> {
     const { default: axios } = await import('axios');
     
     console.log('[AXIOS CLIENT] POST', `${BASE_URL}${endpoint}`);
@@ -130,7 +136,7 @@ export class MultiHttpClient {
   /**
    * POST con fallback automático
    */
-  async post<T>(endpoint: string, data: any, useReservationHeaders = false): Promise<HttpResponse<T>> {
+  async post<T>(endpoint: string, data: unknown, useReservationHeaders = false): Promise<HttpResponse<T>> {
     // Intentar primero con Axios (comportamiento actual)
     try {
       return await this.postWithAxios<T>(endpoint, data, useReservationHeaders);
@@ -156,7 +162,7 @@ export class MultiHttpClient {
   /**
    * POST específico para reservas con manejo inteligente de tokens
    */
-  async postReservation(data: CreateReservationDto): Promise<HttpResponse<any>> {
+  async postReservation(data: CreateReservationDto): Promise<HttpResponse<unknown>> {
     console.log('🚀 [RESERVATION POST] Starting reservation creation...');
     
     // Analizar estrategia de token

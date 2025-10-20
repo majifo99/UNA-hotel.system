@@ -30,7 +30,7 @@ import {
   mapApiReservaFullToReservation 
 } from '../../types';
 import apiClient from '../../lib/apiClient';
-import { httpDiagnostic } from '../../lib/HttpClientDiagnostic';
+
 
 /**
  * Servicio CRUD para reservas
