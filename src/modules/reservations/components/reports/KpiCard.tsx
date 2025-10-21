@@ -6,6 +6,7 @@
 
 import React from 'react';
 import type { LucideIcon } from 'lucide-react';
+import { hexToRgba } from '../../utils/colorUtils';
 
 export interface KpiCardProps {
   readonly icon: LucideIcon;
@@ -31,7 +32,7 @@ export const KpiCard: React.FC<KpiCardProps> = ({
           <div className="flex items-center space-x-3 mb-2">
             <div 
               className="p-2 rounded-lg"
-              style={{ backgroundColor: `${color}15` }}
+              style={{ backgroundColor: hexToRgba(color, 0.08) }}
             >
               <Icon 
                 className="w-6 h-6" 

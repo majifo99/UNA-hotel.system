@@ -12,7 +12,7 @@ import { KpiCard } from '../components/reports/KpiCard';
 import { TimeSeriesChart } from '../components/reports/TimeSeriesChart';
 import { DistributionChart } from '../components/reports/DistributionChart';
 import { ReportsTable } from '../components/reports/ReportsTable';
-import type { ChartMetric, ExportFormat } from '../types/reports';
+import type { ChartMetric, ExportFormat, ReservationReportFilters } from '../types/reports';
 
 const CHART_METRICS: Array<{ value: ChartMetric; label: string }> = [
   { value: 'reservations', label: 'Reservas' },
@@ -33,17 +33,22 @@ export const ReservationReportsPage: React.FC = () => {
   } = useReservationReports();
 
   const [selectedMetric, setSelectedMetric] = useState<ChartMetric>('reservations');
-  const [tempFilters, setTempFilters] = useState(filters);
+
+  const handleFiltersChange = (newFilters: ReservationReportFilters) => {
+    setFilters(newFilters);
+  };
 
   const handleApplyFilters = () => {
-    setFilters(tempFilters);
     refetch();
   };
 
   const handleClearFilters = () => {
-    const defaultFilters = { status: 'all', metric: 'reservations' };
-    setTempFilters(defaultFilters as typeof filters);
-    setFilters(defaultFilters as typeof filters);
+    const defaultFilters: ReservationReportFilters = { 
+      period: 'all',
+      status: 'all', 
+      metric: 'reservations' 
+    };
+    setFilters(defaultFilters);
   };
 
   const handleExport = async (format: ExportFormat) => {
@@ -90,8 +95,8 @@ export const ReservationReportsPage: React.FC = () => {
 
       {/* Filters */}
       <ReportFilters
-        filters={tempFilters}
-        onFiltersChange={setTempFilters}
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
         onApply={handleApplyFilters}
         onClear={handleClearFilters}
       />
@@ -165,6 +170,7 @@ export const ReservationReportsPage: React.FC = () => {
         <DistributionChart
           data={data?.charts.byRoomType || []}
           title="Distribución por Tipo de Habitación"
+          category="roomType"
           isLoading={isLoading}
         />
       </div>
@@ -174,11 +180,13 @@ export const ReservationReportsPage: React.FC = () => {
         <DistributionChart
           data={data?.charts.bySource || []}
           title="Distribución por Fuente"
+          category="source"
           isLoading={isLoading}
         />
         <DistributionChart
           data={data?.charts.byStatus || []}
           title="Distribución por Estado"
+          category="status"
           isLoading={isLoading}
         />
       </div>

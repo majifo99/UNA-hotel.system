@@ -4,7 +4,7 @@
  * Line chart for displaying trends over time
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   LineChart,
   Line,
@@ -58,6 +58,49 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
 }) => {
   const config = METRIC_CONFIG[metric];
 
+  // compute sensible ticks based on range length
+  const ticks = useMemo(() => {
+    if (!data || data.length === 0) return [] as string[];
+
+    const dates = data.map(d => new Date(d.date));
+  const min = dates[0];
+  const max = dates.at(-1) as Date;
+    const msRange = max.getTime() - min.getTime();
+    const days = Math.max(1, Math.round(msRange / (1000 * 60 * 60 * 24)));
+
+    // Choose tick count and granularity
+    let step = 1; // days
+    if (days > 365) {
+      // monthly
+      step = Math.max(1, Math.floor(days / 12));
+    } else if (days > 120) {
+      // weekly
+      step = 7;
+    } else if (days > 30) {
+      // every 3 days
+      step = 3;
+    }
+
+    const result: string[] = [];
+    for (let i = 0; i < dates.length; i += step) {
+      result.push(data[i].date);
+    }
+
+    // ensure last date present
+    if (result.at(-1) !== data.at(-1)?.date) {
+      result.push(data.at(-1)?.date ?? '');
+    }
+
+    return result;
+  }, [data]);
+
+  const labelFormatter = (isoDate: string) => {
+    const d = new Date(isoDate);
+    if (Number.isNaN(d.getTime())) return isoDate;
+    // short date for compactness
+    return new Intl.DateTimeFormat('es-CR', { month: 'short', day: 'numeric' }).format(d);
+  };
+
   if (isLoading) {
     return (
       <div className="h-80 flex items-center justify-center bg-neutral-50 rounded-lg animate-pulse">
@@ -86,6 +129,9 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
             dataKey="date" 
             stroke="#6B7280"
             style={{ fontSize: '12px' }}
+            ticks={ticks}
+            tickFormatter={labelFormatter}
+            interval={0}
           />
           <YAxis 
             stroke="#6B7280"

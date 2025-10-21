@@ -67,3 +67,49 @@ export function getMetricColor(metric: string): string {
 
   return colorMap[metric] || '#1A3636';
 }
+
+/**
+ * Map distribution colors based on category type
+ * Uses semantic color functions for meaningful color assignment
+ */
+export function getDistributionColor(name: string, category: 'status' | 'roomType' | 'source', index: number): string {
+  if (category === 'status') {
+    // Map Spanish status names to enum values
+    const statusMap: Record<string, ReservationStatus> = {
+      'Confirmada': 'confirmed',
+      'Pendiente': 'pending',
+      'Check-in': 'checked_in',
+      'Check-out': 'checked_out',
+      'Cancelada': 'cancelled',
+      'No Show': 'no_show',
+      'En Espera': 'waiting',
+      'Completada': 'completed'
+    };
+    
+    const status = statusMap[name];
+    if (status) {
+      return getStatusColor(status);
+    }
+  }
+  
+  if (category === 'roomType') {
+    return getRoomTypeColor(index);
+  }
+  
+  if (category === 'source') {
+    // Map common Spanish source names
+    const sourceMap: Record<string, string> = {
+      'Booking.com': 'Web',
+      'Telefono': 'Teléfono',
+      'Teléfono': 'Teléfono',
+      'Correo': 'Email',
+      'Walk-in': 'Walk-in',
+      'Agencia': 'Agencia'
+    };
+    
+    return getSourceColor(sourceMap[name] || name);
+  }
+  
+  // Fallback to institutional palette
+  return getRoomTypeColor(index);
+}

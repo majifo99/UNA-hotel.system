@@ -39,9 +39,10 @@ interface UseReservationReportsReturn {
 }
 
 /**
- * Default filters
+ * Default filters - show all reservations
  */
 const DEFAULT_FILTERS: ReservationReportFilters = {
+  period: 'all',
   status: 'all',
   metric: 'reservations'
 };
@@ -67,33 +68,35 @@ export function useReservationReports(): UseReservationReportsReturn {
 
   /**
    * Export data to specified format
+   * 
+   * @param format - Export format (csv or pdf)
    */
   const exportData = useCallback(async (format: ExportFormat): Promise<void> => {
-    if (!data?.rows || data.rows.length === 0) {
-      toast.error('No hay datos para exportar');
-      return;
-    }
-
     setExportStatus({ isExporting: true });
 
     try {
       let blob: Blob;
       
       if (format === 'csv') {
-        blob = await reservationReportsService.exportToCSV(data.rows);
+        // For CSV, we need table data (currently not fetched for performance)
+        // In the future, fetch table data separately when exporting
+        toast.info('La exportación CSV estará disponible próximamente');
+        setExportStatus({ isExporting: false });
+        return;
       } else {
+        // PDF export is handled by backend
         blob = await reservationReportsService.exportToPDF(filters);
       }
 
       // Create download link
-      const url = window.URL.createObjectURL(blob);
+      const url = globalThis.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = `reservas-reporte-${new Date().toISOString().split('T')[0]}.${format}`;
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      link.remove();
+      globalThis.URL.revokeObjectURL(url);
 
       setExportStatus({ isExporting: false });
       toast.success(`Reporte exportado exitosamente en formato ${format.toUpperCase()}`);
@@ -105,7 +108,7 @@ export function useReservationReports(): UseReservationReportsReturn {
       });
       toast.error(`Error al exportar: ${errorMessage}`);
     }
-  }, [data, filters]);
+  }, [filters]);
 
   return {
     data,

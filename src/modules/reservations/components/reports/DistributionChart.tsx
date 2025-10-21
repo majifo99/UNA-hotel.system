@@ -14,17 +14,21 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import type { DistributionDataPoint } from '../../types/reports';
+import { getPaletteColor } from '../../utils/colorUtils';
+import { getDistributionColor } from '../../utils/reportColors';
 
 export interface DistributionChartProps {
   readonly data: readonly DistributionDataPoint[];
   readonly title: string;
   readonly isLoading?: boolean;
+  readonly category?: 'status' | 'roomType' | 'source';
 }
 
 export const DistributionChart: React.FC<DistributionChartProps> = ({
   data,
   title,
-  isLoading = false
+  isLoading = false,
+  category
 }) => {
   if (isLoading) {
     return (
@@ -42,11 +46,13 @@ export const DistributionChart: React.FC<DistributionChartProps> = ({
     );
   }
 
-  const chartData = data.map(item => ({
+  const chartData = data.map((item, idx) => ({
     name: item.name,
     value: item.value,
     percentage: item.percentage,
-    color: item.color
+    color: item.color || (category 
+      ? getDistributionColor(item.name, category, idx)
+      : getPaletteColor(item.name || idx))
   }));
 
   return (

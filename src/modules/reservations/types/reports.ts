@@ -116,12 +116,19 @@ export interface ReservationReportDto {
 export type ChartMetric = 'reservations' | 'revenue' | 'occupancy' | 'cancellations';
 
 /**
+ * Time period options for reports
+ */
+export type TimePeriod = '7d' | '30d' | '3m' | '6m' | '1y' | 'all' | 'custom';
+
+/**
  * Filters for report generation
  */
 export interface ReservationReportFilters {
-  /** Start date (YYYY-MM-DD) */
+  /** Predefined time period */
+  readonly period?: TimePeriod;
+  /** Start date (YYYY-MM-DD) - used when period is 'custom' */
   readonly startDate?: string;
-  /** End date (YYYY-MM-DD) */
+  /** End date (YYYY-MM-DD) - used when period is 'custom' */
   readonly endDate?: string;
   /** Filter by room type */
   readonly roomType?: string;
