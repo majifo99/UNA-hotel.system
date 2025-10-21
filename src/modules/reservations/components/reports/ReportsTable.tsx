@@ -1,10 +1,11 @@
 /**
  * Reports Table Component
  * 
- * Displays detailed reservation data in table format with pagination
+ * Displays detailed reservation data in table format with pagination and sorting
  */
 
 import React, { useState, useMemo } from 'react';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import type { ReservationReportRow } from '../../types/reports';
 import { ReservationStatusBadge } from '../ReservationStatusBadge';
 
@@ -13,22 +14,63 @@ export interface ReportsTableProps {
   readonly isLoading?: boolean;
 }
 
+type SortKey = 'checkInDate' | 'checkOutDate' | 'totalAmount' | 'nights';
+type SortDirection = 'asc' | 'desc';
+
+interface SortConfig {
+  key: SortKey;
+  direction: SortDirection;
+}
+
 const ITEMS_PER_PAGE = 10;
+
+const currencyFormatter = new Intl.NumberFormat('es-CR', {
+  style: 'currency',
+  currency: 'CRC',
+  maximumFractionDigits: 0,
+});
 
 export const ReportsTable: React.FC<ReportsTableProps> = ({
   data,
   isLoading = false
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+
+  // Sort data
+  const sortedData = useMemo(() => {
+    if (!data || !sortConfig) return data || [];
+    
+    const sorted = [...data].sort((a, b) => {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+      
+      // Handle date strings
+      if (sortConfig.key === 'checkInDate' || sortConfig.key === 'checkOutDate') {
+        const aDate = new Date(aValue as string).getTime();
+        const bDate = new Date(bValue as string).getTime();
+        return sortConfig.direction === 'asc' ? aDate - bDate : bDate - aDate;
+      }
+      
+      // Handle numbers
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      
+      return 0;
+    });
+    
+    return sorted;
+  }, [data, sortConfig]);
 
   // Calculate pagination
-  const totalPages = Math.ceil((data?.length || 0) / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil((sortedData?.length || 0) / ITEMS_PER_PAGE);
   const paginatedData = useMemo(() => {
-    if (!data) return [];
+    if (!sortedData) return [];
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     const end = start + ITEMS_PER_PAGE;
-    return data.slice(start, end);
-  }, [data, currentPage]);
+    return sortedData.slice(start, end);
+  }, [sortedData, currentPage]);
 
   // Reset to page 1 when data changes
   React.useEffect(() => {
@@ -39,6 +81,33 @@ export const ReportsTable: React.FC<ReportsTableProps> = ({
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
     }
+  };
+
+  const handleSort = (key: SortKey) => {
+    setSortConfig((prevConfig) => {
+      if (prevConfig?.key === key) {
+        // Toggle direction
+        return {
+          key,
+          direction: prevConfig.direction === 'asc' ? 'desc' : 'asc',
+        };
+      }
+      // New sort key, default to descending
+      return { key, direction: 'desc' };
+    });
+    // Reset to first page when sorting changes
+    setCurrentPage(1);
+  };
+
+  const getSortIcon = (key: SortKey) => {
+    if (sortConfig?.key !== key) {
+      return null;
+    }
+    return sortConfig.direction === 'asc' ? (
+      <ChevronUp className="inline-block w-4 h-4 ml-1" />
+    ) : (
+      <ChevronDown className="inline-block w-4 h-4 ml-1" />
+    );
   };
   if (isLoading) {
     return (
@@ -75,7 +144,7 @@ export const ReportsTable: React.FC<ReportsTableProps> = ({
           Detalle de Reservaciones
         </h3>
         <p className="text-sm text-neutral-500 mt-1">
-          {data.length} registro{data.length !== 1 ? 's' : ''} encontrado{data.length !== 1 ? 's' : ''}
+          {data.length} registro{data.length === 1 ? '' : 's'} encontrado{data.length === 1 ? '' : 's'}
         </p>
       </div>
       
@@ -92,20 +161,32 @@ export const ReportsTable: React.FC<ReportsTableProps> = ({
               <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                 Habitación
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                Check-in
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer select-none hover:bg-neutral-100 transition-colors"
+                onClick={() => handleSort('checkInDate')}
+              >
+                Check-in {getSortIcon('checkInDate')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                Check-out
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer select-none hover:bg-neutral-100 transition-colors"
+                onClick={() => handleSort('checkOutDate')}
+              >
+                Check-out {getSortIcon('checkOutDate')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                Noches
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer select-none hover:bg-neutral-100 transition-colors"
+                onClick={() => handleSort('nights')}
+              >
+                Noches {getSortIcon('nights')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                 Estado
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                Total
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer select-none hover:bg-neutral-100 transition-colors"
+                onClick={() => handleSort('totalAmount')}
+              >
+                Total {getSortIcon('totalAmount')}
               </th>
             </tr>
           </thead>
@@ -134,7 +215,7 @@ export const ReportsTable: React.FC<ReportsTableProps> = ({
                   <ReservationStatusBadge status={row.status} />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-neutral-900">
-                  ₡{row.totalAmount.toLocaleString('es-CR', { minimumFractionDigits: 2 })}
+                  {currencyFormatter.format(row.totalAmount)}
                 </td>
               </tr>
             ))}
@@ -180,7 +261,7 @@ export const ReportsTable: React.FC<ReportsTableProps> = ({
                 >
                   <span className="sr-only">Anterior</span>‹
                 </button>
-                {[...Array(totalPages)].map((_, i) => {
+                {Array.from({ length: totalPages }, (_, i) => {
                   const page = i + 1;
                   // Show first, last, current, and neighbors
                   if (

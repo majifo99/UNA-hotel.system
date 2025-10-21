@@ -4,14 +4,16 @@
  * Main page for reservation analytics and reporting
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Download, TrendingUp, DollarSign, CheckCircle, XCircle } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { useReservationReports } from '../hooks/useReservationReports';
 import { ReportFilters } from '../components/reports/ReportFilters';
 import { KpiCard } from '../components/reports/KpiCard';
 import { TimeSeriesChart } from '../components/reports/TimeSeriesChart';
 import { DistributionChart } from '../components/reports/DistributionChart';
 import { ReportsTable } from '../components/reports/ReportsTable';
+import { Alert } from '../../../components/ui/Alert';
 import type { ChartMetric, ExportFormat, ReservationReportFilters } from '../types/reports';
 
 const CHART_METRICS: Array<{ value: ChartMetric; label: string }> = [
@@ -22,9 +24,31 @@ const CHART_METRICS: Array<{ value: ChartMetric; label: string }> = [
 ];
 
 export const ReservationReportsPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedMetric, setSelectedMetric] = useState<ChartMetric>('reservations');
+
+  // Initialize filters from URL or defaults
+  const getInitialFilters = (): ReservationReportFilters => {
+    const period = searchParams.get('periodo') || searchParams.get('period') || 'all';
+    const status = searchParams.get('estado') || searchParams.get('status') || 'all';
+    const roomType = searchParams.get('tipo_habitacion') || searchParams.get('roomType') || undefined;
+    const startDate = searchParams.get('fecha_desde') || searchParams.get('startDate') || undefined;
+    const endDate = searchParams.get('fecha_hasta') || searchParams.get('endDate') || undefined;
+
+    return {
+      period: period as ReservationReportFilters['period'],
+      status: status as ReservationReportFilters['status'],
+      roomType,
+      startDate,
+      endDate,
+      metric: 'reservations'
+    };
+  };
+
   const {
     data,
     isLoading,
+    error,
     filters,
     setFilters,
     exportData,
@@ -32,7 +56,39 @@ export const ReservationReportsPage: React.FC = () => {
     refetch
   } = useReservationReports();
 
-  const [selectedMetric, setSelectedMetric] = useState<ChartMetric>('reservations');
+  // Sync filters with URL on mount
+  useEffect(() => {
+    const urlFilters = getInitialFilters();
+    const hasUrlParams = searchParams.toString().length > 0;
+    
+    if (hasUrlParams) {
+      setFilters(urlFilters);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Update URL when filters change
+  useEffect(() => {
+    const params = new URLSearchParams();
+    
+    if (filters.period && filters.period !== 'all') {
+      params.set('periodo', filters.period);
+    }
+    if (filters.status && filters.status !== 'all') {
+      params.set('estado', filters.status);
+    }
+    if (filters.roomType) {
+      params.set('tipo_habitacion', filters.roomType);
+    }
+    if (filters.startDate) {
+      params.set('fecha_desde', filters.startDate);
+    }
+    if (filters.endDate) {
+      params.set('fecha_hasta', filters.endDate);
+    }
+
+    setSearchParams(params, { replace: true });
+  }, [filters, setSearchParams]);
 
   const handleFiltersChange = (newFilters: ReservationReportFilters) => {
     setFilters(newFilters);
@@ -100,6 +156,24 @@ export const ReservationReportsPage: React.FC = () => {
         onApply={handleApplyFilters}
         onClear={handleClearFilters}
       />
+
+      {/* Error State */}
+      {error && (
+        <div className="mb-6">
+          <Alert type="error" title="Error al cargar reportes" message={error.message} />
+        </div>
+      )}
+
+      {/* Empty State - No data */}
+      {!isLoading && !error && data && data.kpis.totalReservations === 0 && (
+        <div className="mb-6">
+          <Alert 
+            type="info" 
+            title="Sin datos disponibles"
+            message="No se encontraron reservas para los filtros seleccionados. Intenta ajustar los filtros o seleccionar un período diferente."
+          />
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

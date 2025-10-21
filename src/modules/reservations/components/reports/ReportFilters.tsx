@@ -7,10 +7,12 @@
  * @module components/reports
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Filter, X } from 'lucide-react';
 import type { ReservationReportFilters, TimePeriod } from '../../types/reports';
 import type { ReservationStatus } from '../../types/enums/ReservationStatus';
+import { useDebounce } from '../../../../hooks/useDebounce';
+import { FilterBadge } from './FilterBadge';
 
 /**
  * Component props
@@ -59,6 +61,26 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
   onApply,
   onClear
 }) => {
+  // Local state for roomType input with debounce
+  const [roomTypeInput, setRoomTypeInput] = useState(filters.roomType || '');
+  const debouncedRoomType = useDebounce(roomTypeInput, 400);
+
+  // Apply debounced roomType to filters
+  useEffect(() => {
+    if (debouncedRoomType !== filters.roomType) {
+      onFiltersChange({
+        ...filters,
+        roomType: debouncedRoomType || undefined
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedRoomType]);
+
+  // Sync local state when filters change externally
+  useEffect(() => {
+    setRoomTypeInput(filters.roomType || '');
+  }, [filters.roomType]);
+
   const handleChange = (field: keyof ReservationReportFilters, value: string) => {
     onFiltersChange({
       ...filters,
@@ -66,7 +88,35 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
     });
   };
 
+  const handleRemoveFilter = (field: keyof ReservationReportFilters) => {
+    if (field === 'period') {
+      onFiltersChange({ ...filters, period: 'all' });
+    } else if (field === 'status') {
+      onFiltersChange({ ...filters, status: 'all' });
+    } else {
+      onFiltersChange({ ...filters, [field]: undefined });
+    }
+  };
+
   const isCustomPeriod = filters.period === 'custom';
+
+  // Get active filter badges
+  const getFilterLabel = (period: TimePeriod): string => {
+    const option = PERIOD_OPTIONS.find(opt => opt.value === period);
+    return option?.label || period;
+  };
+
+  const getStatusLabel = (status: string): string => {
+    const option = STATUS_OPTIONS.find(opt => opt.value === status);
+    return option?.label || status;
+  };
+
+  const hasActiveFilters = 
+    (filters.period && filters.period !== 'all') ||
+    (filters.status && filters.status !== 'all') ||
+    filters.roomType ||
+    filters.startDate ||
+    filters.endDate;
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -174,13 +224,57 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
             <input
               type="text"
               id="roomType"
-              value={filters.roomType || ''}
-              onChange={(e) => handleChange('roomType', e.target.value)}
+              value={roomTypeInput}
+              onChange={(e) => setRoomTypeInput(e.target.value)}
               placeholder="Ej: Suite, Doble..."
               className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
             />
           </div>
         </div>
+
+        {/* Active filter badges */}
+        {hasActiveFilters && (
+          <div className="pt-4 border-t border-neutral-200">
+            <p className="text-xs font-medium text-neutral-600 mb-2">Filtros activos:</p>
+            <div className="flex flex-wrap gap-2">
+              {filters.period && filters.period !== 'all' && (
+                <FilterBadge
+                  label="Período"
+                  value={getFilterLabel(filters.period)}
+                  onRemove={() => handleRemoveFilter('period')}
+                />
+              )}
+              {filters.status && filters.status !== 'all' && (
+                <FilterBadge
+                  label="Estado"
+                  value={getStatusLabel(filters.status)}
+                  onRemove={() => handleRemoveFilter('status')}
+                />
+              )}
+              {filters.roomType && (
+                <FilterBadge
+                  label="Tipo habitación"
+                  value={filters.roomType}
+                  onRemove={() => handleRemoveFilter('roomType')}
+                />
+              )}
+              {filters.startDate && (
+                <FilterBadge
+                  label="Desde"
+                  value={filters.startDate}
+                  onRemove={() => handleRemoveFilter('startDate')}
+                />
+              )}
+              {filters.endDate && (
+                <FilterBadge
+                  label="Hasta"
+                  value={filters.endDate}
+                  onRemove={() => handleRemoveFilter('endDate')}
+                />
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Action buttons */}
