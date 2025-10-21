@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState, useCallback } from "react";
+import { useMemo, useEffect, useState, useCallback, useRef } from "react";
 import { UserCheck, MoreHorizontal, Eye, RefreshCw } from "lucide-react";
 import type { Prioridad } from "../types/limpieza";
 import { useLimpiezasTable, type LimpiezasTableController } from "../hooks/useLimpiezasTable";
@@ -60,9 +60,10 @@ type Props = {
   filters?: RoomFilters;
 };
 
-export default function LimpiezasTable({ controller, onSelectionChange, filters }: Readonly<Props>) {
-  const internalCtrl = useLimpiezasTable({ initialFilters: { per_page: 10, pendientes: false } });
-  const ctrl = controller ?? internalCtrl;
+export default function RoomsTable({ controller, onSelectionChange, filters }: Readonly<Props>) {
+  // ✅ SIEMPRE invocar el hook; luego decidir cuál controller usar
+  const internal = useLimpiezasTable({ initialFilters: { per_page: 10, pendientes: false } });
+  const ctrl = controller ?? internal;
 
   const {
     loading,
@@ -83,14 +84,13 @@ export default function LimpiezasTable({ controller, onSelectionChange, filters 
   const totalPages = pagination.last_page;
 
   const columns = useMemo(
-    () =>
-      [
-        { key: "habitacion", label: "Habitación" },
-        { key: "estado", label: "Estado" },
-        { key: "prioridad", label: "Prioridad" },
-        { key: "asignador", label: "Asignado" },
-        { key: "notas", label: "Notas" },
-      ] as ReadonlyArray<{ key: ColumnKey | "notas" | "habitacion"; label: string }>,
+    () => [
+      { key: "habitacion", label: "Habitación" },
+      { key: "estado", label: "Estado" },
+      { key: "prioridad", label: "Prioridad" },
+      { key: "asignador", label: "Asignado" },
+      { key: "notas", label: "Notas" },
+    ] as ReadonlyArray<{ key: ColumnKey | "notas" | "habitacion"; label: string }>,
     []
   );
 
@@ -114,7 +114,6 @@ export default function LimpiezasTable({ controller, onSelectionChange, filters 
       addOptimistic(id);
       try {
         await finalizarLimpieza(id, { fecha_final: payload.fecha_final, notas: null });
-        // El mensaje se setea desde la fila (tenemos el número allí)
       } catch (e) {
         console.error("[RoomsTable] Error al finalizar limpieza", e);
         removeOptimistic(id);
@@ -129,7 +128,6 @@ export default function LimpiezasTable({ controller, onSelectionChange, filters 
       removeOptimistic(id);
       try {
         await reabrirLimpieza(id);
-        // El mensaje se setea desde la fila (tenemos el número allí)
       } catch (e) {
         console.error("[RoomsTable] Error al reabrir limpieza", e);
         throw e;
@@ -150,26 +148,34 @@ export default function LimpiezasTable({ controller, onSelectionChange, filters 
   const [detailId, setDetailId] = useState<number | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  // emitir habitación seleccionada
+  // ✅ Emitir habitación seleccionada sin loops (no dependemos de la identidad del callback)
+  const onSelRef = useRef<typeof onSelectionChange | null>(null);
   useEffect(() => {
-    if (!onSelectionChange) return;
+    onSelRef.current = onSelectionChange || null;
+  }, [onSelectionChange]);
+
+  useEffect(() => {
+    if (!onSelRef.current) return;
+
     if (!items || !Array.isArray(items) || !Array.isArray(selectedIds) || selectedIds.length === 0) {
-      onSelectionChange(null);
+      onSelRef.current(null);
       return;
     }
     const selectedRows = items.filter((r) => selectedIds.includes(getRowId(r)));
     const firstWithRoom = selectedRows.find((r) => r?.habitacion?.id != null);
-    if (!firstWithRoom) return onSelectionChange(null);
+    if (!firstWithRoom) {
+      onSelRef.current(null);
+      return;
+    }
     const rawId = firstWithRoom.habitacion!.id;
     const numericId = typeof rawId === "number" ? rawId : Number(rawId);
-    const room = {
+    onSelRef.current({
       id: numericId,
       numero: firstWithRoom.habitacion?.numero,
       piso: firstWithRoom.habitacion?.piso,
       tipoNombre: firstWithRoom.habitacion?.tipo?.nombre,
-    };
-    onSelectionChange(room);
-  }, [selectedIds, items, onSelectionChange]);
+    });
+  }, [selectedIds, items]); // 👈 sin onSelectionChange aquí
 
   /* ---------- Filtros cliente ---------- */
   const hasClientFilters = useMemo(() => {
@@ -316,7 +322,6 @@ export default function LimpiezasTable({ controller, onSelectionChange, filters 
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 justify-end">
-                        {/* ✅ Aquí seteamos el modal de éxito una vez termine OK */}
                         <CleanToggle
                           id={id}
                           clean={clean}

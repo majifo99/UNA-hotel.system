@@ -1,3 +1,4 @@
+// src/modules/mantenimiento/services/mantenimientoService.ts
 import type {
   MantenimientoItem,
   MantenimientoPaginatedResponse,
@@ -5,18 +6,88 @@ import type {
   MantenimientoCreateDTO,
 } from "../types/mantenimiento";
 
+/* ======================
+ * Config
+ * ====================== */
 const API_URL = import.meta.env.VITE_API_URL;
 
-async function handleJson(res: Response) {
-  const text = await res.text();
+/* ======================
+ * Helpers
+ * ====================== */
+function serializeParam(v: unknown): string {
+  if (v === undefined || v === null) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "bigint") return String(v);
+  if (typeof v === "boolean") return v ? "1" : "0";
+  if (v instanceof Date) return v.toISOString();
   try {
-    return text ? JSON.parse(text) : null;
+    return JSON.stringify(v);
   } catch {
-    return text as unknown;
+    return "";
   }
 }
 
-/** DTOs para updates */
+function toQuery(params: Record<string, unknown>) {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === "") continue;
+    q.append(k, serializeParam(v));
+  }
+  const s = q.toString();
+  return s ? `?${s}` : "";
+}
+
+/* ======================
+ * Auth token
+ * ====================== */
+function getAuthToken(): string | null {
+  const raw =
+    localStorage.getItem("adminAuthToken") ||
+    localStorage.getItem("authToken") ||
+    null;
+
+  if (!raw) return null;
+  // Limpia posibles comillas guardadas por accidente
+  return raw.replace(/^"(.*)"$/, "$1").trim();
+}
+
+/* ======================
+ * Request (Bearer + sin cookies)
+ * ====================== */
+async function request<T = any>(url: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers || {});
+  headers.set("Accept", "application/json");
+  if (init.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const token = getAuthToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const res = await fetch(url, {
+    ...init,
+    headers,
+    credentials: "omit", // sin cookies para evitar CORS
+    mode: "cors",
+  });
+
+  const ct = res.headers.get("content-type") || "";
+  const parsed = ct.includes("application/json") ? await res.json() : await res.text();
+
+  if (!res.ok) {
+    const msg =
+      typeof parsed === "object" && parsed && ("message" in parsed || "error" in parsed)
+        ? (parsed).message ?? (parsed).error
+        : `Error ${res.status}`;
+    throw new Error(String(msg));
+  }
+
+  return parsed as T;
+}
+
+/* ======================
+ * DTOs específicos
+ * ====================== */
 export type MantenimientoUpdateDTO = Partial<MantenimientoCreateDTO>;
 
 export type MantenimientoFinalizarDTO = {
@@ -24,67 +95,56 @@ export type MantenimientoFinalizarDTO = {
   notas?: string | null;
 };
 
-/** ======================
- *  Servicio principal
+/* ======================
+ * Servicio principal
  * ====================== */
 export const mantenimientoService = {
   /**
-   * GET /mantenimientos — lista paginada (usa MantenimientoResource)
+   * GET /mantenimientos — lista paginada
    */
   async getMantenimientos(
-    filters: MantenimientoFilters = {}
+    filters: MantenimientoFilters = {},
+    opts?: { signal?: AbortSignal }
   ): Promise<MantenimientoPaginatedResponse> {
-    const params = new URLSearchParams();
-    if (filters.per_page) params.append("per_page", String(filters.per_page));
-    if (filters.prioridad) params.append("prioridad", filters.prioridad);
-    if (filters.pendientes) params.append("pendientes", "1");
-    if (filters.id_habitacion) params.append("id_habitacion", String(filters.id_habitacion));
-    if (filters.estado_id) params.append("estado_id", String(filters.estado_id));
-    if (filters.tipo) params.append("tipo", filters.tipo);
-    if (filters.desde) params.append("desde", filters.desde);
-    if (filters.hasta) params.append("hasta", filters.hasta);
+    const query = toQuery({
+      per_page: filters.per_page,
+      prioridad: filters.prioridad,
+      pendientes: filters.pendientes,          // boolean → "1"/"0"
+      id_habitacion: filters.id_habitacion,
+      estado_id: filters.estado_id,            // respeta nombre del backend de mantenimiento
+      tipo: filters.tipo,
+      desde: filters.desde,
+      hasta: filters.hasta,
+      page: (filters as any).page,             // por si tu paginación usa page
+    });
 
-    const url = `${API_URL}/mantenimientos?${params.toString()}`;
-    const res = await fetch(url, { method: "GET", cache: "no-store" }); // 👈 evita cache
-
-    if (!res.ok) {
-      const payload = await handleJson(res);
-      throw new Error(`GET /mantenimientos falló (${res.status}): ${JSON.stringify(payload)}`);
-    }
-
-    return (await handleJson(res)) as MantenimientoPaginatedResponse;
+    return await request<MantenimientoPaginatedResponse>(`${API_URL}/mantenimientos${query}`, {
+      method: "GET",
+      signal: opts?.signal,
+    });
   },
 
   /**
    * GET /mantenimientos/{id}
    */
   async getMantenimientoById(id: number): Promise<{ data: MantenimientoItem }> {
-    const res = await fetch(`${API_URL}/mantenimientos/${id}`, { method: "GET", cache: "no-store" });
-    if (!res.ok) {
-      const payload = await handleJson(res);
-      throw new Error(`GET /mantenimientos/${id} falló (${res.status}): ${JSON.stringify(payload)}`);
-    }
-    return (await handleJson(res)) as { data: MantenimientoItem };
+    return await request<{ data: MantenimientoItem }>(`${API_URL}/mantenimientos/${id}`, {
+      method: "GET",
+    });
   },
 
   /**
-   * POST /mantenimientos — crear nuevo mantenimiento
+   * POST /mantenimientos — crear
    */
   async createMantenimiento(body: MantenimientoCreateDTO): Promise<{ data: MantenimientoItem }> {
-    const res = await fetch(`${API_URL}/mantenimientos`, {
+    return await request<{ data: MantenimientoItem }>(`${API_URL}/mantenimientos`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!res.ok) {
-      const payload = await handleJson(res);
-      throw new Error(`POST /mantenimientos falló (${res.status}): ${JSON.stringify(payload)}`);
-    }
-    return (await handleJson(res)) as { data: MantenimientoItem };
   },
 
   /**
-   * PATCH /mantenimientos/{id} — actualizar mantenimiento
+   * PATCH/PUT /mantenimientos/{id} — actualizar
    */
   async updateMantenimiento(
     id: number,
@@ -92,67 +152,45 @@ export const mantenimientoService = {
     opts?: { method?: "PUT" | "PATCH" }
   ): Promise<{ data: MantenimientoItem }> {
     const method = opts?.method ?? "PATCH";
-    const res = await fetch(`${API_URL}/mantenimientos/${id}`, {
+    return await request<{ data: MantenimientoItem }>(`${API_URL}/mantenimientos/${id}`, {
       method,
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!res.ok) {
-      const payload = await handleJson(res);
-      throw new Error(`${method} /mantenimientos/${id} falló (${res.status}): ${JSON.stringify(payload)}`);
-    }
-    return (await handleJson(res)) as { data: MantenimientoItem };
   },
 
   /**
    * PATCH /mantenimientos/{id}/finalizar — marcar como finalizado
+   * (si tu backend no tiene esta ruta, puedes eliminarla o hacer fallback como en limpieza)
    */
   async finalizarMantenimiento(
     id: number,
     body: MantenimientoFinalizarDTO
   ): Promise<{ data: MantenimientoItem }> {
-    const res = await fetch(`${API_URL}/mantenimientos/${id}/finalizar`, {
+    return await request<{ data: MantenimientoItem }>(`${API_URL}/mantenimientos/${id}/finalizar`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!res.ok) {
-      const payload = await handleJson(res);
-      throw new Error(
-        `PATCH /mantenimientos/${id}/finalizar falló (${res.status}): ${JSON.stringify(payload)}`
-      );
-    }
-    return (await handleJson(res)) as { data: MantenimientoItem };
   },
 
   /**
    * DELETE /mantenimientos/{id}
    */
   async deleteMantenimiento(id: number): Promise<void> {
-    const res = await fetch(`${API_URL}/mantenimientos/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      const payload = await handleJson(res);
-      throw new Error(`DELETE /mantenimientos/${id} falló (${res.status}): ${JSON.stringify(payload)}`);
-    }
+    await request<void>(`${API_URL}/mantenimientos/${id}`, { method: "DELETE" });
   },
 
   /**
    * (Opcional) GET /mantenimientos/{id}/historial
    */
   async getHistorial(id: number): Promise<{ data: any[] }> {
-    const res = await fetch(`${API_URL}/mantenimientos/${id}/historial`, { method: "GET", cache: "no-store" });
-    if (!res.ok) {
-      const payload = await handleJson(res);
-      throw new Error(
-        `GET /mantenimientos/${id}/historial falló (${res.status}): ${JSON.stringify(payload)}`
-      );
-    }
-    return (await handleJson(res)) as { data: any[] };
+    return await request<{ data: any[] }>(`${API_URL}/mantenimientos/${id}/historial`, {
+      method: "GET",
+    });
   },
 };
 
-/** ============================================================
- *  Compatibilidad con hooks antiguos (useMaintenance)
+/* ============================================================
+ * Compat con hooks antiguos (useMaintenance)
  * ============================================================ */
 export async function fetchMaintenance(
   filters: MantenimientoFilters = {}

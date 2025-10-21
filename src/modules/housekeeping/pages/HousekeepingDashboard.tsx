@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { FiLogOut } from "react-icons/fi";
 import { Users, ClipboardCheck, AlertTriangle } from "lucide-react";
 
@@ -11,7 +11,7 @@ import FilterBar, { type RoomFilters } from "../components/FilterBar";
 import type { LimpiezaItem } from "../types/limpieza";
 import { InitialDashSkeleton } from "../components/UI/Loaders";
 import HKCounterCards from "../components//UI/HKMetricCard";
-import SuccessModal from "../components/Modals/SuccessModal"; // 👈 NUEVO
+import SuccessModal from "../components/Modals/SuccessModal"; // ✅
 
 export default function HousekeepingDashboard() {
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -20,7 +20,7 @@ export default function HousekeepingDashboard() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingItem, setEditingItem] = useState<Partial<LimpiezaItem> | null>(null);
 
-  // 👇 Estado del modal de éxito a nivel dashboard
+  // ✅ modal éxito
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMsg, setSuccessMsg] = useState("La limpieza fue actualizada correctamente.");
 
@@ -81,8 +81,7 @@ export default function HousekeepingDashboard() {
   const isItemLimpia = (it: any) => {
     const nombre = String((it?.estado ?? it?.estadoHabitacion)?.nombre ?? "").toLowerCase();
     return Boolean(it?.fecha_final) || nombre === "limpia";
-  };
-
+    };
   const limpiasVisibles = filteredItems.filter(isItemLimpia).length;
   const suciasVisibles = filteredItems.length - limpiasVisibles;
   const totalTareasVisibles = filteredItems.length;
@@ -109,6 +108,13 @@ export default function HousekeepingDashboard() {
     setSelectedRoom(room);
     setShowDamageModal(true);
   };
+
+  // ✅ handler memorizado (evita bucles por cambio de identidad)
+  const handleSelectionChange = useCallback((room: SelectedRoom | null) => {
+    setSelectedRoom(room);
+    setEditingId(null);
+    setEditingItem(null);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 text-[#0f172a] font-sans">
@@ -193,11 +199,7 @@ export default function HousekeepingDashboard() {
             <LimpiezasTable
               controller={table}
               onEdit={(item) => openAssignForEdit(item)}
-              onSelectionChange={(room) => {
-                setSelectedRoom(room);
-                setEditingId(null);
-                setEditingItem(null);
-              }}
+              onSelectionChange={handleSelectionChange}  // ✅ memorizado
               filters={filters}
             />
 
@@ -217,13 +219,10 @@ export default function HousekeepingDashboard() {
           setEditingItem(null);
         }}
         onSuccess={() => {
-          // 1) refresco la data
-          refetch();
-          // 2) cierro el modal de asignación
+          refetch(); // refresca la data
           setShowAssignModal(false);
           setEditingId(null);
           setEditingItem(null);
-          // 3) muestro el modal de éxito SOBRE el dashboard
           setSuccessMsg("La limpieza fue actualizada correctamente.");
           setShowSuccess(true);
         }}
@@ -246,7 +245,7 @@ export default function HousekeepingDashboard() {
         title="¡Operación Exitosa!"
         message={successMsg}
         actionLabel="Continuar"
-        autoCloseMs={1500}               // opcional; quítalo si prefieres click manual
+        autoCloseMs={1500}
         onAction={() => setShowSuccess(false)}
         onClose={() => setShowSuccess(false)}
       />
