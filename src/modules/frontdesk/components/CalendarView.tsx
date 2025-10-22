@@ -1,22 +1,19 @@
 import React, { useState } from 'react';
 import { useRooms, useDashboardStats } from '../hooks';
 import { useCalendarNavigation } from '../hooks/useCalendarNavigation';
+import { useCalendarReservations } from '../hooks/useCalendarReservations';
 import type { Room } from '../../../types/core';
 import type { FrontdeskRoom, FrontdeskRoomStatus } from '../types';
+import type { CalendarReservation } from '../services/frontdeskReservationService';
 import {
   CalendarHeader,
   CalendarDaysHeader,
   RoomRow,
   RoomDetailsModal,
   CalendarLegend,
-  CalendarLoading
+  CalendarLoading,
+  ReservationDetailsModal
 } from './calendar';
-import {
-  generateMockGuestName,
-  generateMockCheckIn,
-  generateMockCheckOut,
-  generateMockCurrentGuest
-} from '../utils/mockDataGenerators';
 
 // Adaptador para convertir Room a FrontdeskRoom
 const adaptRoomToFrontdeskRoom = (room: Room): FrontdeskRoom => {
@@ -33,15 +30,12 @@ const adaptRoomToFrontdeskRoom = (room: Room): FrontdeskRoom => {
     status: room.status ? statusMap[room.status] : 'available',
     type: room.type === 'deluxe' ? 'Deluxe' : 'Standard',
     roomNumber: room.number,
-    guestName: generateMockGuestName(room),
-    checkIn: generateMockCheckIn(room),
-    checkOut: generateMockCheckOut(room),
-    currentGuest: generateMockCurrentGuest(room),
   };
 };
 
 const CalendarView: React.FC = () => {
   const [selectedRoom, setSelectedRoom] = useState<FrontdeskRoom | null>(null);
+  const [selectedReservation, setSelectedReservation] = useState<CalendarReservation | null>(null);
   
   const { data: rooms = [], isLoading } = useRooms();
   const { data: stats } = useDashboardStats();
@@ -52,18 +46,30 @@ const CalendarView: React.FC = () => {
     navigateWeek, 
     navigateMonth,
     goToToday,
-    getCurrentMonthYear
+    getCurrentMonthYear,
+    dateRange
   } = useCalendarNavigation();
+
+  // Obtener reservas para el rango de fechas del calendario
+  const { data: reservations = [], isLoading: reservationsLoading } = useCalendarReservations({
+    startDate: dateRange.startDate,
+    endDate: dateRange.endDate,
+    enabled: calendarDays.length > 0
+  });
 
   // Adaptar habitaciones a FrontdeskRoom
   const frontdeskRooms = rooms.map(adaptRoomToFrontdeskRoom);
 
-  if (isLoading) {
+  console.debug('[CalendarView] Habitaciones:', frontdeskRooms.length);
+  console.debug('[CalendarView] Reservas:', reservations.length);
+  console.debug('[CalendarView] Rango de fechas:', dateRange);
+
+  if (isLoading || reservationsLoading) {
     return <CalendarLoading />;
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
       <CalendarHeader
         calendarDays={calendarDays}
         viewMode={viewMode}
@@ -78,15 +84,23 @@ const CalendarView: React.FC = () => {
       <CalendarDaysHeader calendarDays={calendarDays} />
 
       {/* Calendar Body - Rooms */}
-      <div className="max-h-96 overflow-y-auto">
-        {frontdeskRooms.map((room) => (
-          <RoomRow
-            key={room.id}
-            room={room}
-            calendarDays={calendarDays}
-            onRoomClick={setSelectedRoom}
-          />
-        ))}
+      <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 320px)' }}>
+        {frontdeskRooms.length > 0 ? (
+          frontdeskRooms.map((room) => (
+            <RoomRow
+              key={room.id}
+              room={room}
+              calendarDays={calendarDays}
+              reservations={reservations}
+              onRoomClick={setSelectedRoom}
+              onReservationClick={setSelectedReservation}
+            />
+          ))
+        ) : (
+          <div className="p-8 text-center text-gray-500">
+            No hay habitaciones disponibles
+          </div>
+        )}
       </div>
 
       <CalendarLegend />
@@ -94,6 +108,11 @@ const CalendarView: React.FC = () => {
       <RoomDetailsModal
         room={selectedRoom}
         onClose={() => setSelectedRoom(null)}
+      />
+
+      <ReservationDetailsModal
+        reservation={selectedReservation}
+        onClose={() => setSelectedReservation(null)}
       />
     </div>
   );

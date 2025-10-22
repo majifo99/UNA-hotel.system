@@ -248,8 +248,8 @@ const FrontDesk: React.FC = () => {
   const floors = [...new Set(rooms.map(r => r.floor))];
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--color-darkGreen1)' }}>
+      <div className="p-6">
         <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
           <div className="p-8 space-y-8">
             {/* Header */}
@@ -359,7 +359,9 @@ const FrontDesk: React.FC = () => {
 
             {/* Content Based on Active View */}
             {activeView === 'calendar' ? (
-              <CalendarView />
+              <div className="overflow-x-auto">
+                <CalendarView />
+              </div>
             ) : (
               <>
                 {/* Filters Panel */}
