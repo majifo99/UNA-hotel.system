@@ -1,10 +1,15 @@
 /**
- * Updated Backend API Types - New Structure
- * Matches the new API response from /api/reservas
+ * New Backend API Types
+ * 
+ * Tipos que coinciden con la nueva estructura de la API /api/reservas
+ * Estos tipos representan la respuesta completa y más detallada del backend.
  */
 
 /**
- * Cliente (Guest) as returned by new API
+ * ApiCliente
+ * 
+ * Cliente (Guest) tal como lo retorna la nueva API.
+ * Incluye nombre_completo calculado por el backend.
  */
 export interface ApiCliente {
   id_cliente: number;
@@ -23,11 +28,13 @@ export interface ApiCliente {
   notas_personal: string | null;
   created_at: string;
   updated_at: string;
-  nombre_completo: string;
+  nombre_completo: string; // Calculado por el backend
 }
 
 /**
- * Estado de reserva
+ * ApiEstadoReserva
+ * 
+ * Estado de reserva en la nueva API.
  */
 export interface ApiEstadoReserva {
   id_estado_reserva: number;
@@ -37,7 +44,9 @@ export interface ApiEstadoReserva {
 }
 
 /**
- * Fuente de reserva (Booking.com, direct, etc.)
+ * ApiFuenteReserva
+ * 
+ * Fuente de reserva (Booking.com, directo, etc.).
  */
 export interface ApiFuenteReserva {
   id_fuente: number;
@@ -49,7 +58,9 @@ export interface ApiFuenteReserva {
 }
 
 /**
- * Habitación (Room) details
+ * ApiHabitacion
+ * 
+ * Detalles completos de una habitación.
  */
 export interface ApiHabitacion {
   id_habitacion: number;
@@ -69,7 +80,10 @@ export interface ApiHabitacion {
 }
 
 /**
- * Habitación assignment for a reservation
+ * ApiReservaHabitacion
+ * 
+ * Asignación de habitación para una reserva en la nueva API.
+ * Incluye el objeto habitación completo.
  */
 export interface ApiReservaHabitacion {
   id_reserva_hab: number;
@@ -87,7 +101,10 @@ export interface ApiReservaHabitacion {
 }
 
 /**
- * Full Reservation from new API
+ * ApiReservaFull
+ * 
+ * Reserva completa retornada por la nueva API.
+ * Incluye relaciones pobladas (cliente, estado, fuente, habitaciones).
  */
 export interface ApiReservaFull {
   id_reserva: number;
@@ -99,6 +116,8 @@ export interface ApiReservaFull {
   id_fuente: number | null;
   created_at: string;
   updated_at: string;
+  
+  // Relaciones pobladas
   cliente: ApiCliente;
   estado: ApiEstadoReserva;
   fuente: ApiFuenteReserva | null;
@@ -106,7 +125,9 @@ export interface ApiReservaFull {
 }
 
 /**
- * Paginated API Response
+ * ApiReservasResponse
+ * 
+ * Respuesta paginada de la API de reservas.
  */
 export interface ApiReservasResponse {
   current_page: number;
@@ -127,4 +148,30 @@ export interface ApiReservasResponse {
   prev_page_url: string | null;
   to: number;
   total: number;
+}
+
+/**
+ * ApiUpdateReservaHabitacionPayload
+ * 
+ * Payload para actualizar una habitación específica de una reserva.
+ * PUT /reservas/{id}/habitaciones/{id_habitacion}
+ */
+export interface ApiUpdateReservaHabitacionPayload {
+  id_habitacion: number;
+  fecha_llegada: string;
+  fecha_salida: string;
+  adultos: number;
+  ninos: number;
+  bebes: number;
+}
+
+/**
+ * ApiCancelReservaPayload
+ * 
+ * Payload para cancelar una reserva.
+ * POST /reservas/{id}/cancelar
+ */
+export interface ApiCancelReservaPayload {
+  motivo?: string;
+  penalidad?: number;
 }

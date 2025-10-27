@@ -16,7 +16,11 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     // Agregar token de autenticación si existe
-    const token = localStorage.getItem('authToken');
+    // Prioridad: adminAuthToken > authToken (web)
+    const adminToken = localStorage.getItem('adminAuthToken');
+    const webToken = localStorage.getItem('authToken');
+    const token = adminToken || webToken;
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -43,9 +47,20 @@ apiClient.interceptors.response.use(
       
       // Manejar errores de autenticación
       if (error.response.status === 401) {
-        localStorage.removeItem('authToken');
-        // Redirigir a login si es necesario
-        window.location.href = '/login';
+        // Limpiar tokens según el tipo de sesión
+        const hasAdminToken = localStorage.getItem('adminAuthToken');
+        const hasWebToken = localStorage.getItem('authToken');
+        
+        if (hasAdminToken) {
+          // Sesión de admin
+          localStorage.removeItem('adminAuthToken');
+          localStorage.removeItem('adminAuthUser');
+          globalThis.location.href = '/admin/login';
+        } else if (hasWebToken) {
+          // Sesión de web
+          localStorage.removeItem('authToken');
+          globalThis.location.href = '/login';
+        }
       }
     } else if (error.request) {
       // La petición fue hecha pero no se recibió respuesta

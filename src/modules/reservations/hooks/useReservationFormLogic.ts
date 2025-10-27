@@ -7,7 +7,7 @@
  * @module hooks/useReservationFormLogic
  */
 
-import type { ReservationValidationErrors } from '../types/domain';
+import type { ReservationValidationErrors } from '../types';
 import { validateAdvanceBooking } from '../constants/businessRules';
 
 /**

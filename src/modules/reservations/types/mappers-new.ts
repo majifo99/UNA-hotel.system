@@ -3,9 +3,9 @@
  * Converts ApiReservaFull to Reservation
  */
 
-import type { Reservation } from './domain';
+import type { Reservation } from './entities';
 import type { Guest, Room } from '../../../types/core/domain';
-import type { ApiReservaFull, ApiCliente, ApiReservaHabitacion } from './api-new';
+import type { ApiReservaFull, ApiCliente, ApiReservaHabitacion } from './api';
 
 /**
  * Map ApiCliente to Guest

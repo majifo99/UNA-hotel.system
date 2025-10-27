@@ -276,6 +276,7 @@ export const WarningAlert: React.FC<WarningAlertProps> = ({ title, message }) =>
 /**
  * Helper: formatea fecha ISO a YYYY-MM-DD para input[type="date"]
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export const formatDateForInput = (isoDate: string | undefined): string => {
   if (!isoDate) return '';
   try {

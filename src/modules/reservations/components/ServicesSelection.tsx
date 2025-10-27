@@ -1,16 +1,9 @@
 import React from 'react';
 import { Check, Plus } from 'lucide-react';
-
-interface Service {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  category: string;
-}
+import type { AdditionalService } from '../../../types/core';
 
 interface ServicesSelectionProps {
-  services: Service[];
+  services: AdditionalService[];
   selectedServices: string[];
   onServiceToggle: (serviceId: string) => void;
 }
@@ -22,12 +15,13 @@ export const ServicesSelection: React.FC<ServicesSelectionProps> = ({
 }) => {
   // Agrupar servicios por categoría
   const servicesByCategory = services.reduce((acc, service) => {
-    if (!acc[service.category]) {
-      acc[service.category] = [];
+    const category = service.category || 'General';
+    if (!acc[category]) {
+      acc[category] = [];
     }
-    acc[service.category].push(service);
+    acc[category].push(service);
     return acc;
-  }, {} as Record<string, Service[]>);
+  }, {} as Record<string, AdditionalService[]>);
 
   return (
     <div className="space-y-6">
@@ -66,13 +60,13 @@ export const ServicesSelection: React.FC<ServicesSelectionProps> = ({
                         </div>
                         <div>
                           <h4 className="font-medium text-gray-900">{service.name}</h4>
-                          <p className="text-sm text-gray-600">{service.description}</p>
+                          <p className="text-sm text-gray-600">{service.description || 'Sin descripción'}</p>
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
                       <span className="text-lg font-semibold text-gray-900">
-                        ${service.price}
+                        ₡{service.price.toLocaleString()}
                       </span>
                       <span className="text-sm text-gray-500 block">por día</span>
                     </div>

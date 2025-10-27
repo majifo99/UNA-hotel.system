@@ -4,7 +4,9 @@ import { MainLayout } from '../layouts/MainLayout';
 import { Home } from '../pages/Home';
 import { ReservationsListPage } from '../modules/reservations/pages/ReservationsListPage';
 import { CreateReservationPage } from '../modules/reservations/pages/CreateReservationPage';
-import { SelectServicesPage } from '../modules/reservations/pages/SelectServicesPage';
+import { ReservationDetailFullPage } from '../modules/reservations/pages/ReservationDetailFullPage';
+import { ReservationEditPage } from '../modules/reservations/pages/ReservationEditPage';
+import { ReservationCancelPage } from '../modules/reservations/pages/ReservationCancelPage';
 import HousekeepingDashboard from '../modules/housekeeping/pages/HousekeepingDashboard';
 import { GuestsPage } from '../modules/guests/pages/GuestsPage';
 import { CreateGuestPage } from '../modules/guests/pages/CreateGuestPage';
@@ -16,6 +18,7 @@ import { FolioPage } from '../modules/frontdesk/pages/FolioPage';
 import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
 import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
 
+
 import HistorialLimpiezasPage from '../modules/housekeeping/pages/HistorialLimpiezasPage';
 
 import HistorialMantenimientosPage from '../modules/Mantenimiento/pages/HistorialMantenimientosPage';
@@ -23,6 +26,10 @@ import HistorialMantenimientosPage from '../modules/Mantenimiento/pages/Historia
 
 
 import { AdminLoginPage, AdminAuthProvider } from '../modules/admin';
+=======
+import { AdminLoginPage, AdminAuthProvider, ProtectedRoute } from '../modules/admin';
+import { ReservationReportsPage } from '../modules/reservations/pages/ReservationReportsPage';
+
 
 
 /**
@@ -52,6 +59,7 @@ const queryClient = new QueryClient({
  * Wraps all routes with:
  * - TanStack Query Provider (for server state management)
  * - Admin Auth Provider (for admin authentication)
+ * - Protected Route (requires authentication)
  * - Main Layout (sidebar, header, main content area)
  *
  * The Outlet component renders the matched child route
@@ -60,9 +68,11 @@ function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AdminAuthProvider>
-        <MainLayout>
-          <Outlet />
-        </MainLayout>
+        <ProtectedRoute>
+          <MainLayout>
+            <Outlet />
+          </MainLayout>
+        </ProtectedRoute>
       </AdminAuthProvider>
     </QueryClientProvider>
   );
@@ -156,11 +166,25 @@ const router = createBrowserRouter([
             element: <CreateReservationPage />,
           },
           {
-            // Select services for reservation
-            path: 'create/services',
-            element: <SelectServicesPage />,
+            // View reservation detail
+            path: ':id/detail',
+            element: <ReservationDetailFullPage />,
           },
-          // Future detail routes can be added here, e.g. /reservations/:id
+          {
+            // Edit reservation
+            path: ':id/edit',
+            element: <ReservationEditPage />,
+          },
+          {
+            // Cancel reservation
+            path: ':id/cancel',
+            element: <ReservationCancelPage />,
+          },
+          {
+            // Reports and analytics
+            path: 'reports',
+            element: <ReservationReportsPage />,
+          },
         ],
       },
         {
