@@ -106,7 +106,7 @@ export function ReservationStepThree({
     // Name, lastName, and email are readonly from authenticated user, no need to validate
 
     // Only validate phone if it's editable
-    if (guestInfo.phone && guestInfo.phone.trim()) {
+    if (guestInfo.phone?.trim()) {
       const phoneDigits = guestInfo.phone.replaceAll(/[\s-]/g, '');
       if (!/^\d{8,}$/.test(phoneDigits)) {
         newErrors.phone = 'Ingrese un número de teléfono válido (mínimo 8 dígitos)';
@@ -196,9 +196,9 @@ export function ReservationStepThree({
             <p><strong>Fechas:</strong> {reservationData.checkIn} - {reservationData.checkOut}</p>
             <p><strong>Noches:</strong> {calculateNights()}</p>
             <p><strong>Huéspedes:</strong> {reservationData.adults + reservationData.children + reservationData.babies} (
-              {reservationData.adults} adulto{reservationData.adults !== 1 ? 's' : ''}
-              {reservationData.children > 0 && `, ${reservationData.children} niño${reservationData.children !== 1 ? 's' : ''}`}
-              {reservationData.babies > 0 && `, ${reservationData.babies} bebé${reservationData.babies !== 1 ? 's' : ''}`}
+              {reservationData.adults} adulto{reservationData.adults === 1 ? '' : 's'}
+              {reservationData.children > 0 && `, ${reservationData.children} niño${reservationData.children === 1 ? '' : 's'}`}
+              {reservationData.babies > 0 && `, ${reservationData.babies} bebé${reservationData.babies === 1 ? '' : 's'}`}
             )</p>
           </div>
           <div>
@@ -454,7 +454,7 @@ export function ReservationStepThree({
             <ul className="text-blue-700 text-sm space-y-1">
               <li>• "Necesitamos acomodación para {reservationData.adults + reservationData.children + reservationData.babies} personas en las habitaciones seleccionadas"</li>
               <li>• "Por favor preparar camas adicionales o sofás cama"</li>
-              {reservationData.babies > 0 && <li>• "Requerimos {reservationData.babies} cuna{reservationData.babies !== 1 ? 's' : ''} para bebés"</li>}
+              {reservationData.babies > 0 && <li>• "Requerimos {reservationData.babies} cuna{reservationData.babies === 1 ? '' : 's'} para bebés"</li>}
               <li>• "Preferimos habitaciones cercanas entre sí"</li>
             </ul>
           </div>

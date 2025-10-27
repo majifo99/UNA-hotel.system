@@ -403,7 +403,7 @@ class RoomService extends BaseApiService {
         
         // DEBUG: Show ALL reservations with their room info
         console.log(`[RoomService] 🔍 DEBUG: Searching for roomId = "${roomId}" (type: ${typeof roomId})`);
-        allReservations.forEach((res, index) => {
+        for (const [index, res] of allReservations.entries()) {
           console.log(`[RoomService] 🔍 Reservation ${index + 1}:`, {
             id: res.id,
             roomId: res.roomId,
@@ -414,7 +414,7 @@ class RoomService extends BaseApiService {
             checkOut: res.checkOutDate,
             status: res.status
           });
-        });
+        }
         
         // Filter reservations for this specific room
         const roomReservations = allReservations.filter(reservation => {

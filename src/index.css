@@ -259,11 +259,11 @@ body {
   }
 
   /* Hide non-printable elements */
-  .print\\:hidden,
+  .print\:hidden,
   nav,
-  header.print\\:hidden,
-  footer.print\\:hidden,
-  button.print\\:hidden,
+  header.print\:hidden,
+  footer.print\:hidden,
+  button.print\:hidden,
   .no-print {
     display: none !important;
   }
@@ -280,83 +280,83 @@ body {
   }
 
   /* Ensure content fits */
-  .print\\:shadow-none {
+  .print\:shadow-none {
     box-shadow: none !important;
   }
 
   /* Optimize spacing for print */
-  .print\\:p-4 {
+  .print\:p-4 {
     padding: 1rem !important;
   }
 
-  .print\\:p-2 {
+  .print\:p-2 {
     padding: 0.5rem !important;
   }
 
-  .print\\:mb-4 {
+  .print\:mb-4 {
     margin-bottom: 1rem !important;
   }
 
-  .print\\:mb-2 {
+  .print\:mb-2 {
     margin-bottom: 0.5rem !important;
   }
 
-  .print\\:pt-4 {
+  .print\:pt-4 {
     padding-top: 1rem !important;
   }
 
-  .print\\:pt-1 {
+  .print\:pt-1 {
     padding-top: 0.25rem !important;
   }
 
-  .print\\:mt-1 {
+  .print\:mt-1 {
     margin-top: 0.25rem !important;
   }
 
-  .print\\:gap-2 {
+  .print\:gap-2 {
     gap: 0.5rem !important;
   }
 
-  .print\\:space-y-2 > * + * {
+  .print\:space-y-2 > * + * {
     margin-top: 0.5rem !important;
   }
 
-  .print\\:space-y-1 > * + * {
+  .print\:space-y-1 > * + * {
     margin-top: 0.25rem !important;
   }
 
   /* Text sizing for print */
-  .print\\:text-2xl {
+  .print\:text-2xl {
     font-size: 1.5rem !important;
   }
 
-  .print\\:text-lg {
+  .print\:text-lg {
     font-size: 1.125rem !important;
   }
 
-  .print\\:text-base {
+  .print\:text-base {
     font-size: 1rem !important;
   }
 
-  .print\\:text-sm {
+  .print\:text-sm {
     font-size: 0.875rem !important;
   }
 
-  .print\\:text-xs {
+  .print\:text-xs {
     font-size: 0.75rem !important;
   }
 
   /* Show print-only elements */
-  .print\\:block {
+  .print\:block {
     display: block !important;
   }
 
   /* Icon sizing for print */
-  .print\\:w-4 {
+  .print\:w-4 {
     width: 1rem !important;
   }
 
-  .print\\:h-4 {
+  .print\:h-4 {
     height: 1rem !important;
   }
 

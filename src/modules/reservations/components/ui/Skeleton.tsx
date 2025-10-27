@@ -5,10 +5,10 @@
  */
 
 interface SkeletonProps {
-  className?: string;
+  readonly className?: string;
 }
 
-export function Skeleton({ className = '' }: SkeletonProps) {
+export function Skeleton({ className = '' }: Readonly<SkeletonProps>) {
   return (
     <div
       className={`animate-pulse bg-gray-200 rounded ${className}`}
@@ -63,11 +63,15 @@ export function ReservationCardSkeleton() {
   );
 }
 
-export function ReservationListSkeleton({ count = 6 }: { count?: number }) {
+interface ReservationListSkeletonProps {
+  readonly count?: number;
+}
+
+export function ReservationListSkeleton({ count = 6 }: Readonly<ReservationListSkeletonProps>) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-      {Array.from({ length: count }).map((_, i) => (
-        <ReservationCardSkeleton key={i} />
+      {Array.from({ length: count }, (_, i) => (
+        <ReservationCardSkeleton key={`skeleton-card-${i}`} />
       ))}
     </div>
   );
@@ -130,7 +134,11 @@ export function ReservationDetailSkeleton() {
   );
 }
 
-export function ReservationTableSkeleton({ rows = 10 }: { rows?: number }) {
+interface ReservationTableSkeletonProps {
+  readonly rows?: number;
+}
+
+export function ReservationTableSkeleton({ rows = 10 }: Readonly<ReservationTableSkeletonProps>) {
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
       {/* Table Header */}
@@ -147,8 +155,8 @@ export function ReservationTableSkeleton({ rows = 10 }: { rows?: number }) {
 
       {/* Table Rows */}
       <div className="divide-y divide-gray-200">
-        {Array.from({ length: rows }).map((_, i) => (
-          <div key={i} className="px-6 py-4">
+        {Array.from({ length: rows }, (_, i) => (
+          <div key={`skeleton-row-${i}`} className="px-6 py-4">
             <div className="grid grid-cols-6 gap-4 items-center">
               <Skeleton className="h-4 w-16" />
               <Skeleton className="h-4 w-full" />

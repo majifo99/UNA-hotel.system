@@ -55,7 +55,7 @@ export function RoomsPage() {
           <h2 className="text-xl font-bold text-gray-900 mb-2">Error al cargar</h2>
           <p className="text-gray-600">{error}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => globalThis.location.reload()}
             className="mt-4 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
           >
             Reintentar
