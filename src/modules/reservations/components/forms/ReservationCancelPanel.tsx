@@ -168,9 +168,9 @@ export const ReservationCancelPanel: React.FC<ReservationCancelPanelProps> = ({
     try {
       const updated = await cancelReservation.mutateAsync({
         id: reservation.id,
-        options: {
-          penalty,
-        },
+        notas: penalty > 0 
+          ? `Cancelación con penalidad de ${colonFormatter.format(penalty)}` 
+          : 'Cancelación sin penalidad',
       });
       if (updated) {
         onCancelled?.(updated);

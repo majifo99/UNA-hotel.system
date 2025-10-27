@@ -102,10 +102,9 @@ export const ReservationCancelPage: React.FC = () => {
     try {
       await cancelReservation.mutateAsync({
         id,
-        options: {
-          penalty: penalty?.percent,
-          note: `Cancelación con ${penalty?.percent}% de penalización`,
-        },
+        notas: penalty?.percent 
+          ? `Cancelación con ${penalty.percent}% de penalización` 
+          : 'Cancelación sin penalidad',
       });
       toast.success('Reserva cancelada correctamente');
       navigate('/reservations');

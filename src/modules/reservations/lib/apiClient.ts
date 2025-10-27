@@ -10,25 +10,45 @@ export const apiClient = axios.create({
 });
 
 // Debug baseURL once at startup
-// eslint-disable-next-line no-console
 console.debug('[API INIT] baseURL =', apiClient.defaults.baseURL);
 
 // Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    // Add auth token if available
-    // Priorizar token de admin (para rutas administrativas) sobre token público
-    const adminToken = localStorage.getItem('adminAuthToken');
-    const publicToken = localStorage.getItem('authToken');
-    
-    const token = adminToken || publicToken;
+    // Add admin auth token if available (reservations module is admin-only)
+    const token = localStorage.getItem('adminAuthToken');
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.debug('[API REQUEST] Admin token attached:', token.substring(0, 20) + '...');
+    } else {
+      console.debug('[API REQUEST] No admin token found');
     }
-    // eslint-disable-next-line no-console
-    const fullUrl = `${config.baseURL || ''}${config.url || ''}`;
-    console.debug('[API REQUEST]', (config.method || 'GET').toUpperCase(), fullUrl, token ? '(con token)' : '(sin token)');
+    
+    console.debug('[API REQUEST]', (config.method || 'GET').toUpperCase(), `${config.baseURL || ''}${config.url || ''}`);
+    
+    // Debug: Log request details for POST requests
+    if (config.method?.toUpperCase() === 'POST' && config.data) {
+      console.debug('[AXIOS INTERCEPTOR] POST request data:', {
+        url: `${config.baseURL || ''}${config.url || ''}`,
+        headers: config.headers,
+        dataType: typeof config.data,
+        dataContent: config.data,
+        dataStringified: JSON.stringify(config.data)
+      });
+      
+      // Check if data has id_cliente
+      if (config.data && typeof config.data === 'object' && 'id_cliente' in config.data) {
+        console.debug('[AXIOS INTERCEPTOR] id_cliente detected:', {
+          value: config.data.id_cliente,
+          type: typeof config.data.id_cliente,
+          isNull: config.data.id_cliente === null,
+          isUndefined: config.data.id_cliente === undefined,
+          isNaN: Number.isNaN(config.data.id_cliente)
+        });
+      }
+    }
+    
     return config;
   },
   (error) => {
@@ -44,21 +64,14 @@ apiClient.interceptors.response.use(
   (error) => {
     // Handle common errors
     if (error.response?.status === 401) {
-      // Limpiar ambos tokens en caso de error de autenticación
-      const hasAdminToken = localStorage.getItem('adminAuthToken');
-      const hasPublicToken = localStorage.getItem('authToken');
+      // Handle unauthorized - clear admin auth and redirect to admin login
+      localStorage.removeItem('adminAuthToken');
+      localStorage.removeItem('adminAuthUser');
       
-      if (hasAdminToken) {
-        localStorage.removeItem('adminAuthToken');
-        localStorage.removeItem('adminAuthUser');
-        // Redirigir a login de admin
-        window.location.href = '/admin/login';
-      } else if (hasPublicToken) {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('authUser');
-        // Redirigir a login público
-        window.location.href = '/login';
-      }
+      console.debug('[API] 401 Unauthorized - redirecting to /admin/login');
+      
+      // Redirect to admin login
+      window.location.href = '/admin/login';
     }
     return Promise.reject(error);
   }

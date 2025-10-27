@@ -279,6 +279,7 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
 /**
  * Convierte fecha ISO a formato YYYY-MM-DD para input[type="date"]
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export const formatDateForInput = (isoDate: string | undefined): string => {
   if (!isoDate) return '';
   try {
@@ -293,6 +294,7 @@ export const formatDateForInput = (isoDate: string | undefined): string => {
 /**
  * Formateador para moneda costarricense (Colones)
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export const colonFormatter = new Intl.NumberFormat('es-CR', {
   style: 'currency',
   currency: 'CRC',
@@ -302,6 +304,7 @@ export const colonFormatter = new Intl.NumberFormat('es-CR', {
 /**
  * Calcula número de noches entre dos fechas
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export const calculateNights = (checkIn: string | undefined, checkOut: string | undefined): number | null => {
   if (!checkIn || !checkOut) return null;
   try {

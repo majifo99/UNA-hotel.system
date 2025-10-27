@@ -16,17 +16,16 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     // Agregar token de autenticación si existe
-    // Priorizar token de admin (para rutas administrativas) sobre token público
+    // Prioridad: adminAuthToken > authToken (web)
     const adminToken = localStorage.getItem('adminAuthToken');
-    const publicToken = localStorage.getItem('authToken');
-    
-    const token = adminToken || publicToken;
+    const webToken = localStorage.getItem('authToken');
+    const token = adminToken || webToken;
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, token ? '(con token)' : '(sin token)');
+    console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   },
   (error) => {
@@ -48,20 +47,19 @@ apiClient.interceptors.response.use(
       
       // Manejar errores de autenticación
       if (error.response.status === 401) {
-        // Limpiar ambos tokens en caso de error de autenticación
+        // Limpiar tokens según el tipo de sesión
         const hasAdminToken = localStorage.getItem('adminAuthToken');
-        const hasPublicToken = localStorage.getItem('authToken');
+        const hasWebToken = localStorage.getItem('authToken');
         
         if (hasAdminToken) {
+          // Sesión de admin
           localStorage.removeItem('adminAuthToken');
           localStorage.removeItem('adminAuthUser');
-          // Redirigir a login de admin
-          window.location.href = '/admin/login';
-        } else if (hasPublicToken) {
+          globalThis.location.href = '/admin/login';
+        } else if (hasWebToken) {
+          // Sesión de web
           localStorage.removeItem('authToken');
-          localStorage.removeItem('authUser');
-          // Redirigir a login público
-          window.location.href = '/login';
+          globalThis.location.href = '/login';
         }
       }
     } else if (error.request) {

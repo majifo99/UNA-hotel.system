@@ -41,8 +41,9 @@ async function apiRequest<T>(
     ...options,
   };
 
-  // Add authentication token if available
-  const token = localStorage.getItem('authToken');
+  // Add admin authentication token if available (frontdesk is admin-only)
+  const token = localStorage.getItem('adminAuthToken');
+  
   if (token) {
     config.headers = {
       ...config.headers,

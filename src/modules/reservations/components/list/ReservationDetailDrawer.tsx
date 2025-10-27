@@ -47,7 +47,7 @@ export const ReservationDetailDrawer: React.FC<ReservationDetailDrawerProps> = (
     const checkIn = new Date(reservation.checkInDate);
     const checkOut = new Date(reservation.checkOutDate);
     return Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
-  }, [reservation?.checkInDate, reservation?.checkOutDate]);
+  }, [reservation]);
 
   // Early return DESPUÉS de todos los hooks
   if (!isOpen || !reservation) return null;
