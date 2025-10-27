@@ -42,19 +42,82 @@ interface ReservationRoomInfo {
   multipleRooms: boolean;
 }
 
-// Helper function to map room data to RoomInfo
-const mapRoomToRoomInfo = (room: any, assignments: Array<{
+// Helper functions to replace nested ternary operations
+const getSuitabilityBorderClass = (suitabilityLevel: string, isSelected: boolean): string => {
+  if (isSelected) return 'border-blue-500 bg-blue-100';
+  if (suitabilityLevel === 'perfect') return 'border-green-300 bg-green-50 hover:border-green-400';
+  if (suitabilityLevel === 'good') return 'border-blue-300 bg-blue-50 hover:border-blue-400';
+  if (suitabilityLevel === 'acceptable') return 'border-yellow-300 bg-yellow-50 hover:border-yellow-400';
+  return 'border-red-300 bg-red-50 hover:border-red-400';
+};
+
+const getStatusTextClass = (status: string): string => {
+  if (status === 'available') return 'text-green-600';
+  if (status === 'occupied') return 'text-red-600';
+  return 'text-yellow-600';
+};
+
+const getStatusText = (status: string): string => {
+  if (status === 'available') return 'Disponible';
+  if (status === 'occupied') return 'Ocupada';
+  if (status === 'maintenance') return 'Mantenimiento';
+  return 'Reservada';
+};
+
+const getSuitabilityClass = (suitabilityLevel: string): string => {
+  if (suitabilityLevel === 'perfect') return 'bg-green-100 text-green-800';
+  if (suitabilityLevel === 'good') return 'bg-blue-100 text-blue-800';
+  if (suitabilityLevel === 'acceptable') return 'bg-yellow-100 text-yellow-800';
+  return 'bg-red-100 text-red-800';
+};
+
+const getSuitabilityText = (suitabilityLevel: string): string => {
+  if (suitabilityLevel === 'perfect') return '⭐ Perfecta';
+  if (suitabilityLevel === 'good') return '👍 Muy Buena';
+  if (suitabilityLevel === 'acceptable') return '✅ Aceptable';
+  return '⚠️ Problemática';
+};
+
+const getSuitabilityShortText = (suitabilityLevel: string): string => {
+  if (suitabilityLevel === 'perfect') return 'Perfecta';
+  if (suitabilityLevel === 'good') return 'Muy Buena';
+  if (suitabilityLevel === 'acceptable') return 'Aceptable';
+  return 'Problemática';
+};
+
+const getIssueSeverityClass = (severity: string): string => {
+  if (severity === 'error') return 'bg-red-100 text-red-700';
+  if (severity === 'warning') return 'bg-yellow-100 text-yellow-700';
+  return 'bg-blue-100 text-blue-700';
+};
+
+// Type for room data from API
+interface RoomData {
+  id: string;
+  number?: string;
+  type: string;
+  capacity: number;
+  floor?: number;
+  status?: string;
+  amenities: string[];
+  pricePerNight: number;
+}
+
+interface RoomAssignment {
   roomId: string;
   roomNumber: string;
   guestName: string;
   reservationId: string;
   checkInDate: string;
   checkOutDate: string;
-}>): RoomInfo => {
+}
+
+// Helper function to map room data to RoomInfo
+const mapRoomToRoomInfo = (room: RoomData, assignments: RoomAssignment[]): RoomInfo => {
   const assignment = assignments.find(a => a.roomId === room.id || a.roomNumber === (room.number || room.id));
 
   // Extract nested ternary operation into independent statement
-  const mapRoomStatus = (roomStatus: string): 'maintenance' | 'occupied' | 'available' | 'reserved' => {
+  const mapRoomStatus = (roomStatus?: string): 'maintenance' | 'occupied' | 'available' | 'reserved' => {
     if (roomStatus === 'available') return 'available';
     if (roomStatus === 'occupied') return 'occupied';
     if (roomStatus === 'maintenance') return 'maintenance';
@@ -143,35 +206,16 @@ const RoomChange = () => {
     idReservaHabitacion: null, // ID de la reserva_habitacion
   });
 
-  // Sistema de recomendaciones inteligente
-  const generateRecommendations = useCallback((
-    allRooms: RoomInfo[], 
-    reservationInfo: ReservationRoomInfo, 
-    totalGuests: number
-  ): RoomRecommendation[] => {
-    return allRooms.map(room => {
-      const recommendation: RoomRecommendation = {
-        ...room,
-        recommendationScore: 0,
-        recommendationReasons: [],
-        suitabilityLevel: 'acceptable',
-        issues: []
-      };
-
-      // Calcular puntuación de recomendación
-      calculateRecommendationScore(recommendation, reservationInfo, totalGuests);
-      
-      // Determinar nivel de idoneidad
-      determineSuitabilityLevel(recommendation, totalGuests);
-      
-      // Identificar problemas
-      identifyRoomIssues(recommendation, totalGuests);
-
-      return recommendation;
-    }).sort((a, b) => b.recommendationScore - a.recommendationScore);
+  // Define helper functions before useCallback
+  const getCurrentRoomFloor = useCallback((currentRooms: string[]): number | null => {
+    if (currentRooms.length === 0) return null;
+    // Asumimos que el primer dígito del número de habitación indica el piso
+    const roomNumber = currentRooms[0];
+    const floor = Number.parseInt(roomNumber.charAt(0)) || 1;
+    return floor;
   }, []);
 
-  const calculateRecommendationScore = (
+  const calculateRecommendationScore = useCallback((
     recommendation: RoomRecommendation, 
     reservationInfo: ReservationRoomInfo, 
     totalGuests: number
@@ -239,9 +283,9 @@ const RoomChange = () => {
 
     recommendation.recommendationScore = Math.max(0, score);
     recommendation.recommendationReasons = reasons;
-  };
+  }, [getCurrentRoomFloor]);
 
-  const determineSuitabilityLevel = (recommendation: RoomRecommendation, totalGuests: number) => {
+  const determineSuitabilityLevel = useCallback((recommendation: RoomRecommendation, totalGuests: number) => {
     if (recommendation.status !== 'available') {
       recommendation.suitabilityLevel = 'problematic';
     } else if (recommendation.capacity.total < totalGuests) {
@@ -255,9 +299,9 @@ const RoomChange = () => {
     } else {
       recommendation.suitabilityLevel = 'problematic';
     }
-  };
+  }, []);
 
-  const identifyRoomIssues = (recommendation: RoomRecommendation, totalGuests: number) => {
+  const identifyRoomIssues = useCallback((recommendation: RoomRecommendation, totalGuests: number) => {
     const issues: RoomIssue[] = [];
 
     if (recommendation.status === 'occupied') {
@@ -291,17 +335,37 @@ const RoomChange = () => {
     }
 
     recommendation.issues = issues;
-  };
+  }, []);
 
-  const getCurrentRoomFloor = (currentRooms: string[]): number | null => {
-    if (currentRooms.length === 0) return null;
-    // Asumimos que el primer dígito del número de habitación indica el piso
-    const roomNumber = currentRooms[0];
-    const floor = parseInt(roomNumber.charAt(0)) || 1;
-    return floor;
-  };
+  // Sistema de recomendaciones inteligente
+  const generateRecommendations = useCallback((
+    allRooms: RoomInfo[], 
+    reservationInfo: ReservationRoomInfo, 
+    totalGuests: number
+  ): RoomRecommendation[] => {
+    return allRooms.map(room => {
+      const recommendation: RoomRecommendation = {
+        ...room,
+        recommendationScore: 0,
+        recommendationReasons: [],
+        suitabilityLevel: 'acceptable',
+        issues: []
+      };
 
-  const getReservationRoomInfo = useCallback((reservation: any): ReservationRoomInfo => {
+      calculateRecommendationScore(recommendation, reservationInfo, totalGuests);
+      determineSuitabilityLevel(recommendation, totalGuests);
+      identifyRoomIssues(recommendation, totalGuests);
+
+      return recommendation;
+    }).sort((a, b) => b.recommendationScore - a.recommendationScore);
+  }, [calculateRecommendationScore, determineSuitabilityLevel, identifyRoomIssues]);
+
+  const getReservationRoomInfo = useCallback((reservation: { 
+    room?: { number?: string; capacity?: number; type?: string };
+    numberOfAdults?: number;
+    numberOfChildren?: number;
+    numberOfInfants?: number;
+  } | null): ReservationRoomInfo => {
     if (!reservation) {
       return {
         currentRooms: [],
@@ -366,7 +430,7 @@ const RoomChange = () => {
         const fullName = `${guest.firstName} ${fullLastName}`.trim();
         
         // Extraer id_reserva_habitacion de la respuesta
-        const idReservaHab = (foundReservation as any).idReservaHabitacion || null;
+        const idReservaHab = (foundReservation as { idReservaHabitacion?: number }).idReservaHabitacion || null;
         
         console.log('📌 ID Reserva Habitación:', idReservaHab);
         
@@ -468,8 +532,8 @@ const RoomChange = () => {
     // Llamar al servicio de modificación
     const result = await cambiarHabitacion(
       formData.reservationId,
-      formData.idReservaHabitacion || parseInt(formData.reservationId), // Fallback temporal
-      formData.newRoomId as number,
+      formData.idReservaHabitacion || Number.parseInt(formData.reservationId), // Fallback temporal
+      formData.newRoomId,
       motivoFinal
     );
 
@@ -832,26 +896,21 @@ const RoomChange = () => {
                     Habitaciones Recomendadas
                   </h3>
                   <div className="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto">
-                    {roomRecommendations.slice(0, 6).map((room) => (
-                      <div
+                    {roomRecommendations.slice(0, 6).map((room) => {
+                      const handleRoomSelection = () => {
+                        if (room.status === 'available') {
+                          const roomIdNumber = typeof room.number === 'string' ? Number.parseInt(room.number) : room.number;
+                          setFormData(prev => ({ ...prev, newRoomId: roomIdNumber }));
+                        }
+                      };
+
+                      return (
+                      <button
                         key={room.number}
-                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                          formData.newRoomId === room.number
-                            ? 'border-blue-500 bg-blue-100'
-                            : room.suitabilityLevel === 'perfect'
-                            ? 'border-green-300 bg-green-50 hover:border-green-400'
-                            : room.suitabilityLevel === 'good'
-                            ? 'border-blue-300 bg-blue-50 hover:border-blue-400'
-                            : room.suitabilityLevel === 'acceptable'
-                            ? 'border-yellow-300 bg-yellow-50 hover:border-yellow-400'
-                            : 'border-red-300 bg-red-50 hover:border-red-400'
-                        }`}
-                        onClick={() => {
-                          if (room.status === 'available') {
-                            const roomIdNumber = typeof room.number === 'string' ? parseInt(room.number) : room.number;
-                            setFormData(prev => ({ ...prev, newRoomId: roomIdNumber }));
-                          }
-                        }}
+                        type="button"
+                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all text-left w-full ${getSuitabilityBorderClass(room.suitabilityLevel, formData.newRoomId === room.number)}`}
+                        onClick={handleRoomSelection}
+                        disabled={room.status !== 'available'}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
@@ -905,13 +964,8 @@ const RoomChange = () => {
                               </div>
                               <div>
                                 <span className="text-sm text-gray-600">Estado:</span>
-                                <p className={`font-medium ${
-                                  room.status === 'available' ? 'text-green-600' : 
-                                  room.status === 'occupied' ? 'text-red-600' : 'text-yellow-600'
-                                }`}>
-                                  {room.status === 'available' ? 'Disponible' :
-                                   room.status === 'occupied' ? 'Ocupada' :
-                                   room.status === 'maintenance' ? 'Mantenimiento' : 'Reservada'}
+                                <p className={`font-medium ${getStatusTextClass(room.status)}`}>
+                                  {getStatusText(room.status)}
                                 </p>
                               </div>
                             </div>
@@ -921,9 +975,9 @@ const RoomChange = () => {
                               <div className="mb-2">
                                 <p className="text-xs text-gray-600 mb-1">Ventajas:</p>
                                 <div className="flex flex-wrap gap-1">
-                                  {room.recommendationReasons.slice(0, 3).map((reason, idx) => (
+                                  {room.recommendationReasons.slice(0, 3).map((reason) => (
                                     <span 
-                                      key={idx}
+                                      key={`${room.number}-${reason.type}`}
                                       className="px-2 py-1 bg-white bg-opacity-60 text-xs text-gray-700 rounded-md"
                                       title={reason.description}
                                     >
@@ -939,14 +993,10 @@ const RoomChange = () => {
                               <div className="mb-2">
                                 <p className="text-xs text-gray-600 mb-1">Advertencias:</p>
                                 <div className="space-y-1">
-                                  {room.issues.map((issue, idx) => (
+                                  {room.issues.map((issue) => (
                                     <div 
-                                      key={idx}
-                                      className={`flex items-center gap-2 text-xs p-2 rounded-md ${
-                                        issue.severity === 'error' ? 'bg-red-100 text-red-700' :
-                                        issue.severity === 'warning' ? 'bg-yellow-100 text-yellow-700' :
-                                        'bg-blue-100 text-blue-700'
-                                      }`}
+                                      key={`${room.number}-${issue.type}`}
+                                      className={`flex items-center gap-2 text-xs p-2 rounded-md ${getIssueSeverityClass(issue.severity)}`}
                                     >
                                       <AlertTriangle className="w-3 h-3 flex-shrink-0" />
                                       <span>{issue.description}</span>
@@ -972,8 +1022,9 @@ const RoomChange = () => {
                             <div className="text-xs text-gray-500">puntos</div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      </button>
+                    );
+                    })}
                   </div>
                 </div>
               )}
@@ -1013,7 +1064,7 @@ const RoomChange = () => {
                               disabled={room.status !== 'available'}
                             >
                               #{room.number} - {room.type} (Cap: {room.capacity.total}) - ⭐ {room.recommendationScore} pts
-                              {room.status !== 'available' ? ' - No disponible' : ''}
+                              {room.status === 'available' ? '' : ' - No disponible'}
                             </option>
                           ))}
                         </optgroup>
@@ -1022,7 +1073,7 @@ const RoomChange = () => {
                           {allRooms
                             .filter(room => !roomRecommendations
                               .slice(0, 5)
-                              .find(rec => rec.number === room.number))
+                              .some(rec => rec.number === room.number))
                             .map((room) => (
                             <option 
                               key={`other-${room.number}`} 
@@ -1031,7 +1082,7 @@ const RoomChange = () => {
                             >
                               #{room.number} - {room.type} (Capacidad: {room.capacity.total})
                               {room.guestName ? ` - Ocupada por ${room.guestName}` : ''}
-                              {room.status !== 'available' ? ' - No disponible' : ''}
+                              {room.status === 'available' ? '' : ' - No disponible'}
                             </option>
                           ))}
                         </optgroup>
@@ -1047,7 +1098,7 @@ const RoomChange = () => {
                       >
                         #{room.number} - {room.type} (Capacidad: {room.capacity.total})
                         {room.guestName ? ` - Ocupada por ${room.guestName}` : ''}
-                        {room.status !== 'available' ? ' - No disponible' : ''}
+                        {room.status === 'available' ? '' : ' - No disponible'}
                       </option>
                     ))}
                   </select>
@@ -1123,13 +1174,8 @@ const RoomChange = () => {
                     </div>
                     <div>
                       <span className="text-sm text-gray-600">Estado:</span>
-                      <p className={`font-medium ${
-                        selectedRoom.status === 'available' ? 'text-green-600' : 
-                        selectedRoom.status === 'occupied' ? 'text-red-600' : 'text-yellow-600'
-                      }`}>
-                        {selectedRoom.status === 'available' ? 'Disponible' :
-                         selectedRoom.status === 'occupied' ? 'Ocupada' :
-                         selectedRoom.status === 'maintenance' ? 'Mantenimiento' : 'Reservada'}
+                      <p className={`font-medium ${getStatusTextClass(selectedRoom.status)}`}>
+                        {getStatusText(selectedRoom.status)}
                       </p>
                     </div>
                   </div>
@@ -1142,16 +1188,8 @@ const RoomChange = () => {
                         <div className="border-t border-gray-200 pt-3">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-medium text-gray-700">Evaluación de la selección:</span>
-                            <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              selectedRecommendation.suitabilityLevel === 'perfect' ? 'bg-green-100 text-green-800' :
-                              selectedRecommendation.suitabilityLevel === 'good' ? 'bg-blue-100 text-blue-800' :
-                              selectedRecommendation.suitabilityLevel === 'acceptable' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {selectedRecommendation.suitabilityLevel === 'perfect' ? '⭐ Perfecta' :
-                               selectedRecommendation.suitabilityLevel === 'good' ? '👍 Muy Buena' :
-                               selectedRecommendation.suitabilityLevel === 'acceptable' ? '✅ Aceptable' :
-                               '⚠️ Problemática'} ({selectedRecommendation.recommendationScore} pts)
+                            <div className={`px-2 py-1 rounded-full text-xs font-medium ${getSuitabilityClass(selectedRecommendation.suitabilityLevel)}`}>
+                              {getSuitabilityText(selectedRecommendation.suitabilityLevel)} ({selectedRecommendation.recommendationScore} pts)
                             </div>
                           </div>
                           
@@ -1159,8 +1197,8 @@ const RoomChange = () => {
                             <div className="mb-2">
                               <p className="text-xs text-gray-600 mb-1">Ventajas:</p>
                               <div className="space-y-1">
-                                {selectedRecommendation.recommendationReasons.map((reason, idx) => (
-                                  <div key={idx} className="flex items-center gap-2 text-xs text-green-700 bg-green-50 p-2 rounded-md">
+                                {selectedRecommendation.recommendationReasons.map((reason) => (
+                                  <div key={`sel-${reason.type}`} className="flex items-center gap-2 text-xs text-green-700 bg-green-50 p-2 rounded-md">
                                     <CheckCircle className="w-3 h-3 flex-shrink-0" />
                                     <span>{reason.description}</span>
                                   </div>
@@ -1173,12 +1211,8 @@ const RoomChange = () => {
                             <div>
                               <p className="text-xs text-gray-600 mb-1">Advertencias:</p>
                               <div className="space-y-1">
-                                {selectedRecommendation.issues.map((issue, idx) => (
-                                  <div key={idx} className={`flex items-center gap-2 text-xs p-2 rounded-md ${
-                                    issue.severity === 'error' ? 'bg-red-50 text-red-700' :
-                                    issue.severity === 'warning' ? 'bg-yellow-50 text-yellow-700' :
-                                    'bg-blue-50 text-blue-700'
-                                  }`}>
+                                {selectedRecommendation.issues.map((issue) => (
+                                  <div key={`sel-${issue.type}`} className={`flex items-center gap-2 text-xs p-2 rounded-md ${getIssueSeverityClass(issue.severity)}`}>
                                     <AlertTriangle className="w-3 h-3 flex-shrink-0" />
                                     <span>{issue.description}</span>
                                   </div>
@@ -1422,16 +1456,8 @@ const RoomChange = () => {
                           <div className="mt-3 p-3 bg-white rounded-md border">
                             <div className="flex items-center justify-between mb-2">
                               <strong className="text-sm">Evaluación:</strong>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                selectedRecommendation.suitabilityLevel === 'perfect' ? 'bg-green-100 text-green-800' :
-                                selectedRecommendation.suitabilityLevel === 'good' ? 'bg-blue-100 text-blue-800' :
-                                selectedRecommendation.suitabilityLevel === 'acceptable' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>
-                                {selectedRecommendation.suitabilityLevel === 'perfect' ? 'Perfecta' :
-                                 selectedRecommendation.suitabilityLevel === 'good' ? 'Muy Buena' :
-                                 selectedRecommendation.suitabilityLevel === 'acceptable' ? 'Aceptable' :
-                                 'Problemática'}
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSuitabilityClass(selectedRecommendation.suitabilityLevel)}`}>
+                                {getSuitabilityShortText(selectedRecommendation.suitabilityLevel)}
                               </span>
                             </div>
                             <div className="text-xs text-gray-600">
