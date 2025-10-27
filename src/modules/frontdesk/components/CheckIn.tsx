@@ -440,7 +440,7 @@ const CheckIn = () => {
     });
 
     try {
-      // 1. Validar que tenemos ID de reserva numérico
+      // 1. Validar que tenemos ID de reserva
       if (checkInType === 'reservation' && !formData.reservationId) {
         throw new Error('El ID de reserva es requerido para reservas existentes');
       }
@@ -449,9 +449,10 @@ const CheckIn = () => {
         throw new Error('Walk-in no está implementado aún. Use reservas existentes.');
       }
 
-      const reservaId = parseInt(formData.reservationId, 10);
-      if (isNaN(reservaId)) {
-        throw new Error(`El ID de reserva debe ser numérico: ${formData.reservationId}`);
+      // Limpiar el ID de reserva (remover espacios)
+      const reservaId = formData.reservationId.trim();
+      if (!reservaId) {
+        throw new Error('El ID de reserva no puede estar vacío');
       }
 
       // 2. Crear payload exacto para la API según documentación
@@ -623,9 +624,10 @@ const CheckIn = () => {
                         type="text"
                         value={formData.reservationId}
                         onChange={(e) => {
-                          // Solo permitir números para ID de reserva
+                          // Permitir letras, números, guiones y símbolos comunes para ID de reserva
                           const value = e.target.value;
-                          if (/^\d*$/.test(value)) {
+                          // Permitir alfanuméricos, guiones, guiones bajos, puntos y otros símbolos comunes
+                          if (/^[a-zA-Z0-9-_.\s]*$/.test(value)) {
                             setFormData(prev => ({ ...prev, reservationId: value }));
                             if (hasLoadedReservationData) {
                               setHasLoadedReservationData(false);
@@ -634,7 +636,7 @@ const CheckIn = () => {
                         }}
                         className={getInputClasses(false, false)}
                         required={checkInType === 'reservation'}
-                        placeholder="Ej: 123 (solo números)"
+                        placeholder="Ej: RES-123, ABC456, 789"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();

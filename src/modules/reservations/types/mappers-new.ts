@@ -14,13 +14,13 @@ export function mapApiClienteToGuest(cliente: ApiCliente): Guest {
   return {
     id: cliente.id_cliente.toString(),
     firstName: cliente.nombre,
-    firstLastName: cliente.apellido1 || '',
-    secondLastName: cliente.apellido2 || '',
-    email: cliente.email || '',
-    phone: cliente.telefono || '',
-    nationality: cliente.nacionalidad || '',
+    firstLastName: cliente.apellido1,
+    secondLastName: cliente.apellido2 || undefined,
+    email: cliente.email,
+    phone: cliente.telefono,
+    nationality: cliente.nacionalidad,
     documentType: 'id_card',
-    documentNumber: cliente.numero_doc || '',
+    documentNumber: cliente.numero_doc,
     isActive: true,
     createdAt: cliente.created_at,
     updatedAt: cliente.updated_at,
@@ -142,7 +142,7 @@ export function mapApiReservaFullToReservation(api: ApiReservaFull): Reservation
 
   return {
     id: api.id_reserva.toString(),
-    confirmationNumber: api.id_reserva.toString(), // Use ID as confirmation for now
+    confirmationNumber: api.codigo_reserva || api.codigo_formateado || api.id_reserva.toString(),
     
     // Guest
     guestId: api.cliente.id_cliente.toString(),
@@ -169,7 +169,7 @@ export function mapApiReservaFullToReservation(api: ApiReservaFull): Reservation
     servicesTotal: 0,
     taxes: 0,
     total: api.total_monto_reserva,
-    depositRequired: api.total_monto_reserva * 0.3, // 30% estimate
+    depositRequired: api.total_monto_reserva * (api.porcentaje_minimo_pago / 100),
     
     // Status & Meta
     status: mapEstadoNombreToStatus(api.estado.nombre),

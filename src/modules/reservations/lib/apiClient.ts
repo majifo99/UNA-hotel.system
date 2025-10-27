@@ -17,13 +17,18 @@ console.debug('[API INIT] baseURL =', apiClient.defaults.baseURL);
 apiClient.interceptors.request.use(
   (config) => {
     // Add auth token if available
-    const token = localStorage.getItem('authToken');
+    // Priorizar token de admin (para rutas administrativas) sobre token público
+    const adminToken = localStorage.getItem('adminAuthToken');
+    const publicToken = localStorage.getItem('authToken');
+    
+    const token = adminToken || publicToken;
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     // eslint-disable-next-line no-console
     const fullUrl = `${config.baseURL || ''}${config.url || ''}`;
-    console.debug('[API REQUEST]', (config.method || 'GET').toUpperCase(), fullUrl);
+    console.debug('[API REQUEST]', (config.method || 'GET').toUpperCase(), fullUrl, token ? '(con token)' : '(sin token)');
     return config;
   },
   (error) => {
@@ -39,9 +44,21 @@ apiClient.interceptors.response.use(
   (error) => {
     // Handle common errors
     if (error.response?.status === 401) {
-      // Handle unauthorized
-      localStorage.removeItem('authToken');
-      window.location.href = '/login';
+      // Limpiar ambos tokens en caso de error de autenticación
+      const hasAdminToken = localStorage.getItem('adminAuthToken');
+      const hasPublicToken = localStorage.getItem('authToken');
+      
+      if (hasAdminToken) {
+        localStorage.removeItem('adminAuthToken');
+        localStorage.removeItem('adminAuthUser');
+        // Redirigir a login de admin
+        window.location.href = '/admin/login';
+      } else if (hasPublicToken) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('authUser');
+        // Redirigir a login público
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

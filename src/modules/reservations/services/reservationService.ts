@@ -187,6 +187,8 @@ class ReservationService {
     }
 
     try {
+      console.log(`[ReservationService] Fetching reservation by ID: ${id}`);
+      
       // Use the new API endpoint that returns the full structure in one call
       const res = await apiClient.get<ApiReservaFull | { data: ApiReservaFull }>(`/reservas/${id}`);
       
@@ -194,20 +196,40 @@ class ReservationService {
       const apiReserva: ApiReservaFull = (res.data as any)?.data ?? res.data;
       
       if (!apiReserva || !apiReserva.id_reserva) {
-        console.error('Invalid API response structure:', res.data);
+        console.error('[ReservationService] Invalid API response structure:', res.data);
         return null;
       }
 
-      console.log('API Response:', apiReserva); // Debug log
+      console.log('[ReservationService] API Response received:', {
+        id_reserva: apiReserva.id_reserva,
+        codigo_reserva: apiReserva.codigo_reserva,
+        cliente: apiReserva.cliente?.nombre_completo,
+        habitaciones: apiReserva.habitaciones?.length || 0
+      });
       
       // Use the new mapper for the full API structure
       const reservation = mapApiReservaFullToReservation(apiReserva);
       
-      console.log('Mapped Reservation:', reservation); // Debug log
+      console.log('[ReservationService] Mapped Reservation:', {
+        id: reservation.id,
+        guestName: reservation.guest?.firstName,
+        roomNumber: reservation.room?.number,
+        status: reservation.status
+      });
 
       return reservation;
-    } catch (error) {
-      console.error('Error fetching reservation:', error);
+    } catch (error: any) {
+      console.error('[ReservationService] Error fetching reservation:', error);
+      
+      // Log detailed error information
+      if (error.response) {
+        console.error('[ReservationService] Error response:', {
+          status: error.response.status,
+          data: error.response.data,
+          message: error.response.data?.message
+        });
+      }
+      
       return null;
     }
   }
@@ -238,41 +260,45 @@ class ReservationService {
       return simulateApiCall(cloneData(reservationsData), 500);
     }
 
-    const res = await apiClient.get('/reservas');
-    // Normalize response which may be either { data: [...] } or a plain array
-    const payload = res.data as { data?: ApiReservation[] } | ApiReservation[] | undefined;
-    let apiList: ApiReservation[] = [];
-    if (Array.isArray((payload as any)?.data)) {
-      apiList = (payload as any).data as ApiReservation[];
-    } else if (Array.isArray(payload)) {
-      apiList = payload as ApiReservation[];
-    }
-
-    const reservations = await Promise.all((apiList as ApiReservation[]).map(async (apiReservation) => {
-      let habitaciones: ApiReservaHabitacion[] | undefined;
-
-      if (Array.isArray((apiReservation as any).habitaciones)) {
-        habitaciones = (apiReservation as any).habitaciones as ApiReservaHabitacion[];
-      } else {
-        try {
-          const habitacionesRes = await apiClient.get(`/reservas/${apiReservation.id_reserva}/habitaciones`);
-          const habitacionesPayload = habitacionesRes.data as { data?: ApiReservaHabitacion[] } | ApiReservaHabitacion[] | undefined;
-          let habitacionesList: ApiReservaHabitacion[] = [];
-          if (Array.isArray((habitacionesPayload as any)?.data)) {
-            habitacionesList = (habitacionesPayload as any).data as ApiReservaHabitacion[];
-          } else if (Array.isArray(habitacionesPayload)) {
-            habitacionesList = habitacionesPayload as ApiReservaHabitacion[];
-          }
-          habitaciones = habitacionesList as ApiReservaHabitacion[];
-        } catch (error: any) {
-          console.warn(`[API] No se pudieron obtener las habitaciones para la reserva ${apiReservation.id_reserva}:`, error?.message || error);
-        }
+    try {
+      console.log('[ReservationService] Fetching all reservations');
+      
+      const res = await apiClient.get('/reservas');
+      
+      // Handle paginated response
+      const payload = res.data;
+      let apiList: ApiReservaFull[] = [];
+      
+      if (payload?.data && Array.isArray(payload.data)) {
+        // Paginated response with { data: [...] }
+        apiList = payload.data;
+        console.log(`[ReservationService] Received ${apiList.length} reservations (page ${payload.current_page}/${payload.last_page})`);
+      } else if (Array.isArray(payload)) {
+        // Direct array response
+        apiList = payload;
+        console.log(`[ReservationService] Received ${apiList.length} reservations`);
       }
 
-      return mapApiReservationToReservation(apiReservation, undefined, undefined, habitaciones);
-    }));
+      // Map all reservations using the new structure
+      const reservations = apiList.map((apiReserva: ApiReservaFull) => {
+        return mapApiReservaFullToReservation(apiReserva);
+      });
 
-    return reservations;
+      console.log(`[ReservationService] Successfully mapped ${reservations.length} reservations`);
+      return reservations;
+    } catch (error: any) {
+      console.error('[ReservationService] Error fetching all reservations:', error?.message || error);
+      
+      if (error.response) {
+        console.error('[ReservationService] Error response:', {
+          status: error.response.status,
+          data: error.response.data
+        });
+      }
+      
+      // Return empty array on error instead of throwing
+      return [];
+    }
   }
 
   async getReservationsByDate(startDate: string, endDate?: string): Promise<Reservation[]> {

@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Home, Users, MessageSquare, Loader2, Star, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Home, Users, MessageSquare, Loader2, Star, AlertTriangle, CheckCircle, Info, Search, X } from 'lucide-react';
 import { useRoomChange } from '../hooks/useRoomChange';
-import { useGuests } from '../../guests/hooks/useGuests';
 import { useRoomSelection } from '../hooks/useRoomSelection';
 import { useInputValidation } from '../../../hooks/useInputValidation';
-import { useReservationByGuest, useReservationByIdForRoomChange } from '../hooks/useReservationByGuest';
+import { useReservationById } from '../../reservations/hooks/useReservationQueries';
 import { ROUTES } from '../../../router/routes';
 import FrontdeskService from '../services/frontdeskService';
 import type { RoomChangeData, RoomChangeReason } from '../types/roomChange';
@@ -92,6 +91,7 @@ type LocalState = {
   observaciones: string;
   guestName: string;
   reservationId: string;
+  reservationSearchId: string; // Para búsqueda directa por ID
 };
 
 const RoomChange = () => {
@@ -102,17 +102,18 @@ const RoomChange = () => {
 
   const [allRooms, setAllRooms] = useState<RoomInfo[]>([]);
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
-  const [selectedGuest, setSelectedGuest] = useState<any>(null);
-  const [selectedGuestReservationId, setSelectedGuestReservationId] = useState<string>('');
+  
+  // Estados para búsqueda directa por ID de reserva
+  const [reservationSearchId, setReservationSearchId] = useState<string>('');
+  const [hasLoadedReservationData, setHasLoadedReservationData] = useState(false);
 
-  // Hooks para obtener datos de reserva (igual que check-in)
+  // Hook para búsqueda directa de reserva por ID (igual que en CheckIn)
   const { 
-    data: guestReservation, 
-    isLoading: isLoadingGuestReservation 
-  } = useReservationByGuest(selectedGuest?.id || '');
-
-  // Hook adicional por si necesitamos obtener reserva por ID
-  useReservationByIdForRoomChange(selectedGuestReservationId);
+    data: foundReservation, 
+    isLoading: isLoadingReservation, 
+    isError: isReservationError,
+    error: reservationError 
+  } = useReservationById(reservationSearchId);
 
   const [formData, setFormData] = useState<LocalState>({
     currentRoomNumber: '',
@@ -126,6 +127,7 @@ const RoomChange = () => {
     observaciones: '',
     guestName: '',
     reservationId: '',
+    reservationSearchId: '', // Nuevo campo para búsqueda directa
   });
 
   // Sistema de recomendaciones inteligente
@@ -308,13 +310,13 @@ const RoomChange = () => {
 
   // Generar recomendaciones cuando cambien los datos relevantes
   const roomRecommendations = useMemo(() => {
-    if (!guestReservation || allRooms.length === 0) return [];
+    if (!foundReservation || allRooms.length === 0) return [];
     
-    const reservationInfo = getReservationRoomInfo(guestReservation);
+    const reservationInfo = getReservationRoomInfo(foundReservation);
     const totalGuests = formData.adultos + formData.ninos + formData.bebes;
     
     return generateRecommendations(allRooms, reservationInfo, totalGuests);
-  }, [allRooms, guestReservation, formData.adultos, formData.ninos, formData.bebes, generateRecommendations, getReservationRoomInfo]);
+  }, [allRooms, foundReservation, formData.adultos, formData.ninos, formData.bebes, generateRecommendations, getReservationRoomInfo]);
 
   // Load all rooms on component mount
   useEffect(() => {
@@ -336,24 +338,41 @@ const RoomChange = () => {
     loadData();
   }, []);
 
-  // Auto-fill data when guest reservation is loaded (similar to check-in)
+  // Efecto para autorellenar datos cuando se encuentra una reserva por ID (igual que en CheckIn)
   useEffect(() => {
-    if (guestReservation && selectedGuest) {
-      console.log('📋 Aplicando datos de la reserva:', guestReservation);
+    if (foundReservation && !hasLoadedReservationData) {
+      console.log('📋 Autofilling from reservation by ID:', foundReservation);
       
-      setFormData(prev => ({
-        ...prev,
-        reservationId: guestReservation.id,
-        currentRoomNumber: guestReservation.room?.number || prev.currentRoomNumber,
-        adultos: guestReservation.numberOfAdults || prev.adultos,
-        ninos: guestReservation.numberOfChildren || prev.ninos,
-        bebes: guestReservation.numberOfInfants || prev.bebes,
-      }));
+      // Autorellenar datos del huésped si existen
+      if (foundReservation.guest) {
+        const guest = foundReservation.guest;
+        const fullLastName = guest.secondLastName 
+          ? `${guest.firstLastName} ${guest.secondLastName}`
+          : guest.firstLastName;
+        
+        const fullName = `${guest.firstName} ${fullLastName}`.trim();
+        
+        setFormData(prev => ({
+          ...prev,
+          guestName: fullName,
+          reservationId: foundReservation.id,
+          currentRoomNumber: foundReservation.room?.number || prev.currentRoomNumber,
+          adultos: foundReservation.numberOfAdults || prev.adultos,
+          ninos: foundReservation.numberOfChildren || prev.ninos,
+          bebes: foundReservation.numberOfInfants || prev.bebes,
+        }));
+      }
       
-      // Set reservation ID for additional data fetching if needed
-      setSelectedGuestReservationId(guestReservation.id);
+      setHasLoadedReservationData(true);
     }
-  }, [guestReservation, selectedGuest]);
+  }, [foundReservation, hasLoadedReservationData]);
+
+  // Resetear datos cargados cuando se limpia la búsqueda
+  useEffect(() => {
+    if (!reservationSearchId) {
+      setHasLoadedReservationData(false);
+    }
+  }, [reservationSearchId]);
 
   // Load available rooms when guest count changes
   useEffect(() => {
@@ -362,37 +381,26 @@ const RoomChange = () => {
     }
   }, [searchRooms, formData.adultos, formData.ninos, formData.bebes, isLoadingRooms]);
 
-
-  // Guests search hook
-  const { guests, searchGuests } = useGuests();
-
-  // Handle search by name or identification (document number)
-  const handleGuestQuery = (value: string) => {
-    setFormData(prev => ({ ...prev, guestName: value }));
-    if (value.trim().length >= 2) {
-      searchGuests({ query: value.trim(), isActive: true, limit: 10 });
+  // Función para buscar reserva por ID (igual que en CheckIn)
+  const handleSearchReservation = () => {
+    if (formData.reservationSearchId.trim()) {
+      setReservationSearchId(formData.reservationSearchId.trim());
+      setHasLoadedReservationData(false);
     }
   };
 
-  // Handle selecting a guest from results (simplified using hooks)
-  const handleSelectGuest = useCallback((guest: any) => {
-    console.log('👤 Huésped seleccionado:', guest);
-    setSelectedGuest(guest);
-    
-    // Fill basic guest info immediately
-    const fullName = `${guest.firstName || guest.nombre || ''} ${guest.firstLastName || guest.apellido1 || ''}`.trim();
-    
+  // Función para limpiar búsqueda de reserva
+  const handleClearReservation = () => {
     setFormData(prev => ({
       ...prev,
-      guestName: fullName,
-      // Reset reservation-specific fields - will be filled by useEffect when reservation loads
+      reservationSearchId: '',
       reservationId: '',
+      guestName: '',
       currentRoomNumber: '',
-      adultos: prev.adultos, // Keep current values until reservation loads
-      ninos: prev.ninos,
-      bebes: prev.bebes,
     }));
-  }, []);
+    setReservationSearchId('');
+    setHasLoadedReservationData(false);
+  };
 
   // Opciones de motivos de cambio
   const changeReasons = [
@@ -465,11 +473,11 @@ const RoomChange = () => {
             </div>
           )}
 
-          {!selectedGuest && (
+          {!formData.reservationId && (
             <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-700">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5" />
-                <span>Seleccione un huésped antes de continuar con el cambio de habitación.</span>
+                <span>Busque y seleccione una reserva antes de continuar con el cambio de habitación.</span>
               </div>
             </div>
           )}
@@ -489,106 +497,205 @@ const RoomChange = () => {
                   Actualizar
                 </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label htmlFor="guestSearch" className="block text-sm font-medium text-gray-700 mb-2">
-                      Buscar Huésped (nombre o identificación)
-                    </label>
+
+              {/* Búsqueda por ID de Reserva */}
+              <div className="mb-4">
+                <label htmlFor="reservationSearchId" className="block text-sm font-medium text-gray-700 mb-2">
+                  Buscar por ID de Reserva
+                </label>
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
                     <input
-                      id="guestSearch"
+                      id="reservationSearchId"
                       type="text"
-                      value={formData.guestName}
-                      onChange={(e) => handleGuestQuery(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Ej: Juan Pérez o 12345678"
+                      value={formData.reservationSearchId}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (/^[a-zA-Z0-9-_.\s]*$/.test(value)) {
+                          setFormData(prev => ({ ...prev, reservationSearchId: value }));
+                          if (hasLoadedReservationData) {
+                            setHasLoadedReservationData(false);
+                          }
+                        }
+                      }}
+                      className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Ingrese ID de reserva..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleSearchReservation();
+                        }
+                      }}
+                      disabled={isLoadingReservation}
                     />
-                    {/* Resultados de búsqueda */}
-                    {guests && guests.length > 0 && formData.guestName.length >= 2 && (
-                      <ul className="mt-2 max-h-48 overflow-auto bg-white border border-gray-200 rounded-md shadow-lg z-50">
-                        {guests.map((g: any) => (
-                          <li key={g.id} className="border-b border-gray-100 last:border-b-0">
-                            <button
-                              type="button"
-                              onClick={() => handleSelectGuest(g)}
-                              className="w-full px-3 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <div className="font-medium text-gray-900">
-                                {g.firstName || g.nombre} {g.firstLastName || g.apellido1}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {g.documentNumber || g.numero_doc}
-                              </div>
-                              <div className="text-xs text-blue-600">
-                                {g.reservationId ? `Reserva: ${g.reservationId}` : 'Sin reserva activa'}
-                                {g.roomNumber && ` • Habitación: ${g.roomNumber}`}
-                              </div>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
+                    <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={handleSearchReservation}
+                    disabled={!formData.reservationSearchId.trim() || isLoadingReservation}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {isLoadingReservation ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Buscando
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-4 h-4" />
+                        Buscar
+                      </>
                     )}
-                    {formData.guestName.length >= 2 && guests && guests.length === 0 && (
-                      <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-700 text-sm">
-                        No se encontraron huéspedes con "{formData.guestName}". Verifique el nombre o número de identificación.
+                  </button>
+                  
+                  {hasLoadedReservationData && (
+                    <button
+                      type="button"
+                      onClick={handleClearReservation}
+                      className="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 flex items-center gap-2"
+                    >
+                      <X className="w-4 h-4" />
+                      Limpiar
+                    </button>
+                  )}
+                </div>
+
+                {/* Estados de búsqueda */}
+                {isLoadingReservation && (
+                  <div className="mt-4 flex items-center gap-3 p-4 bg-blue-100 border border-blue-300 rounded-lg">
+                    <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                    <div>
+                      <p className="font-semibold text-blue-900">Buscando reserva...</p>
+                      <p className="text-sm text-blue-700">Esto tomará solo un momento</p>
+                    </div>
+                  </div>
+                )}
+
+                {isReservationError && reservationError && (
+                  <div className="mt-4 p-4 bg-red-50 border-2 border-red-300 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <AlertTriangle className="w-6 h-6 text-red-600" />
                       </div>
-                    )}
-                    {selectedGuest && (
-                      <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-md">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                              <Users className="w-4 h-4 text-white" />
-                            </div>
-                            <div>
-                              <div className="text-sm text-green-800 font-medium">
-                                {selectedGuest.firstName || selectedGuest.nombre} {selectedGuest.firstLastName || selectedGuest.apellido1}
-                              </div>
-                              <div className="text-xs text-green-600">
-                                {selectedGuest.documentNumber || selectedGuest.numero_doc}
-                              </div>
-                              
-                              {/* Estado de carga de reserva */}
-                              {isLoadingGuestReservation ? (
-                                <div className="text-xs text-blue-600 flex items-center gap-1">
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                  Cargando reserva...
-                                </div>
-                              ) : guestReservation ? (
-                                <div className="text-xs text-green-700 font-medium">
-                                  Reserva: {guestReservation.id}
-                                  {guestReservation.room?.number && ` • Habitación: ${guestReservation.room.number}`}
-                                  <div className="text-xs text-green-600 mt-1">
-                                    {guestReservation.numberOfAdults}A, {guestReservation.numberOfChildren}N, {guestReservation.numberOfInfants}B
-                                    • {guestReservation.checkInDate} → {guestReservation.checkOutDate}
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="text-xs text-yellow-600">
-                                  Sin reserva activa encontrada
-                                </div>
-                              )}
-                            </div>
+                      <div>
+                        <p className="font-semibold text-red-900">No se encontró la reserva</p>
+                        <p className="text-sm text-red-700 mt-1">{reservationError.message}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {foundReservation && hasLoadedReservationData && (
+                  <div className="mt-4 space-y-3">
+                    {/* Badge de éxito */}
+                    <div className="flex items-center gap-3 p-4 bg-green-50 border-2 border-green-300 rounded-lg">
+                      <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <CheckCircle className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-green-900">¡Reserva encontrada!</p>
+                        <p className="text-sm text-green-700">Datos cargados automáticamente</p>
+                      </div>
+                      <span className="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-full shadow-md">
+                        {foundReservation.status}
+                      </span>
+                    </div>
+
+                    {/* Información de la reserva en cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Card Huésped */}
+                      <div className="bg-white rounded-lg p-4 border-2 border-gray-200 shadow-sm">
+                        <div className="flex items-start gap-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
+                            <Users className="w-6 h-6 text-white" />
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedGuest(null);
-                              setSelectedGuestReservationId('');
-                              setFormData(prev => ({
-                                ...prev,
-                                guestName: '',
-                                reservationId: '',
-                                currentRoomNumber: '',
-                              }));
-                            }}
-                            className="text-green-600 hover:text-green-800 text-sm underline"
-                          >
-                            Cambiar
-                          </button>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-gray-500 font-medium uppercase">Huésped</p>
+                            <p className="text-lg font-bold text-gray-900 truncate">
+                              {foundReservation.guest?.firstName} {foundReservation.guest?.firstLastName}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              📄 {foundReservation.guest?.documentNumber}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Habitación */}
+                      <div className="bg-white rounded-lg p-4 border-2 border-gray-200 shadow-sm">
+                        <div className="flex items-start gap-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
+                            <Home className="w-6 h-6 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-gray-500 font-medium uppercase">Habitación Actual</p>
+                            <p className="text-2xl font-bold text-blue-600">
+                              #{foundReservation.room?.number || 'N/A'}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {foundReservation.roomType}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Confirmación */}
+                      <div className="bg-white rounded-lg p-4 border-2 border-gray-200 shadow-sm">
+                        <div className="flex items-start gap-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
+                            <CheckCircle className="w-6 h-6 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-gray-500 font-medium uppercase">Confirmación</p>
+                            <p className="text-lg font-bold text-gray-900 truncate">
+                              {foundReservation.confirmationNumber}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {foundReservation.numberOfNights} noches
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Huéspedes */}
+                      <div className="bg-white rounded-lg p-4 border-2 border-gray-200 shadow-sm">
+                        <div className="flex items-start gap-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
+                            <Users className="w-6 h-6 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-gray-500 font-medium uppercase">Total Huéspedes</p>
+                            <p className="text-2xl font-bold text-gray-900">
+                              {foundReservation.numberOfGuests}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {foundReservation.numberOfAdults}A • {foundReservation.numberOfChildren}N • {foundReservation.numberOfInfants}B
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Solicitudes especiales */}
+                    {foundReservation.specialRequests && (
+                      <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                          <MessageSquare className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-semibold text-amber-900">Solicitudes Especiales:</p>
+                            <p className="text-sm text-amber-800 mt-1">{foundReservation.specialRequests}</p>
+                          </div>
                         </div>
                       </div>
                     )}
-                </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Información de resumen (Reserva y Habitación Actual) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <span className="block text-sm font-medium text-gray-700 mb-1">
                     Reserva
@@ -1146,9 +1253,9 @@ const RoomChange = () => {
                 <div>
                   <h4 className="text-sm font-medium text-gray-700 mb-3">Estado de Validación:</h4>
                   <div className="space-y-2">
-                    <div className={`flex items-center gap-2 text-sm ${selectedGuest ? 'text-green-600' : 'text-red-600'}`}>
-                      {selectedGuest ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-                      <span>{selectedGuest ? '✅ Huésped seleccionado' : '❌ Debe seleccionar un huésped'}</span>
+                    <div className={`flex items-center gap-2 text-sm ${formData.reservationId ? 'text-green-600' : 'text-red-600'}`}>
+                      {formData.reservationId ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                      <span>{formData.reservationId ? '✅ Reserva seleccionada' : '❌ Debe buscar una reserva'}</span>
                     </div>
                     
                     <div className={`flex items-center gap-2 text-sm ${formData.newRoomId ? 'text-green-600' : 'text-red-600'}`}>
@@ -1293,7 +1400,7 @@ const RoomChange = () => {
                 disabled={
                   isChangingRoom || 
                   !formData.newRoomId || 
-                  !selectedGuest ||
+                  !formData.reservationId ||
                   !formData.reason ||
                   (formData.reason === 'other' && !formData.motivo.trim()) ||
                   (selectedRoom && totalGuests > selectedRoom.capacity.total)

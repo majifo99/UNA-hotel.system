@@ -38,7 +38,7 @@ export interface CheckInResponseDTO {
 
 // Respuesta completa de check-in con detalles
 export interface CheckInResponse extends CheckInResponseDTO {
-  reservaId: number;
+  reservaId: string | number; // Puede ser alfanumérico o numérico
   origenDatos: 'reserva' | 'formulario';
   endpointUsado: string;
 }

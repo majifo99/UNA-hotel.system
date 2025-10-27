@@ -1,6 +1,6 @@
 /**
- * Updated Backend API Types - New Structure
- * Matches the new API response from /api/reservas
+ * Updated Backend API Types - New Structure (October 2025)
+ * Matches the actual API response from /api/reservas
  */
 
 /**
@@ -9,13 +9,13 @@
 export interface ApiCliente {
   id_cliente: number;
   nombre: string;
-  apellido1: string | null;
+  apellido1: string;
   apellido2: string | null;
-  email: string | null;
-  telefono: string | null;
+  email: string;
+  telefono: string;
   id_tipo_doc: number;
-  numero_doc: string | null;
-  nacionalidad: string | null;
+  numero_doc: string;
+  nacionalidad: string;
   direccion: string | null;
   fecha_nacimiento: string | null;
   genero: string | null;
@@ -30,10 +30,24 @@ export interface ApiCliente {
  * Estado de reserva
  */
 export interface ApiEstadoReserva {
-  id_estado_reserva: number;
+  id_estado_res: number;
   nombre: string;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Resumen de pagos de la reserva
+ */
+export interface ApiResumenPagos {
+  total_reserva: number;
+  monto_pagado: number;
+  monto_pendiente: number;
+  porcentaje_pagado: number;
+  porcentaje_minimo_requerido: number;
+  alcanzo_minimo: boolean;
+  pago_completo: boolean;
+  puede_confirmar: boolean;
 }
 
 /**
@@ -91,14 +105,22 @@ export interface ApiReservaHabitacion {
  */
 export interface ApiReservaFull {
   id_reserva: number;
+  codigo_reserva: string | null;
   id_cliente: number;
-  id_estado_reserva: number;
+  id_estado_res: number;
   fecha_creacion: string;
   total_monto_reserva: number;
+  monto_pagado: number;
+  monto_pendiente: number;
+  porcentaje_minimo_pago: number;
+  pago_completo: boolean;
   notas: string | null;
   id_fuente: number | null;
   created_at: string;
   updated_at: string;
+  porcentaje_pagado: number;
+  resumen_pagos: ApiResumenPagos;
+  codigo_formateado: string | null;
   cliente: ApiCliente;
   estado: ApiEstadoReserva;
   fuente: ApiFuenteReserva | null;
