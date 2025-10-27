@@ -1,5 +1,13 @@
 import axios from 'axios';
 
+// ========================================
+// 🧪 TEST MODE: Desactivar autenticación
+// ========================================
+// IMPORTANTE: Cambiar a `true` para probar sin token
+// RECORDAR: Volver a `false` después de las pruebas
+const DISABLE_AUTH_FOR_TESTING = false;
+// ========================================
+
 // Create axios instance with base configuration
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
@@ -12,17 +20,35 @@ export const apiClient = axios.create({
 // Debug baseURL once at startup
 console.debug('[API INIT] baseURL =', apiClient.defaults.baseURL);
 
+if (DISABLE_AUTH_FOR_TESTING) {
+  console.warn('⚠️ [API INIT] AUTH DISABLED FOR TESTING - No se enviará Bearer token');
+}
+
 // Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    // Add admin auth token if available (reservations module is admin-only)
-    const token = localStorage.getItem('adminAuthToken');
+    // 🧪 TEST MODE: Skip authentication if disabled
+    if (DISABLE_AUTH_FOR_TESTING) {
+      console.warn('⚠️ [API REQUEST] Auth disabled for testing - No Bearer token sent');
+      console.debug('[API REQUEST]', (config.method || 'GET').toUpperCase(), `${config.baseURL || ''}${config.url || ''}`);
+      return config;
+    }
+
+    // Try to get admin token first (for admin module)
+    let token = localStorage.getItem('adminAuthToken');
+    let tokenSource = 'admin';
+    
+    // If no admin token, try web auth token (for public web reservations)
+    if (!token) {
+      token = localStorage.getItem('authToken');
+      tokenSource = 'web';
+    }
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.debug('[API REQUEST] Admin token attached:', token.substring(0, 20) + '...');
+      console.debug(`[API REQUEST] ${tokenSource} token attached:`, token.substring(0, 20) + '...');
     } else {
-      console.debug('[API REQUEST] No admin token found');
+      console.debug('[API REQUEST] No auth token found (neither admin nor web)');
     }
     
     console.debug('[API REQUEST]', (config.method || 'GET').toUpperCase(), `${config.baseURL || ''}${config.url || ''}`);
@@ -52,7 +78,7 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
-    return Promise.reject(error);
+    return Promise.reject(error instanceof Error ? error : new Error(String(error)));
   }
 );
 
@@ -64,16 +90,24 @@ apiClient.interceptors.response.use(
   (error) => {
     // Handle common errors
     if (error.response?.status === 401) {
-      // Handle unauthorized - clear admin auth and redirect to admin login
-      localStorage.removeItem('adminAuthToken');
-      localStorage.removeItem('adminAuthUser');
+      // Determine context based on current path or available tokens
+      const isAdminContext = globalThis.location.pathname.startsWith('/admin') || localStorage.getItem('adminAuthToken');
       
-      console.debug('[API] 401 Unauthorized - redirecting to /admin/login');
-      
-      // Redirect to admin login
-      window.location.href = '/admin/login';
+      if (isAdminContext) {
+        // Clear admin auth
+        localStorage.removeItem('adminAuthToken');
+        localStorage.removeItem('adminAuthUser');
+        console.debug('[API] 401 Unauthorized - redirecting to /admin/login');
+        globalThis.location.href = '/admin/login';
+      } else {
+        // Clear web auth
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('authUser');
+        console.debug('[API] 401 Unauthorized - redirecting to /login');
+        globalThis.location.href = '/login';
+      }
     }
-    return Promise.reject(error);
+    return Promise.reject(error instanceof Error ? error : new Error(String(error)));
   }
 );
 

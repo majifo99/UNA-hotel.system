@@ -247,3 +247,155 @@ body {
   box-shadow: 0 20px 48px rgba(26, 54, 54, 0.4);
   border-radius: 0.75rem;
 }
+
+/* ========================================
+   PRINT STYLES - For PDF Generation
+   ======================================== */
+@media print {
+  /* Reset for print */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide non-printable elements */
+  .print\\:hidden,
+  nav,
+  header.print\\:hidden,
+  footer.print\\:hidden,
+  button.print\\:hidden,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Page setup */
+  @page {
+    size: A4;
+    margin: 1.5cm;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  /* Ensure content fits */
+  .print\\:shadow-none {
+    box-shadow: none !important;
+  }
+
+  /* Optimize spacing for print */
+  .print\\:p-4 {
+    padding: 1rem !important;
+  }
+
+  .print\\:p-2 {
+    padding: 0.5rem !important;
+  }
+
+  .print\\:mb-4 {
+    margin-bottom: 1rem !important;
+  }
+
+  .print\\:mb-2 {
+    margin-bottom: 0.5rem !important;
+  }
+
+  .print\\:pt-4 {
+    padding-top: 1rem !important;
+  }
+
+  .print\\:pt-1 {
+    padding-top: 0.25rem !important;
+  }
+
+  .print\\:mt-1 {
+    margin-top: 0.25rem !important;
+  }
+
+  .print\\:gap-2 {
+    gap: 0.5rem !important;
+  }
+
+  .print\\:space-y-2 > * + * {
+    margin-top: 0.5rem !important;
+  }
+
+  .print\\:space-y-1 > * + * {
+    margin-top: 0.25rem !important;
+  }
+
+  /* Text sizing for print */
+  .print\\:text-2xl {
+    font-size: 1.5rem !important;
+  }
+
+  .print\\:text-lg {
+    font-size: 1.125rem !important;
+  }
+
+  .print\\:text-base {
+    font-size: 1rem !important;
+  }
+
+  .print\\:text-sm {
+    font-size: 0.875rem !important;
+  }
+
+  .print\\:text-xs {
+    font-size: 0.75rem !important;
+  }
+
+  /* Show print-only elements */
+  .print\\:block {
+    display: block !important;
+  }
+
+  /* Icon sizing for print */
+  .print\\:w-4 {
+    width: 1rem !important;
+  }
+
+  .print\\:h-4 {
+    height: 1rem !important;
+  }
+
+  /* Prevent page breaks inside important elements */
+  .print-no-break,
+  .bg-gray-50,
+  .rounded-lg {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Add page breaks before major sections if needed */
+  .print-page-break-before {
+    page-break-before: always;
+    break-before: always;
+  }
+
+  /* Links - show URL after link text */
+  a[href]:after {
+    content: none !important; /* Disabled for cleaner print */
+  }
+
+  /* Ensure colors are preserved */
+  .bg-green-100,
+  .bg-gray-50,
+  .bg-blue-50 {
+    background-color: #f3f4f6 !important;
+  }
+
+  .text-green-600 {
+    color: #059669 !important;
+  }
+
+  /* Border colors */
+  .border-gray-200 {
+    border-color: #e5e7eb !important;
+  }
+
+  .border-gray-300 {
+    border-color: #d1d5db !important;
+  }
+}

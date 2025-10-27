@@ -16,6 +16,9 @@ import { RegisterPage } from '../modules/web/pages/RegisterPage';
 import { LoginPageTest } from '../modules/web/pages/LoginPage.test';
 import { AboutPage } from '../modules/web/pages/AboutPage';
 import { WebReservationPage } from '../modules/web/pages/WebReservationPage';
+import { RoomDetailPage } from '../modules/web/pages/RoomDetailPage';
+import { RoomsPage } from '../modules/web/pages/RoomsPage';
+import { ReservationConfirmationPage } from '../modules/web/pages/ReservationConfirmationPage';
 
 // =================== ERROR BOUNDARY ===================
 
@@ -76,15 +79,6 @@ function WebRootLayout() {
 }
 
 // =================== PLACEHOLDER PAGES ===================
-
-function RoomsPage() {
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <h1 className="text-3xl font-bold text-primary-900 mb-8">Habitaciones</h1>
-      <p className="text-neutral-600">Página de habitaciones en desarrollo...</p>
-    </div>
-  );
-}
 
 function ServicesPage() {
   return (
@@ -152,6 +146,10 @@ const webRouter = createBrowserRouter([
         element: <RoomsPage />,
       },
       {
+        path: 'habitacion/:id',
+        element: <RoomDetailPage />,
+      },
+      {
         path: 'servicios',
         element: <ServicesPage />,
       },
@@ -178,6 +176,10 @@ const webRouter = createBrowserRouter([
       {
         path: 'reservar',
         element: <ReservationPage />,
+      },
+      {
+        path: 'confirmation',
+        element: <ReservationConfirmationPage />,
       },
       {
         path: 'perfil',
