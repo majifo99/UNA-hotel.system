@@ -1,14 +1,18 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Home, Users, MessageSquare, Loader2, Star, AlertTriangle, CheckCircle, Info, Search, X } from 'lucide-react';
-import { useRoomChange } from '../hooks/useRoomChange';
+import { ArrowLeft, RefreshCw, Home, Users, MessageSquare, Loader2, Star, AlertTriangle, CheckCircle, Info, Search, X, Calendar, TrendingDown } from 'lucide-react';
+import { useModificacionReserva } from '../hooks/useModificacionReserva';
 import { useRoomSelection } from '../hooks/useRoomSelection';
 import { useInputValidation } from '../../../hooks/useInputValidation';
 import { useReservationById } from '../../reservations/hooks/useReservationQueries';
 import { ROUTES } from '../../../router/routes';
 import FrontdeskService from '../services/frontdeskService';
-import type { RoomChangeData, RoomChangeReason } from '../types/roomChange';
+import RoomChangeResultModal from './modals/RoomChangeResultModal';
+import DateModification from './DateModification';
+import ReduceStay from './ReduceStay';
+import type { RoomChangeReason } from '../types/roomChange';
 import type { RoomInfo } from '../types/room';
+import type { CambiarHabitacionResponse } from '../services/ModificacionReservaService';
 
 // Interfaces para el sistema de recomendaciones inteligente
 interface RoomRecommendation extends RoomInfo {
@@ -92,11 +96,15 @@ type LocalState = {
   guestName: string;
   reservationId: string;
   reservationSearchId: string; // Para búsqueda directa por ID
+  idReservaHabitacion: number | null; // ID de la reserva_habitacion actual
 };
 
 const RoomChange = () => {
   const navigate = useNavigate();
-  const { validateAndChangeRoom, isChangingRoom, error } = useRoomChange();
+  
+  // Estado para las pestañas
+  const [activeTab, setActiveTab] = useState<'room-change' | 'date-modification' | 'reduce-stay'>('room-change');
+  const { cambiarHabitacion, isCambiandoHabitacion, error } = useModificacionReserva();
   const { searchRooms } = useRoomSelection();
   useInputValidation();
 
@@ -106,6 +114,10 @@ const RoomChange = () => {
   // Estados para búsqueda directa por ID de reserva
   const [reservationSearchId, setReservationSearchId] = useState<string>('');
   const [hasLoadedReservationData, setHasLoadedReservationData] = useState(false);
+
+  // Estado para el modal de resultado
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [changeResult, setChangeResult] = useState<CambiarHabitacionResponse | null>(null);
 
   // Hook para búsqueda directa de reserva por ID (igual que en CheckIn)
   const { 
@@ -128,6 +140,7 @@ const RoomChange = () => {
     guestName: '',
     reservationId: '',
     reservationSearchId: '', // Nuevo campo para búsqueda directa
+    idReservaHabitacion: null, // ID de la reserva_habitacion
   });
 
   // Sistema de recomendaciones inteligente
@@ -352,6 +365,11 @@ const RoomChange = () => {
         
         const fullName = `${guest.firstName} ${fullLastName}`.trim();
         
+        // Extraer id_reserva_habitacion de la respuesta
+        const idReservaHab = (foundReservation as any).idReservaHabitacion || null;
+        
+        console.log('📌 ID Reserva Habitación:', idReservaHab);
+        
         setFormData(prev => ({
           ...prev,
           guestName: fullName,
@@ -360,6 +378,7 @@ const RoomChange = () => {
           adultos: foundReservation.numberOfAdults || prev.adultos,
           ninos: foundReservation.numberOfChildren || prev.ninos,
           bebes: foundReservation.numberOfInfants || prev.bebes,
+          idReservaHabitacion: idReservaHab,
         }));
       }
       
@@ -417,25 +436,58 @@ const RoomChange = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validaciones previas
     if (!formData.newRoomId) {
+      console.error('❌ No se ha seleccionado una habitación');
       return;
     }
 
-    const roomChangeData: RoomChangeData = {
-      id_hab_nueva: formData.newRoomId as number,
-      desde: formData.changeDate,
-      adultos: formData.adultos,
-      ninos: formData.ninos,
-      bebes: formData.bebes,
-      motivo: formData.motivo,
-      observaciones: formData.observaciones,
-      reservationId: formData.reservationId,
-    };
-
-    const success = await validateAndChangeRoom(roomChangeData);
-    if (success) {
-      navigate(ROUTES.FRONTDESK.BASE);
+    if (!formData.reservationId) {
+      console.error('❌ No se ha seleccionado una reserva');
+      return;
     }
+
+    if (!formData.idReservaHabitacion) {
+      console.error('⚠️ No se encontró el ID de reserva_habitacion. Usando método alternativo.');
+      // En este caso, necesitarás obtener el id_reserva_habitacion del backend primero
+      // o asumir que es la primera habitación de la reserva
+    }
+
+    // Determinar el motivo final
+    const motivoFinal = formData.reason === 'other' 
+      ? formData.motivo 
+      : changeReasons.find(r => r.value === formData.reason)?.label || formData.motivo;
+
+    console.log('🔄 Iniciando cambio de habitación:', {
+      idReserva: formData.reservationId,
+      idReservaHabitacion: formData.idReservaHabitacion,
+      idHabitacionNueva: formData.newRoomId,
+      motivo: motivoFinal
+    });
+
+    // Llamar al servicio de modificación
+    const result = await cambiarHabitacion(
+      formData.reservationId,
+      formData.idReservaHabitacion || parseInt(formData.reservationId), // Fallback temporal
+      formData.newRoomId as number,
+      motivoFinal
+    );
+
+    if (result) {
+      console.log('✅ Cambio de habitación exitoso:', result);
+      
+      // Mostrar modal de resultado
+      setChangeResult(result);
+      setShowResultModal(true);
+    } else {
+      console.error('❌ Error: No se recibió respuesta del servidor');
+    }
+  };
+
+  // Función para cerrar el modal y navegar al dashboard
+  const handleCloseResultModal = () => {
+    setShowResultModal(false);
+    navigate(ROUTES.FRONTDESK.BASE);
   };
 
   const totalGuests = formData.adultos + formData.ninos + formData.bebes;
@@ -453,7 +505,7 @@ const RoomChange = () => {
               ) : (
                 <RefreshCw className="w-8 h-8 text-blue-600" />
               )}
-              <h1 className="text-3xl font-bold text-gray-900">Cambio de Habitación</h1>
+              <h1 className="text-3xl font-bold text-gray-900">Modificación de Reservas</h1>
             </div>
             
             <button
@@ -467,11 +519,54 @@ const RoomChange = () => {
             </button>
           </div>
 
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-              {error}
-            </div>
-          )}
+          {/* Pestañas de Navegación */}
+          <div className="flex gap-2 border-b border-gray-200 mb-6">
+            <button
+              type="button"
+              onClick={() => setActiveTab('room-change')}
+              className={`flex items-center gap-2 px-6 py-3 font-medium border-b-2 transition-colors ${
+                activeTab === 'room-change'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+              }`}
+            >
+              <Home className="w-5 h-5" />
+              Cambio de Habitación
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('date-modification')}
+              className={`flex items-center gap-2 px-6 py-3 font-medium border-b-2 transition-colors ${
+                activeTab === 'date-modification'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+              }`}
+            >
+              <Calendar className="w-5 h-5" />
+              Modificar Fechas
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('reduce-stay')}
+              className={`flex items-center gap-2 px-6 py-3 font-medium border-b-2 transition-colors ${
+                activeTab === 'reduce-stay'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+              }`}
+            >
+              <TrendingDown className="w-5 h-5" />
+              Reducir Estadía
+            </button>
+          </div>
+
+          {/* Contenido según pestaña activa */}
+          {activeTab === 'room-change' && (
+            <>
+              {error && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                  {error}
+                </div>
+              )}
 
           {!formData.reservationId && (
             <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-700">
@@ -501,7 +596,7 @@ const RoomChange = () => {
               {/* Búsqueda por ID de Reserva */}
               <div className="mb-4">
                 <label htmlFor="reservationSearchId" className="block text-sm font-medium text-gray-700 mb-2">
-                  Buscar por ID de Reserva
+                  Código de Reserva
                 </label>
                 <div className="flex gap-2">
                   <div className="flex-1 relative">
@@ -510,8 +605,9 @@ const RoomChange = () => {
                       type="text"
                       value={formData.reservationSearchId}
                       onChange={(e) => {
-                        const value = e.target.value;
-                        if (/^[a-zA-Z0-9-_.\s]*$/.test(value)) {
+                        // Permitir letras, números, guiones
+                        const value = e.target.value.toUpperCase();
+                        if (/^[A-Z0-9-]*$/.test(value)) {
                           setFormData(prev => ({ ...prev, reservationSearchId: value }));
                           if (hasLoadedReservationData) {
                             setHasLoadedReservationData(false);
@@ -519,7 +615,7 @@ const RoomChange = () => {
                         }
                       }}
                       className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Ingrese ID de reserva..."
+                      placeholder="Ej: 6XPYU4TJ o 6XPY-U4TJ"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
@@ -1398,7 +1494,7 @@ const RoomChange = () => {
               <button
                 type="submit"
                 disabled={
-                  isChangingRoom || 
+                  isCambiandoHabitacion || 
                   !formData.newRoomId || 
                   !formData.reservationId ||
                   !formData.reason ||
@@ -1407,7 +1503,7 @@ const RoomChange = () => {
                 }
                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isChangingRoom ? (
+                {isCambiandoHabitacion ? (
                   <div className="flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Procesando cambio...
@@ -1420,6 +1516,21 @@ const RoomChange = () => {
 
             </div>
           </form>
+
+          {/* Modal de Resultado */}
+          {showResultModal && changeResult && (
+            <RoomChangeResultModal
+              isOpen={showResultModal}
+              onClose={handleCloseResultModal}
+              result={changeResult}
+            />
+          )}
+            </>
+          )}
+      
+          {activeTab === 'date-modification' && <DateModification />}
+      
+          {activeTab === 'reduce-stay' && <ReduceStay />}
         </div>
       </div>
     </div>

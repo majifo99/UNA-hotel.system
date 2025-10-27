@@ -153,6 +153,9 @@ export function mapApiReservaFullToReservation(api: ApiReservaFull): Reservation
     roomType: firstRoom?.habitacion.nombre || 'Por asignar',
     room,
     
+    // Room assignment ID (for modifications)
+    idReservaHabitacion: firstRoom?.id_reserva_hab,
+    
     // Dates
     checkInDate,
     checkOutDate,
@@ -177,5 +180,5 @@ export function mapApiReservaFullToReservation(api: ApiReservaFull): Reservation
     additionalServices: [],
     createdAt: api.created_at,
     updatedAt: api.updated_at,
-  };
+  } as Reservation & { idReservaHabitacion?: number };
 }

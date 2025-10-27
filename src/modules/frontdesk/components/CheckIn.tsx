@@ -616,7 +616,7 @@ const CheckIn = () => {
                 <div className="space-y-4">
                   <div>
                     <label htmlFor="reservationId" className="block text-sm font-medium text-gray-700 mb-2">
-                      ID de Reserva <span className="text-red-500">*</span>
+                      Código de Reserva <span className="text-red-500">*</span>
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -624,10 +624,9 @@ const CheckIn = () => {
                         type="text"
                         value={formData.reservationId}
                         onChange={(e) => {
-                          // Permitir letras, números, guiones y símbolos comunes para ID de reserva
-                          const value = e.target.value;
-                          // Permitir alfanuméricos, guiones, guiones bajos, puntos y otros símbolos comunes
-                          if (/^[a-zA-Z0-9-_.\s]*$/.test(value)) {
+                          // Permitir letras, números, guiones
+                          const value = e.target.value.toUpperCase();
+                          if (/^[A-Z0-9-]*$/.test(value)) {
                             setFormData(prev => ({ ...prev, reservationId: value }));
                             if (hasLoadedReservationData) {
                               setHasLoadedReservationData(false);
@@ -636,7 +635,7 @@ const CheckIn = () => {
                         }}
                         className={getInputClasses(false, false)}
                         required={checkInType === 'reservation'}
-                        placeholder="Ej: RES-123, ABC456, 789"
+                        placeholder="Ej: JTFLGLKR o JTFL-GLKR"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
@@ -672,6 +671,9 @@ const CheckIn = () => {
                         </button>
                       )}
                     </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Ingrese el código de 8 caracteres (con o sin guión). Ejemplo: JTFLGLKR
+                    </p>
                   </div>
 
                   {/* Estado de búsqueda de reserva */}

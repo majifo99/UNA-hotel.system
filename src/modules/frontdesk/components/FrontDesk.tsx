@@ -323,6 +323,20 @@ const FrontDesk: React.FC = () => {
                   <ArrowLeftRight className="w-4 h-4" />
                   Cambio de Habitación
                 </button>
+                <button
+                  onClick={() => navigate(ROUTES.FRONTDESK.DATE_MODIFICATION)}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600"
+                >
+                  <Calendar className="w-4 h-4" />
+                  Modificar Fechas
+                </button>
+                <button
+                  onClick={() => navigate(ROUTES.FRONTDESK.REDUCE_STAY)}
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Reducir Estadía
+                </button>
               </div>
             </div>
 

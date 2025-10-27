@@ -178,13 +178,31 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
         shortcut: [2, 3], // ALT+2, luego 3
       },
       {
+        id: 'frontdesk-date-modification',
+        label: 'Modificar Fechas',
+        path: ROUTES.FRONTDESK.DATE_MODIFICATION,
+        icon: Calendar,
+        description: 'Modificación de fechas de reserva',
+        category: 'operations',
+        shortcut: [2, 4], // ALT+2, luego 4
+      },
+      {
+        id: 'frontdesk-reduce-stay',
+        label: 'Reducir Estadía',
+        path: ROUTES.FRONTDESK.REDUCE_STAY,
+        icon: ArrowLeftRight,
+        description: 'Checkout anticipado de reservas',
+        category: 'operations',
+        shortcut: [2, 5], // ALT+2, luego 5
+      },
+      {
         id: 'frontdesk-calendar',
         label: 'Calendario',
         path: ROUTES.FRONTDESK.BASE,
         icon: Calendar,
         description: 'Vista calendario de ocupación',
         category: 'operations',
-        shortcut: [2, 4], // ALT+2, luego 4
+        shortcut: [2, 6], // ALT+2, luego 6
       },
       {
         id: 'frontdesk-reports',
@@ -193,7 +211,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
         icon: BarChart3,
         description: 'Reportes de recepción',
         category: 'operations',
-        shortcut: [2, 5], // ALT+2, luego 5
+        shortcut: [2, 7], // ALT+2, luego 7
       },
     ],
   },

@@ -187,16 +187,31 @@ class ReservationService {
     }
 
     try {
-      console.log(`[ReservationService] Fetching reservation by ID: ${id}`);
+      console.log(`[ReservationService] Fetching reservation by codigo_reserva: ${id}`);
       
-      // Use the new API endpoint that returns the full structure in one call
-      const res = await apiClient.get<ApiReservaFull | { data: ApiReservaFull }>(`/reservas/${id}`);
+      // Clean the reservation code: remove hyphens and convert to uppercase
+      const cleanedCode = id.replace(/-/g, '').toUpperCase();
+      console.log(`[ReservationService] Cleaned codigo_reserva: ${cleanedCode}`);
       
-      // Handle both response formats: direct object or wrapped in { data: {...} }
-      const apiReserva: ApiReservaFull = (res.data as any)?.data ?? res.data;
+      // First, get all reservations and find by codigo_reserva
+      const allRes = await apiClient.get('/reservas');
+      const payload = allRes.data;
+      let apiList: ApiReservaFull[] = [];
       
-      if (!apiReserva || !apiReserva.id_reserva) {
-        console.error('[ReservationService] Invalid API response structure:', res.data);
+      if (payload?.data && Array.isArray(payload.data)) {
+        apiList = payload.data;
+      } else if (Array.isArray(payload)) {
+        apiList = payload;
+      }
+      
+      // Find reservation by codigo_reserva (with or without hyphens)
+      const apiReserva = apiList.find((reserva: ApiReservaFull) => {
+        const apiCode = reserva.codigo_reserva?.replace(/-/g, '').toUpperCase();
+        return apiCode === cleanedCode;
+      });
+      
+      if (!apiReserva) {
+        console.warn(`[ReservationService] No reservation found with codigo_reserva: ${id}`);
         return null;
       }
 
@@ -206,14 +221,23 @@ class ReservationService {
         cliente: apiReserva.cliente?.nombre_completo,
         habitaciones: apiReserva.habitaciones?.length || 0
       });
+
+      // DEBUG: Log full API response
+      console.log('[ReservationService] FULL API DATA:', JSON.stringify(apiReserva, null, 2));
       
       // Use the new mapper for the full API structure
       const reservation = mapApiReservaFullToReservation(apiReserva);
       
       console.log('[ReservationService] Mapped Reservation:', {
         id: reservation.id,
+        confirmationNumber: reservation.confirmationNumber,
         guestName: reservation.guest?.firstName,
         roomNumber: reservation.room?.number,
+        numberOfGuests: reservation.numberOfGuests,
+        numberOfAdults: reservation.numberOfAdults,
+        numberOfChildren: reservation.numberOfChildren,
+        numberOfNights: reservation.numberOfNights,
+        total: reservation.total,
         status: reservation.status
       });
 
