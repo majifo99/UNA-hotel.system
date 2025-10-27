@@ -11,6 +11,7 @@ interface StepOneData {
   checkOut: string;
   adults: number;
   children: number;
+  babies: number;
 }
 
 interface ReservationStepOneProps {
@@ -23,6 +24,7 @@ interface FormErrors {
   checkOut?: string;
   adults?: string;
   children?: string;
+  babies?: string;
 }
 
 export function ReservationStepOne({ initialData, onComplete }: ReservationStepOneProps) {
@@ -62,6 +64,11 @@ export function ReservationStepOne({ initialData, onComplete }: ReservationStepO
     // Check if children count is valid
     if (formData.children < 0) {
       newErrors.children = 'El número de niños no puede ser negativo';
+    }
+
+    // Check if babies count is valid
+    if (formData.babies < 0) {
+      newErrors.babies = 'El número de bebés no puede ser negativo';
     }
 
     setErrors(newErrors);
@@ -164,7 +171,7 @@ export function ReservationStepOne({ initialData, onComplete }: ReservationStepO
       )}
 
       {/* Guests Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
           <label htmlFor="adults" className="block text-sm font-medium text-gray-700 mb-2">
             Adultos
@@ -199,7 +206,7 @@ export function ReservationStepOne({ initialData, onComplete }: ReservationStepO
 
         <div>
           <label htmlFor="children" className="block text-sm font-medium text-gray-700 mb-2">
-            Niños (0-12 años)
+            Niños (3-12 años)
           </label>
           <div className="flex items-center border border-gray-300 rounded-lg">
             <button
@@ -228,15 +235,49 @@ export function ReservationStepOne({ initialData, onComplete }: ReservationStepO
           </div>
           {errors.children && <p className="mt-1 text-sm text-red-600">{errors.children}</p>}
         </div>
+
+        <div>
+          <label htmlFor="babies" className="block text-sm font-medium text-gray-700 mb-2">
+            Bebés (0-2 años)
+          </label>
+          <div className="flex items-center border border-gray-300 rounded-lg">
+            <button
+              type="button"
+              onClick={() => updateField('babies', Math.max(0, formData.babies - 1))}
+              className="px-4 py-3 text-gray-600 hover:text-gray-800 focus:outline-none"
+            >
+              −
+            </button>
+            <input
+              type="number"
+              id="babies"
+              value={formData.babies}
+              min="0"
+              max="4"
+              readOnly
+              className="flex-1 px-4 py-3 text-center border-0 focus:ring-0"
+            />
+            <button
+              type="button"
+              onClick={() => updateField('babies', Math.min(4, formData.babies + 1))}
+              className="px-4 py-3 text-gray-600 hover:text-gray-800 focus:outline-none"
+            >
+              +
+            </button>
+          </div>
+          {errors.babies && <p className="mt-1 text-sm text-red-600">{errors.babies}</p>}
+        </div>
       </div>
 
       {/* Total Guests Display */}
       <div className="text-center py-3 bg-gray-50 rounded-lg">
         <p className="text-gray-800">
-          Total: <span className="font-semibold">{formData.adults + formData.children}</span> huésped{formData.adults + formData.children !== 1 ? 'es' : ''}
-          {formData.children > 0 && (
+          Total: <span className="font-semibold">{formData.adults + formData.children + formData.babies}</span> huésped{formData.adults + formData.children + formData.babies !== 1 ? 'es' : ''}
+          {(formData.children > 0 || formData.babies > 0) && (
             <span className="text-sm text-gray-600 ml-2">
-              ({formData.adults} adulto{formData.adults !== 1 ? 's' : ''}, {formData.children} niño{formData.children !== 1 ? 's' : ''})
+              ({formData.adults} adulto{formData.adults !== 1 ? 's' : ''}
+              {formData.children > 0 && `, ${formData.children} niño${formData.children !== 1 ? 's' : ''}`}
+              {formData.babies > 0 && `, ${formData.babies} bebé${formData.babies !== 1 ? 's' : ''}`})
             </span>
           )}
         </p>

@@ -4,8 +4,9 @@
  * Final step: collect guest information and special requests including extra amenities
  */
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import type { Room } from '../../../../types/core';
+import { useAdditionalServices } from '../../../reservations/hooks/useReservationQueries';
 
 /**
  * Secure email validation function that avoids ReDoS vulnerabilities
@@ -48,16 +49,18 @@ interface ReservationStepThreeProps {
     readonly checkOut: string;
     readonly adults: number;
     readonly children: number;
+    readonly babies: number;
     readonly selectedRoomIds: string[];
   };
   readonly selectedRooms: Room[];
   readonly onComplete: (data: { 
     guestInfo: GuestInfo; 
     specialRequests: string; 
-    additionalAmenities: string[];
+    selectedServices: Array<{ id_servicio: number; cantidad: number; }>;
   }) => void;
   readonly onBack: () => void;
   readonly capacityWarning: string;
+  readonly isSubmitting?: boolean; // External loading state
 }
 
 interface FormErrors {
@@ -73,7 +76,8 @@ export function ReservationStepThree({
   selectedRooms,
   onComplete,
   onBack,
-  capacityWarning
+  capacityWarning,
+  isSubmitting: externalIsSubmitting
 }: ReservationStepThreeProps) {
   const [guestInfo, setGuestInfo] = useState<GuestInfo>({
     firstName: '',
@@ -84,23 +88,15 @@ export function ReservationStepThree({
   });
 
   const [specialRequests, setSpecialRequests] = useState('');
-  const [additionalAmenities, setAdditionalAmenities] = useState<string[]>([]);
+  const [selectedServices, setSelectedServices] = useState<Map<string, number>>(new Map());
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Use external loading state if provided
+  const isLoading = externalIsSubmitting ?? isSubmitting;
 
-  // Available additional amenities
-  const amenityOptions = [
-    { id: 'extra-bed', label: 'Cama extra', description: 'Cama plegable adicional' },
-    { id: 'baby-crib', label: 'Cuna para bebé', description: 'Cuna estándar con ropa de cama' },
-    { id: 'sofa-bed', label: 'Sofá cama', description: 'Convertir sofá en cama adicional' },
-    { id: 'extra-pillows', label: 'Almohadas extra', description: 'Almohadas y mantas adicionales' },
-    { id: 'late-checkin', label: 'Check-in tardío', description: 'Llegada después de 10 PM' },
-    { id: 'early-checkout', label: 'Check-out temprano', description: 'Salida antes de 7 AM' },
-    { id: 'room-decoration', label: 'Decoración especial', description: 'Para celebraciones o eventos' },
-    { id: 'dietary-requirements', label: 'Requerimientos dietéticos', description: 'Alergias o preferencias alimentarias' },
-    { id: 'accessibility', label: 'Accesibilidad', description: 'Necesidades especiales de acceso' },
-    { id: 'pet-accommodation', label: 'Acomodación para mascotas', description: 'Preparación para huéspedes con mascotas' }
-  ];
+  // Load additional services from API
+  const { data: additionalServices = [], isLoading: isLoadingServices } = useAdditionalServices();
 
   const calculateNights = (): number => {
     const checkIn = new Date(reservationData.checkIn);
@@ -162,10 +158,16 @@ export function ReservationStepThree({
 
     setIsSubmitting(true);
     try {
+      // Convert Map to array of service selections
+      const selectedServicesArray = Array.from(selectedServices.entries()).map(([serviceId, quantity]) => ({
+        id_servicio: Number(serviceId),
+        cantidad: quantity
+      }));
+      
       onComplete({
         guestInfo,
         specialRequests,
-        additionalAmenities
+        selectedServices: selectedServicesArray
       });
     } finally {
       setIsSubmitting(false);
@@ -180,12 +182,32 @@ export function ReservationStepThree({
     }
   };
 
-  const toggleAmenity = (amenityId: string) => {
-    setAdditionalAmenities(prev => 
-      prev.includes(amenityId) 
-        ? prev.filter(id => id !== amenityId)
-        : [...prev, amenityId]
-    );
+  const toggleService = (serviceId: string, quantity: number = 1) => {
+    setSelectedServices(prev => {
+      const newMap = new Map(prev);
+      if (newMap.has(serviceId)) {
+        newMap.delete(serviceId);
+      } else {
+        newMap.set(serviceId, quantity);
+      }
+      return newMap;
+    });
+  };
+  
+  const updateServiceQuantity = (serviceId: string, quantity: number) => {
+    if (quantity < 1) {
+      setSelectedServices(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(serviceId);
+        return newMap;
+      });
+    } else {
+      setSelectedServices(prev => {
+        const newMap = new Map(prev);
+        newMap.set(serviceId, quantity);
+        return newMap;
+      });
+    }
   };
 
   return (
@@ -202,7 +224,11 @@ export function ReservationStepThree({
           <div>
             <p><strong>Fechas:</strong> {reservationData.checkIn} - {reservationData.checkOut}</p>
             <p><strong>Noches:</strong> {calculateNights()}</p>
-            <p><strong>Huéspedes:</strong> {reservationData.adults + reservationData.children} ({reservationData.adults} adultos, {reservationData.children} niños)</p>
+            <p><strong>Huéspedes:</strong> {reservationData.adults + reservationData.children + reservationData.babies} (
+              {reservationData.adults} adulto{reservationData.adults !== 1 ? 's' : ''}
+              {reservationData.children > 0 && `, ${reservationData.children} niño${reservationData.children !== 1 ? 's' : ''}`}
+              {reservationData.babies > 0 && `, ${reservationData.babies} bebé${reservationData.babies !== 1 ? 's' : ''}`}
+            )</p>
           </div>
           <div>
             <p><strong>Habitaciones:</strong></p>
@@ -325,52 +351,129 @@ export function ReservationStepThree({
         </div>
       </div>
 
-      {/* Additional Amenities */}
+      {/* Additional Services */}
       <div className="space-y-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Servicios y acomodaciones adicionales</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Servicios adicionales</h3>
           <p className="text-gray-600 text-sm mb-4">
-            Seleccione los servicios adicionales que necesite. Los servicios seleccionados se coordinarán con el hotel.
+            Seleccione los servicios adicionales que desee incluir en su reserva. Los precios se agregan al total.
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {amenityOptions.map(option => (
-            <button
-              key={option.id}
-              type="button"
-              role="checkbox"
-              aria-checked={additionalAmenities.includes(option.id)}
-              className={`border rounded-lg p-4 cursor-pointer transition-all text-left w-full ${
-                additionalAmenities.includes(option.id)
-                  ? 'border-current bg-green-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-              style={{ borderColor: additionalAmenities.includes(option.id) ? 'var(--color-darkGreen1)' : undefined }}
-              onClick={() => toggleAmenity(option.id)}
-            >
-              <div className="flex items-start">
-                <div className={`w-5 h-5 border rounded mt-0.5 mr-3 flex items-center justify-center ${
-                  additionalAmenities.includes(option.id)
-                    ? 'text-white'
-                    : 'border-gray-300'
-                }`}
-                style={{ backgroundColor: additionalAmenities.includes(option.id) ? 'var(--color-darkGreen1)' : undefined }}
+        {isLoadingServices && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto" style={{ borderColor: 'var(--color-darkGreen1)' }}></div>
+            <p className="text-gray-600 mt-4">Cargando servicios...</p>
+          </div>
+        )}
+        
+        {!isLoadingServices && additionalServices.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            <p>No hay servicios adicionales disponibles en este momento.</p>
+          </div>
+        )}
+        
+        {!isLoadingServices && additionalServices.length > 0 && (
+          <div className="grid grid-cols-1 gap-4">
+            {additionalServices.filter(service => service.isActive).map(service => {
+              const isSelected = selectedServices.has(service.id);
+              const quantity = selectedServices.get(service.id) || 1;
+              
+              return (
+                <div
+                  key={service.id}
+                  className={`border rounded-lg p-4 transition-all ${
+                    isSelected
+                      ? 'bg-green-50'
+                      : 'border-gray-200'
+                  }`}
+                  style={{ borderColor: isSelected ? 'var(--color-darkGreen1)' : undefined }}
                 >
-                  {additionalAmenities.includes(option.id) && (
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start flex-1">
+                      <button
+                        type="button"
+                        onClick={() => toggleService(service.id)}
+                        className={`w-5 h-5 border rounded mt-0.5 mr-3 flex items-center justify-center flex-shrink-0 ${
+                          isSelected
+                            ? 'text-white'
+                            : 'border-gray-300'
+                        }`}
+                        style={{ backgroundColor: isSelected ? 'var(--color-darkGreen1)' : undefined }}
+                      >
+                        {isSelected && (
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </button>
+                      
+                      <div className="flex-1">
+                        <div className="flex items-baseline justify-between">
+                          <h4 className="font-medium text-gray-900">{service.name}</h4>
+                          <span className="text-sm font-semibold ml-4" style={{ color: 'var(--color-darkGreen1)' }}>
+                            ₡{service.price.toLocaleString()}
+                          </span>
+                        </div>
+                        {service.description && (
+                          <p className="text-sm text-gray-600 mt-1">{service.description}</p>
+                        )}
+                        {service.category && (
+                          <span className="inline-block mt-2 px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">
+                            {service.category.replace('_', ' ')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {isSelected && (
+                      <div className="ml-4 flex items-center space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => updateServiceQuantity(service.id, quantity - 1)}
+                          className="w-8 h-8 rounded border border-gray-300 hover:bg-gray-50 flex items-center justify-center"
+                        >
+                          −
+                        </button>
+                        <span className="w-8 text-center font-medium">{quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => updateServiceQuantity(service.id, quantity + 1)}
+                          className="w-8 h-8 rounded border border-gray-300 hover:bg-gray-50 flex items-center justify-center"
+                        >
+                          +
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {isSelected && quantity > 1 && (
+                    <div className="mt-3 pt-3 border-t border-gray-200 text-right">
+                      <span className="text-sm text-gray-600">Subtotal: </span>
+                      <span className="font-semibold" style={{ color: 'var(--color-darkGreen1)' }}>
+                        ₡{(service.price * quantity).toLocaleString()}
+                      </span>
+                    </div>
                   )}
                 </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">{option.label}</h4>
-                  <p className="text-sm text-gray-600">{option.description}</p>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
+        
+        {selectedServices.size > 0 && (
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="flex justify-between items-center">
+              <span className="font-medium text-gray-900">Total servicios adicionales:</span>
+              <span className="text-lg font-bold" style={{ color: 'var(--color-darkGreen1)' }}>
+                ₡{Array.from(selectedServices.entries()).reduce((total, [serviceId, qty]) => {
+                  const service = additionalServices.find(s => s.id === serviceId);
+                  return total + (service ? service.price * qty : 0);
+                }, 0).toLocaleString()}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Special Requests */}
@@ -384,9 +487,9 @@ export function ReservationStepThree({
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <h4 className="text-blue-800 font-medium mb-2">💡 Sugerencias para solicitudes especiales:</h4>
             <ul className="text-blue-700 text-sm space-y-1">
-              <li>• "Necesitamos acomodación para {reservationData.adults + reservationData.children} personas en las habitaciones seleccionadas"</li>
+              <li>• "Necesitamos acomodación para {reservationData.adults + reservationData.children + reservationData.babies} personas en las habitaciones seleccionadas"</li>
               <li>• "Por favor preparar camas adicionales o sofás cama"</li>
-              <li>• "Requerimos cunas para niños pequeños"</li>
+              {reservationData.babies > 0 && <li>• "Requerimos {reservationData.babies} cuna{reservationData.babies !== 1 ? 's' : ''} para bebés"</li>}
               <li>• "Preferimos habitaciones cercanas entre sí"</li>
             </ul>
           </div>
@@ -406,7 +509,7 @@ export function ReservationStepThree({
         <button
           type="button"
           onClick={onBack}
-          disabled={isSubmitting}
+          disabled={isLoading}
           className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
         >
           ← Volver a Habitaciones
@@ -414,11 +517,17 @@ export function ReservationStepThree({
         
         <button
           type="submit"
-          disabled={isSubmitting}
-          className="px-8 py-3 font-semibold rounded-lg transition-opacity text-white disabled:opacity-50"
+          disabled={isLoading}
+          className="px-8 py-3 font-semibold rounded-lg transition-opacity text-white disabled:opacity-50 flex items-center justify-center gap-2"
           style={{ backgroundColor: 'var(--color-darkGreen1)' }}
         >
-          {isSubmitting ? 'Creando Reserva...' : 'Confirmar Reserva'}
+          {isLoading && (
+            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          )}
+          {isLoading ? 'Creando Reserva...' : 'Confirmar Reserva'}
         </button>
       </div>
     </form>

@@ -329,7 +329,10 @@ export const RoomSelection: React.FC<RoomSelectionProps> = ({
               )}
 
               <div className="flex justify-between items-start mb-3">
-                <h3 className="font-medium text-gray-900">{room.name}</h3>
+                <div className="flex-1">
+                  <h3 className="font-medium text-gray-900">{room.name}</h3>
+                  <p className="text-sm text-blue-600 font-medium">{room.type}</p>
+                </div>
                 <input
                   type={(needsMultipleRooms || isGroupReservation) ? "checkbox" : "radio"}
                   name={(needsMultipleRooms || isGroupReservation) ? undefined : "selectedRoom"}
