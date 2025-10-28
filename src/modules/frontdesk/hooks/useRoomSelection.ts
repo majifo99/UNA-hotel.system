@@ -64,22 +64,29 @@ export const useRoomSelection = () => {
 
   // Buscar sugerencias de habitaciones por número
   const searchRoomSuggestions = useCallback(async (query: string) => {
-    if (!query.trim()) {
-      setSuggestions([]);
-      return;
-    }
+    // Si el query está vacío, mostrar todas las disponibles (útil para Walk-In)
+    const showAll = query.trim() === '';
 
     try {
-      // Fetch all rooms for suggestions
-      const allRooms = await FrontdeskService.getRooms();
-      const filtered = allRooms
-        .filter(room => 
-          (room.number || room.id).toLowerCase().includes(query.toLowerCase())
-        )
+      // Fetch all available rooms for suggestions
+      const allRooms = await FrontdeskService.getRooms({ status: 'available' });
+      
+      let filtered = allRooms;
+      
+      // Si hay query, filtrar por coincidencia
+      if (!showAll) {
+        filtered = allRooms.filter(room => {
+          const roomNumber = room.number || room.id;
+          return roomNumber.toLowerCase().includes(query.toLowerCase());
+        });
+      }
+      
+      const suggestions = filtered
         .map(room => room.number || room.id)
-        .slice(0, 5);
+        .slice(0, showAll ? 15 : 10); // Mostrar más cuando se muestran todas
 
-      setSuggestions(filtered);
+      console.log(`🔍 Sugerencias de habitaciones para "${query || 'TODAS'}":`, suggestions);
+      setSuggestions(suggestions);
     } catch (error) {
       console.error('Error searching room suggestions:', error);
       setSuggestions([]);
