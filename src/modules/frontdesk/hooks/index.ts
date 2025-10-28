@@ -16,8 +16,9 @@ export {
   useInvalidateFrontdesk,
 } from './useFrontdesk';
 
-// Calendar navigation
+// Calendar navigation and reservations
 export { useCalendarNavigation } from './useCalendarNavigation';
+export { useCalendarReservations, useRoomReservations } from './useCalendarReservations';
 
 // Check-in and Check-out
 export { useCheckIn } from './useCheckIn';

@@ -149,15 +149,18 @@ export function AdminAuthProvider({ children }: AdminAuthProviderProps) {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        // Intentar obtener el usuario del localStorage primero
         const user = await AdminAuthService.getCurrentUser();
         
         if (user) {
+          console.log('[AdminAuth] Usuario encontrado en localStorage:', user.email);
           dispatch({ type: 'AUTH_SUCCESS', payload: user });
         } else {
+          console.log('[AdminAuth] No se encontró usuario en localStorage');
           dispatch({ type: 'AUTH_SET_LOADING', payload: false });
         }
       } catch (error) {
-        console.error('Failed to initialize admin auth:', error);
+        console.error('[AdminAuth] Error al inicializar autenticación:', error);
         dispatch({ type: 'AUTH_SET_LOADING', payload: false });
       }
     };

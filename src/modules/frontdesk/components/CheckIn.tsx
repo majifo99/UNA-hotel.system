@@ -440,7 +440,7 @@ const CheckIn = () => {
     });
 
     try {
-      // 1. Validar que tenemos ID de reserva numérico
+      // 1. Validar que tenemos ID de reserva
       if (checkInType === 'reservation' && !formData.reservationId) {
         throw new Error('El ID de reserva es requerido para reservas existentes');
       }
@@ -449,9 +449,10 @@ const CheckIn = () => {
         throw new Error('Walk-in no está implementado aún. Use reservas existentes.');
       }
 
-      const reservaId = parseInt(formData.reservationId, 10);
-      if (isNaN(reservaId)) {
-        throw new Error(`El ID de reserva debe ser numérico: ${formData.reservationId}`);
+      // Limpiar el ID de reserva (remover espacios)
+      const reservaId = formData.reservationId.trim();
+      if (!reservaId) {
+        throw new Error('El ID de reserva no puede estar vacío');
       }
 
       // 2. Crear payload exacto para la API según documentación
@@ -615,7 +616,7 @@ const CheckIn = () => {
                 <div className="space-y-4">
                   <div>
                     <label htmlFor="reservationId" className="block text-sm font-medium text-gray-700 mb-2">
-                      ID de Reserva <span className="text-red-500">*</span>
+                      Código de Reserva <span className="text-red-500">*</span>
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -623,9 +624,9 @@ const CheckIn = () => {
                         type="text"
                         value={formData.reservationId}
                         onChange={(e) => {
-                          // Solo permitir números para ID de reserva
-                          const value = e.target.value;
-                          if (/^\d*$/.test(value)) {
+                          // Permitir letras, números, guiones
+                          const value = e.target.value.toUpperCase();
+                          if (/^[A-Z0-9-]*$/.test(value)) {
                             setFormData(prev => ({ ...prev, reservationId: value }));
                             if (hasLoadedReservationData) {
                               setHasLoadedReservationData(false);
@@ -634,7 +635,7 @@ const CheckIn = () => {
                         }}
                         className={getInputClasses(false, false)}
                         required={checkInType === 'reservation'}
-                        placeholder="Ej: 123 (solo números)"
+                        placeholder="Ej: JTFLGLKR o JTFL-GLKR"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
@@ -670,6 +671,9 @@ const CheckIn = () => {
                         </button>
                       )}
                     </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Ingrese el código de 8 caracteres (con o sin guión). Ejemplo: JTFLGLKR
+                    </p>
                   </div>
 
                   {/* Estado de búsqueda de reserva */}
