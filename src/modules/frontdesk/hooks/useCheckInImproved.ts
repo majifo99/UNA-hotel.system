@@ -158,9 +158,10 @@ export const useCheckInImproved = () => {
       }
 
       // 2. Preparar datos para el backend (sin clienteId - el backend lo maneja)
-      const reservaIdNumerico = parseInt(data.reservationId, 10);
-      if (isNaN(reservaIdNumerico)) {
-        throw new Error(`ID de reserva debe ser numérico: ${data.reservationId}`);
+      // El ID de reserva puede ser alfanumérico
+      const reservaId = data.reservationId.trim();
+      if (!reservaId) {
+        throw new Error('El ID de reserva no puede estar vacío');
       }
 
       // 3. Validar formato de datos localmente (sin hacer GET al backend)
@@ -197,7 +198,7 @@ export const useCheckInImproved = () => {
       if (useExactFormat) {
         // Usar formato exacto como el POST proporcionado
         console.log('🎯 Usando formato exacto del POST con validación previa...');
-        response = await checkInApiService.performExactCheckIn(reservaIdNumerico, {
+        response = await checkInApiService.performExactCheckIn(reservaId, {
           roomNumber: data.roomNumber,
           checkInDate: data.checkInDate,
           checkOutDate: data.checkOutDate,
@@ -209,7 +210,7 @@ export const useCheckInImproved = () => {
       } else if (data.isWalkIn) {
         // Para walk-ins, usar método simple con datos fijos
         console.log('🧪 Walk-in: usando método simple...');
-        response = await checkInApiService.performSimpleCheckIn(reservaIdNumerico, {
+        response = await checkInApiService.performSimpleCheckIn(reservaId, {
           roomNumber: data.roomNumber,
           checkInDate: data.checkInDate,
           checkOutDate: data.checkOutDate,
@@ -221,7 +222,7 @@ export const useCheckInImproved = () => {
       } else {
         // Para reservas existentes, usar método directo
         console.log('🚀 Reserva existente: usando método directo...');
-        response = await checkInApiService.performDirectCheckIn(reservaIdNumerico, {
+        response = await checkInApiService.performDirectCheckIn(reservaId, {
           reservationId: data.reservationId,
           roomNumber: data.roomNumber,
           checkInDate: data.checkInDate,

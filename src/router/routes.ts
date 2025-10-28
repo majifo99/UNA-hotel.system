@@ -24,6 +24,8 @@ export const ROUTES = {
     CHECKIN: '/frontdesk/checkin',
     CHECKOUT: '/frontdesk/checkout',
     ROOM_CHANGE: '/frontdesk/room-change',
+    DATE_MODIFICATION: '/frontdesk/date-modification',
+    REDUCE_STAY: '/frontdesk/reduce-stay',
     DASHBOARD: '/frontdesk/dashboard',
     REGISTER: '/frontdesk/register',
     FOLIO_MANAGEMENT: (folioId: string) => `/frontdesk/folio/${folioId}`,

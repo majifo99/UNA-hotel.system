@@ -248,8 +248,8 @@ const FrontDesk: React.FC = () => {
   const floors = [...new Set(rooms.map(r => r.floor))];
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--color-darkGreen1)' }}>
+      <div className="p-6">
         <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
           <div className="p-8 space-y-8">
             {/* Header */}
@@ -323,6 +323,20 @@ const FrontDesk: React.FC = () => {
                   <ArrowLeftRight className="w-4 h-4" />
                   Cambio de Habitación
                 </button>
+                <button
+                  onClick={() => navigate(ROUTES.FRONTDESK.DATE_MODIFICATION)}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600"
+                >
+                  <Calendar className="w-4 h-4" />
+                  Modificar Fechas
+                </button>
+                <button
+                  onClick={() => navigate(ROUTES.FRONTDESK.REDUCE_STAY)}
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Reducir Estadía
+                </button>
               </div>
             </div>
 
@@ -359,7 +373,9 @@ const FrontDesk: React.FC = () => {
 
             {/* Content Based on Active View */}
             {activeView === 'calendar' ? (
-              <CalendarView />
+              <div className="overflow-x-auto">
+                <CalendarView />
+              </div>
             ) : (
               <>
                 {/* Filters Panel */}

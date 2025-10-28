@@ -14,6 +14,8 @@ import FrontDesk from '../modules/frontdesk/components/FrontDesk';
 import CheckInPage from '../modules/frontdesk/pages/CheckInPage';
 import CheckOutPage from '../modules/frontdesk/pages/CheckOutPage';
 import RoomChange from '../modules/frontdesk/components/RoomChange';
+import DateModification from '../modules/frontdesk/components/DateModification';
+import ReduceStay from '../modules/frontdesk/components/ReduceStay';
 import { FolioPage } from '../modules/frontdesk/pages/FolioPage';
 import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
 import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
@@ -129,6 +131,14 @@ const router = createBrowserRouter([
           {
             path: 'room-change',
             element: <RoomChange />,
+          },
+          {
+            path: 'date-modification',
+            element: <DateModification />,
+          },
+          {
+            path: 'reduce-stay',
+            element: <ReduceStay />,
           },
           {
             path: 'folio/:folioId',

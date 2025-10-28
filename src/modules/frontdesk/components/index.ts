@@ -1,5 +1,7 @@
 export { ChargeDistributionComponent } from './ChargeDistribution';
 export { default as RoomChange } from './RoomChange';
+export { default as DateModification } from './DateModification';
+export { default as ReduceStay } from './ReduceStay';
 export { FolioDistribucion } from './FolioDistribucion';
 export { FolioPagos } from './FolioPagos';
 export { FolioManager } from './FolioManager';

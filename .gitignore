@@ -44,3 +44,6 @@ Desktop.ini
 # Package manager lock files (si usas npm, comenta yarn.lock)
 # yarn.lock
 # package-lock.json
+
+# Snyk Security Extension - AI Rules (auto-generated)
+.github\instructions\snyk_rules.instructions.md

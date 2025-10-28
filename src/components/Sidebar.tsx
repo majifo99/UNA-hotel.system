@@ -279,7 +279,13 @@ function Sidebar() {
    * Toggle sidebar collapse
    */
   const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
+    const newCollapsedState = !isCollapsed;
+    setIsCollapsed(newCollapsedState);
+    
+    // Emit custom event for layout to listen
+    window.dispatchEvent(new CustomEvent('sidebar-toggle', { 
+      detail: { isCollapsed: newCollapsedState } 
+    }));
   };
 
   /**
