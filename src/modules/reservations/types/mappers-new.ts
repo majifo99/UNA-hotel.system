@@ -142,7 +142,8 @@ export function mapApiReservaFullToReservation(api: ApiReservaFull): Reservation
 
   return {
     id: api.id_reserva.toString(),
-    confirmationNumber: api.id_reserva.toString(),
+    // Use codigo_reserva if available, otherwise fall back to id_reserva
+    confirmationNumber: api.codigo_reserva || api.id_reserva.toString(),
     
     // Guest
     guestId: api.cliente.id_cliente.toString(),

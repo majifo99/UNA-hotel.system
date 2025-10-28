@@ -8,7 +8,7 @@ import { useCheckInImproved } from '../hooks/useCheckInImproved';
 import { useGuests } from '../../guests/hooks/useGuests';
 import { useRoomSelection } from '../hooks/useRoomSelection';
 import { useInputValidation } from '../../../hooks/useInputValidation';
-import { useReservationById } from '../../reservations/hooks/useReservationQueries';
+import { useReservationByCode } from '../../reservations/hooks/useReservationQueries';
 import { ROUTES } from '../../../router/routes';
 import { DEFAULT_CURRENCY } from '../constants/currencies';
 import type { CheckInRequestDTO } from '../types/checkin-api';
@@ -237,13 +237,13 @@ const CheckIn = () => {
   // Estados para búsqueda de reserva
   const [reservationSearchId, setReservationSearchId] = useState('');
   
-  // Hook para obtener datos de reserva por ID
+  // Hook para obtener datos de reserva por CÓDIGO DE RESERVA
   const { 
     data: foundReservation, 
     isLoading: isLoadingReservation, 
     isError: isReservationError,
     error: reservationError 
-  } = useReservationById(reservationSearchId);
+  } = useReservationByCode(reservationSearchId, !!reservationSearchId);
 
   // Estado para controlar si se han cargado datos de reserva
   const [hasLoadedReservationData, setHasLoadedReservationData] = useState(false);

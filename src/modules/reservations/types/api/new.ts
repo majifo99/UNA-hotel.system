@@ -108,6 +108,7 @@ export interface ApiReservaHabitacion {
  */
 export interface ApiReservaFull {
   id_reserva: number;
+  codigo_reserva?: string; // Código de 8 caracteres (e.g., "V48FQ5YX")
   id_cliente: number;
   id_estado_reserva: number;
   fecha_creacion: string;

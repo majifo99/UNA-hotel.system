@@ -171,6 +171,54 @@ export class ReservationCrudService {
   }
 
   /**
+   * Obtiene una reserva por código de reserva (codigo_reserva)
+   * GET /reservas?codigo_reserva={code}
+   * 
+   * IMPORTANTE: El backend acepta el código con o sin guión
+   * Ejemplos válidos: "V48FQ5YX", "V48F-Q5YX"
+   */
+  async getByCode(code: string): Promise<Reservation | null> {
+    try {
+      // Normalizar el código removiendo guiones para la búsqueda
+      const normalizedCode = code.replace(/-/g, '').toUpperCase();
+      
+      console.log('[API] Searching reservation by code:', normalizedCode);
+      
+      const res = await apiClient.get('/reservas', { 
+        params: { codigo_reserva: normalizedCode } 
+      });
+      
+      // Extract data from response - backend wraps in data property with pagination
+      const responseData = res.data as { data?: ApiReservaFull[] };
+      const reservations = responseData.data || [];
+      
+      if (!reservations || reservations.length === 0) {
+        console.log('[API] No reservation found with code:', normalizedCode);
+        return null;
+      }
+      
+      // Get the first result (should be unique)
+      const apiReserva = reservations[0];
+      
+      if (!apiReserva || !apiReserva.id_reserva) {
+        console.error('Invalid API response structure:', res.data);
+        return null;
+      }
+
+      console.log('[API] Found reservation:', apiReserva);
+      
+      const reservation = mapApiReservaFullToReservation(apiReserva);
+      
+      console.log('[API] Mapped reservation:', reservation);
+
+      return reservation;
+    } catch (error) {
+      console.error('[API] Error fetching reservation by code:', error);
+      return null;
+    }
+  }
+
+  /**
    * Obtiene una reserva por número de confirmación
    * GET /reservas?confirmationNumber={number}
    */

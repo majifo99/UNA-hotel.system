@@ -4,7 +4,7 @@ import { ArrowLeft, RefreshCw, Home, Users, MessageSquare, Loader2, Star, AlertT
 import { useModificacionReserva } from '../hooks/useModificacionReserva';
 import { useRoomSelection } from '../hooks/useRoomSelection';
 import { useInputValidation } from '../../../hooks/useInputValidation';
-import { useReservationById } from '../../reservations/hooks/useReservationQueries';
+import { useReservationByCode } from '../../reservations/hooks/useReservationQueries';
 import { ROUTES } from '../../../router/routes';
 import FrontdeskService from '../services/frontdeskService';
 import RoomChangeResultModal from './modals/RoomChangeResultModal';
@@ -182,13 +182,13 @@ const RoomChange = () => {
   const [showResultModal, setShowResultModal] = useState(false);
   const [changeResult, setChangeResult] = useState<CambiarHabitacionResponse | null>(null);
 
-  // Hook para búsqueda directa de reserva por ID (igual que en CheckIn)
+  // Hook para búsqueda directa de reserva por CÓDIGO DE RESERVA (igual que en CheckIn)
   const { 
     data: foundReservation, 
     isLoading: isLoadingReservation, 
     isError: isReservationError,
     error: reservationError 
-  } = useReservationById(reservationSearchId);
+  } = useReservationByCode(reservationSearchId, !!reservationSearchId);
 
   const [formData, setFormData] = useState<LocalState>({
     currentRoomNumber: '',

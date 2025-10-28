@@ -116,6 +116,25 @@ export const useReservationById = (id: string) => {
 };
 
 /**
+ * Hook: useReservationByCode
+ *
+ * Fetches a single reservation by reservation code (codigo_reserva).
+ * Used for check-in and searching reservations by confirmation code.
+ * 
+ * @param code - Reservation code (with or without hyphen, e.g., "V48FQ5YX" or "V48F-Q5YX")
+ * @param enabled - Whether to enable the query (default: true if code is provided)
+ */
+export const useReservationByCode = (code: string, enabled: boolean = true) => {
+  return useQuery({
+    queryKey: [...reservationKeys.all, 'code', code] as const,
+    queryFn: () => reservationService.getReservationByCode(code),
+    enabled: !!code && enabled, // Only fetch when code is provided and enabled
+    staleTime: 30 * 1000, // 30 seconds
+    retry: 1, // Only retry once for not found errors
+  });
+};
+
+/**
  * Hook: useRoomTypes
  *
  * Returns catalog metadata for room types (name, base price, capacity).
