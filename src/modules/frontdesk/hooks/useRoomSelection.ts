@@ -23,6 +23,7 @@ export const useRoomSelection = () => {
       
       // Convert Room[] to RoomInfo[] and filter
       let filtered = rooms.map(room => ({
+        id: room.id, // Agregar el ID
         number: room.number || room.id,
         type: room.type,
         capacity: { 
@@ -98,6 +99,7 @@ export const useRoomSelection = () => {
     try {
       const room = await FrontdeskService.getRoomById(roomNumber);
       return {
+        id: room.id, // Agregar el ID
         number: room.number || room.id,
         type: room.type,
         capacity: { 
@@ -173,6 +175,7 @@ export const useRoomSelection = () => {
     try {
       const rooms = await FrontdeskService.getRooms({ floor });
       return rooms.map(room => ({
+        id: room.id, // Agregar el ID
         number: room.number || room.id,
         type: room.type,
         capacity: { 

@@ -22,6 +22,8 @@ export { useCalendarReservations, useRoomReservations } from './useCalendarReser
 
 // Check-in and Check-out
 export { useCheckIn } from './useCheckIn';
+export { useCheckInImproved } from './useCheckInImproved';
+export { useWalkIn } from './useWalkIn';
 export { useCheckout } from './useCheckout';
 export { useCheckoutRefactored } from './useCheckoutRefactored';
 

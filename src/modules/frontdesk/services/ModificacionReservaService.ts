@@ -114,7 +114,20 @@ export class ModificacionReservaService {
     data: CambiarHabitacionRequest
   ): Promise<CambiarHabitacionResponse> {
     try {
-      console.log('🔄 Cambiando habitación:', { idReserva, data });
+      console.log('🔄 Cambiando habitación:', { 
+        idReserva, 
+        data,
+        dataTypes: {
+          id_reserva_habitacion: typeof data.id_reserva_habitacion,
+          id_habitacion_nueva: typeof data.id_habitacion_nueva,
+          motivo: typeof data.motivo
+        },
+        valores: {
+          id_reserva_habitacion: data.id_reserva_habitacion,
+          id_habitacion_nueva: data.id_habitacion_nueva,
+          motivo: data.motivo
+        }
+      });
       
       const response = await apiClient.post<CambiarHabitacionResponse>(
         `/reservas/${idReserva}/modificar/cambiar-habitacion`,
@@ -125,6 +138,12 @@ export class ModificacionReservaService {
       return response.data;
     } catch (error: any) {
       console.error('❌ Error al cambiar habitación:', error);
+      console.error('❌ Detalles del error:', {
+        message: error.response?.data?.message,
+        errors: error.response?.data?.errors,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message);
