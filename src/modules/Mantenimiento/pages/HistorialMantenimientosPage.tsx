@@ -1,140 +1,54 @@
+// src/modules/Mantenimiento/pages/HistorialMantenimientosPage.tsx
 "use client";
 
-import { useEffect, useState } from "react";
 import { useHistorialMantenimientos } from "../hooks/useHistorialMantenimientos";
-import PrintStyles from "../../housekeeping/components/UI/PrintStyles";
-import SolLogo from "../../../assets/Lanaku.png";
-import FilterBarHistoriales from "../../housekeeping/components/FilterBarHistoriales";
-import { ValueBlock, HISTORIAL_CONFIG } from "../../housekeeping/components/Historial/HistorialComponents";
+import { ValueBlock } from "../../housekeeping/components/Historial/HistorialComponents";
 import { formatDatetime } from "../../housekeeping/utils/formatters";
+import { HistorialPageBase } from "../../housekeeping/components/Historial/HistorialPageBase";
 
-const { BRAND_GREEN } = HISTORIAL_CONFIG;
-
-function getMantCode(h: any): string {
-  return (h.id_mantenimiento ?? h.mantenimiento?.id_mantenimiento ?? "—").toString();
+function extractMaintenanceCode(record: any): string {
+  return (record.id_mantenimiento ?? record.mantenimiento?.id_mantenimiento ?? "—").toString();
 }
 
 export default function HistorialMantenimientosPage() {
-  const {
-    data, total, perPage, q, desde, hasta,
-    setPage, setPerPage, setQ, setDesde, setHasta,
-    loading, error,
-  } = useHistorialMantenimientos({ page: 1, per_page: 20, q: "" }, { keepPreviousData: true });
-
-  const rows = data ?? [];
-  const [printAll, setPrintAll] = useState(false);
-  const [prevPerPage, setPrevPerPage] = useState(perPage);
-
-  const handlePrintCurrent = () => globalThis.print?.();
-  const handlePrintAllFiltered = () => {
-    setPrintAll(true);
-    setPrevPerPage(perPage);
-    setPage(1);
-    setPerPage(1000);
-    setTimeout(() => globalThis.print?.(), 400);
-  };
-
-  useEffect(() => {
-    const onAfterPrint = () => {
-      if (printAll) { setPerPage(prevPerPage); setPrintAll(false); }
-    };
-    globalThis.addEventListener?.("afterprint", onAfterPrint);
-    return () => globalThis.removeEventListener?.("afterprint", onAfterPrint);
-  }, [printAll, prevPerPage, setPerPage]);
-
-  const renderRows = () => {
-    if (loading && rows.length === 0) {
-      return (<tr><td colSpan={6} className="px-4 py-3 text-center text-slate-500">Cargando...</td></tr>);
-    }
-    if (error && rows.length === 0) {
-      return (<tr><td colSpan={6} className="px-4 py-3 text-center text-red-600">{error.message}</td></tr>);
-    }
-    if (rows.length === 0) {
-      return (<tr><td colSpan={6} className="px-4 py-6 text-center text-slate-500">Sin resultados.</td></tr>);
-    }
-
-    return rows.map((h: any, idx: number) => (
-      <tr key={h.id_historial_mant ?? `${getMantCode(h)}-${idx}`} className="align-top odd:bg-slate-50/50 hover:bg-slate-100/60 transition-colors break-inside-avoid">
-        <td className="px-4 py-2">
-          <span className="inline-flex min-w-[40px] justify-center rounded-md bg-slate-100 px-2 py-1 text-sm font-semibold ring-1 ring-slate-200">
-            {getMantCode(h)}
-          </span>
-        </td>
-        <td className="px-4 py-2 whitespace-nowrap text-slate-700">{formatDatetime(h.fecha)}</td>
-        <td className="px-4 py-2 font-medium text-slate-800">{h.evento ?? "—"}</td>
-        <td className="px-4 py-2 text-slate-700">{h.actor?.nombre ?? h.actor?.email ?? "—"}</td>
-        <td className="px-4 py-2"><ValueBlock json={h.valor_anterior} /></td>
-        <td className="px-4 py-2"><ValueBlock json={h.valor_nuevo} /></td>
-      </tr>
-    ));
-  };
-
-  return (
-    <div className="min-h-screen bg-white text-[#0f172a]">
-      <PrintStyles areaId="print-area" pageSize="A4" margin="10mm" tableFontSize={10} brandColor={BRAND_GREEN} />
-
-      <header className="no-print bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-6 py-4 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-slate-50 ring-1 ring-slate-200 shadow flex items-center justify-center overflow-hidden">
-              <img src={SolLogo} alt="Lanaku" className="w-10 h-10 object-contain" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-extrabold tracking-tight">Historiales de mantenimiento</h1>
-              <p className="text-sm text-slate-600">Hoja consolidada • lista para imprimir</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button onClick={handlePrintCurrent} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 shadow-sm">
-              Imprimir esta página
-            </button>
-            <button onClick={handlePrintAllFiltered} className="rounded-lg border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 shadow-sm">
-              Imprimir filtro (todo)
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="px-4 py-6">
-        <div className="max-w-7xl mx-auto space-y-4">
-          <div className="no-print">
-            <FilterBarHistoriales
-              q={q} desde={desde} hasta={hasta} perPage={perPage} total={total}
-              onChange={(next) => {
-                if (next.q !== undefined) setQ(next.q);
-                if (next.desde !== undefined) setDesde(next.desde);
-                if (next.hasta !== undefined) setHasta(next.hasta);
-                if (next.perPage !== undefined) setPerPage(next.perPage);
-                setPage(1);
-              }}
-            />
-          </div>
-
-          <section id="print-area" className="rounded-2xl bg-white shadow ring-1 ring-slate-200 p-0 print:shadow-none print:ring-0">
-            <div className="print-header print-only">
-              <img src={SolLogo} alt="Lanaku" className="print-logo" />
-              <div>
-                <div className="print-title">Historiales de mantenimiento</div>
-                <div className="print-sub">Listado consolidado</div>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto print-allow-overflow">
-              <table className="hist-table w-full text-sm">
-                <thead style={{ backgroundColor: BRAND_GREEN, color: "white" }}>
-                  <tr>
-                    {["Mantenimiento", "Fecha", "Evento", "Actor", "Valor anterior", "Valor nuevo"].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">{renderRows()}</tbody>
-              </table>
-            </div>
-          </section>
-        </div>
-      </main>
-    </div>
+  const historialData = useHistorialMantenimientos(
+    { page: 1, per_page: 20, q: "" },
+    { keepPreviousData: true }
   );
+
+  const pageConfig = {
+    pageTitle: "Historiales de mantenimiento",
+    pageSubtitle: "Hoja consolidada • lista para imprimir",
+    printTitle: "Historiales de mantenimiento",
+    printSubtitle: "Listado consolidado",
+    tableHeaders: ["Mantenimiento", "Fecha", "Evento", "Actor", "Valor anterior", "Valor nuevo"],
+  };
+
+  const renderRow = (record: any, index: number) => (
+    <tr
+      key={record.id_historial_mant ?? `${extractMaintenanceCode(record)}-${index}`}
+      className="align-top odd:bg-slate-50/50 hover:bg-slate-100/60 transition-colors break-inside-avoid"
+    >
+      <td className="px-4 py-2">
+        <span className="inline-flex min-w-[40px] justify-center rounded-md bg-slate-100 px-2 py-1 text-sm font-semibold ring-1 ring-slate-200">
+          {extractMaintenanceCode(record)}
+        </span>
+      </td>
+      <td className="px-4 py-2 whitespace-nowrap text-slate-700">
+        {formatDatetime(record.fecha)}
+      </td>
+      <td className="px-4 py-2 font-medium text-slate-800">{record.evento ?? "—"}</td>
+      <td className="px-4 py-2 text-slate-700">
+        {record.actor?.nombre ?? record.actor?.email ?? "—"}
+      </td>
+      <td className="px-4 py-2">
+        <ValueBlock json={record.valor_anterior} />
+      </td>
+      <td className="px-4 py-2">
+        <ValueBlock json={record.valor_nuevo} />
+      </td>
+    </tr>
+  );
+
+  return <HistorialPageBase config={pageConfig} hookData={historialData} renderTableRow={renderRow} />;
 }
