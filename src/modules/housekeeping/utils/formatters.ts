@@ -35,7 +35,7 @@ export function parseJsonSafe<T = Record<string, unknown>>(
   if (!value) return null;
   if (typeof value === "object") return value;
   try {
-    return JSON.parse(value);
+    return JSON.parse(value as string);
   } catch {
     return { raw: value } as T;
   }
