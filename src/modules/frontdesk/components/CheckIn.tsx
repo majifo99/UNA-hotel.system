@@ -729,10 +729,17 @@ const CheckIn = () => {
       }
     } catch (validationError) {
       console.error("❌ ❌ ❌ ERROR CAPTURADO en handleSubmit:", validationError);
+      console.error("Mensaje del error:", validationError instanceof Error ? validationError.message : String(validationError));
       console.error("Stack trace:", validationError instanceof Error ? validationError.stack : 'No stack available');
       console.error("Tipo de check-in:", checkInType);
       console.error("Tipo de huésped walk-in:", walkInGuestType);
+      console.error("FormData completo:", formData);
       // El error debe mostrarse automáticamente en la UI a través del hook
+      
+      // IMPORTANTE: Si el error no se está mostrando en la UI, forzar la visualización
+      if (validationError instanceof Error) {
+        alert(`ERROR al procesar ${checkInType === 'walk-in' ? 'Walk-In' : 'Check-In'}:\n\n${validationError.message}\n\nRevisa la consola para más detalles.`);
+      }
     }
   };
 
