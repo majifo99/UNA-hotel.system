@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, AlertTriangle, CheckCircle, Loader2, Search, X, Info } from 'lucide-react';
 import { useModificacionReserva } from '../hooks/useModificacionReserva';
 import { useInputValidation } from '../../../hooks/useInputValidation';
-import { useReservationById } from '../../reservations/hooks/useReservationQueries';
+import { useReservationByCode } from '../../reservations/hooks/useReservationQueries';
 import { ROUTES } from '../../../router/routes';
 import type { ModificarFechasResponse } from '../services/ModificacionReservaService';
 
@@ -34,7 +34,7 @@ const DateModification = () => {
     isLoading: isLoadingReservation, 
     isError: isReservationError,
     error: reservationError 
-  } = useReservationById(reservationSearchId);
+  } = useReservationByCode(reservationSearchId, !!reservationSearchId);
 
   const [formData, setFormData] = useState<DateModificationFormData>({
     reservationSearchId: '',

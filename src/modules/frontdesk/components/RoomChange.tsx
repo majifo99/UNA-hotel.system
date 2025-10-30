@@ -1068,7 +1068,7 @@ const RoomChange = () => {
                             .map((room) => (
                             <option 
                               key={`rec-${room.number}`} 
-                              value={room.number}
+                              value={room.id}
                               disabled={room.status !== 'available'}
                             >
                               #{room.number} - {room.type} (Cap: {room.capacity.total}) - ⭐ {room.recommendationScore} pts
@@ -1085,7 +1085,7 @@ const RoomChange = () => {
                             .map((room) => (
                             <option 
                               key={`other-${room.number}`} 
-                              value={room.number}
+                              value={room.id}
                               disabled={room.status !== 'available'}
                             >
                               #{room.number} - {room.type} (Capacidad: {room.capacity.total})
@@ -1101,7 +1101,7 @@ const RoomChange = () => {
                     {roomRecommendations.length === 0 && allRooms.map((room) => (
                       <option 
                         key={room.number} 
-                        value={room.number}
+                        value={room.id}
                         disabled={room.status !== 'available'}
                       >
                         #{room.number} - {room.type} (Capacidad: {room.capacity.total})

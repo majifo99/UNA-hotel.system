@@ -129,13 +129,22 @@ export class ModificacionReservaService {
         }
       });
       
-      const response = await apiClient.post<CambiarHabitacionResponse>(
+      const response = await apiClient.post<{ success: boolean; message: string; data: CambiarHabitacionResponse }>(
         `/reservas/${idReserva}/modificar/cambiar-habitacion`,
         data
       );
       
       console.log('✅ Habitación cambiada exitosamente:', response.data);
-      return response.data;
+      
+      // El backend envuelve la respuesta en un objeto { success, message, data }
+      // Validar que tengamos la estructura correcta
+      if (!response.data.data) {
+        console.warn('⚠️ Respuesta sin data anidada, retornando response.data directamente');
+        return response.data as any;
+      }
+      
+      // Extraemos solo el 'data' que contiene la estructura real
+      return response.data.data;
     } catch (error: any) {
       console.error('❌ Error al cambiar habitación:', error);
       console.error('❌ Detalles del error:', {
@@ -167,15 +176,29 @@ export class ModificacionReservaService {
     try {
       console.log('📅 Modificando fechas:', { idReserva, data });
       
-      const response = await apiClient.post<ModificarFechasResponse>(
+      const response = await apiClient.post<{ success: boolean; message: string; data: ModificarFechasResponse }>(
         `/reservas/${idReserva}/modificar/cambiar-fechas`,
         data
       );
       
       console.log('✅ Fechas modificadas exitosamente:', response.data);
-      return response.data;
+      
+      // El backend envuelve la respuesta en un objeto { success, message, data }
+      // Validar que tengamos la estructura correcta
+      if (!response.data.data) {
+        console.warn('⚠️ Respuesta sin data anidada, retornando response.data directamente');
+        return response.data as any;
+      }
+      
+      return response.data.data;
     } catch (error: any) {
       console.error('❌ Error al modificar fechas:', error);
+      console.error('❌ Detalles del error:', {
+        message: error.response?.data?.message,
+        errors: error.response?.data?.errors,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message);
@@ -199,15 +222,29 @@ export class ModificacionReservaService {
     try {
       console.log('⏰ Reduciendo estadía:', { idReserva, data });
       
-      const response = await apiClient.post<ReducirEstadiaResponse>(
+      const response = await apiClient.post<{ success: boolean; message: string; data: ReducirEstadiaResponse }>(
         `/reservas/${idReserva}/modificar/reducir-estadia`,
         data
       );
       
       console.log('✅ Estadía reducida exitosamente:', response.data);
-      return response.data;
+      
+      // El backend envuelve la respuesta en un objeto { success, message, data }
+      // Validar que tengamos la estructura correcta
+      if (!response.data.data) {
+        console.warn('⚠️ Respuesta sin data anidada, retornando response.data directamente');
+        return response.data as any;
+      }
+      
+      return response.data.data;
     } catch (error: any) {
       console.error('❌ Error al reducir estadía:', error);
+      console.error('❌ Detalles del error:', {
+        message: error.response?.data?.message,
+        errors: error.response?.data?.errors,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message);
