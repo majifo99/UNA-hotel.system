@@ -1,7 +1,26 @@
 /**
  * Web Reservation Page - Public 3-Step Booking Flow
  * 
- * Multi-step reservation process for public website users
+ * Multi-step reservation process for public website users.
+ * 
+ * AUTHENTICATION INTEGRATION:
+ * - Uses authenticated user's id_cliente from Laravel Sanctum session
+ * - No longer creates duplicate guest records
+ * - Token stored in localStorage as 'authToken' (set by AuthService.login/register)
+ * - useAuth() hook provides current user context (user.id === id_cliente from backend)
+ * - API requests automatically include Bearer token via apiClient interceptors
+ * 
+ * FLOW:
+ * 1. User must be logged in (ProtectedRoute ensures authentication)
+ * 2. Step 1: Select dates and guest counts
+ * 3. Step 2: Choose available rooms
+ * 4. Step 3: Add special requests and services
+ * 5. Submit: Creates reservation with authenticated user's id_cliente
+ * 
+ * BACKEND INTEGRATION:
+ * - Endpoint: POST /api/reservas
+ * - Payload includes: id_cliente (from auth user), habitaciones[], notas, id_fuente, id_estado_res
+ * - Response returns created reservation with confirmation number
  */
 
 import React, { useState, useEffect } from 'react';
@@ -9,8 +28,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { roomService } from '../../reservations/services/roomService';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { useCreateNewReservation } from '../../reservations/hooks/useReservationQueries';
-import { guestApiService } from '../../guests/services/guestApiService';
-import { useRecaptcha } from '../../../hooks/useRecaptcha';
+import { useAuth } from '../hooks/useAuth.tsx';
 import type { Room } from '../../../types/core';
 import type { CreateReservationDto, CreateReservationRoomDto } from '../../reservations/types';
 import { toast } from 'sonner';
@@ -74,21 +92,23 @@ type StepData = StepOneData | StepTwoData | StepThreeData;
 export function WebReservationPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
   
   // Pre-selected room from URL parameters
   const preSelectedRoomId = searchParams.get('room');
   
+  // Pre-filled dates from URL (when coming from room detail page)
+  const preFilledCheckIn = searchParams.get('checkIn');
+  const preFilledCheckOut = searchParams.get('checkOut');
+  
   // TanStack Query mutation for creating reservation
   const { mutate: createReservation, isPending: isCreating } = useCreateNewReservation();
   
-  // reCAPTCHA v3 integration
-  const { executeRecaptcha, isReady: isRecaptchaReady } = useRecaptcha();
-  
   const [reservationData, setReservationData] = useState<ReservationData>({
-    checkIn: '',
-    checkOut: '',
+    checkIn: preFilledCheckIn || '',
+    checkOut: preFilledCheckOut || '',
     adults: 2,
     children: 0,
     babies: 0,
@@ -107,6 +127,17 @@ export function WebReservationPage() {
   // Capacity warnings and messages
   const [capacityWarning, setCapacityWarning] = useState<string>('');
   const [showSpecialRequestsHint, setShowSpecialRequestsHint] = useState(false);
+
+  // Auto-advance to step 2 if dates are pre-filled from URL
+  useEffect(() => {
+    if (preFilledCheckIn && preFilledCheckOut && currentStep === 1) {
+      console.log('[WebReservationPage] Dates pre-filled from URL, advancing to room selection');
+      // Small delay to ensure state is updated
+      setTimeout(() => {
+        setCurrentStep(2);
+      }, 100);
+    }
+  }, [preFilledCheckIn, preFilledCheckOut, currentStep]);
 
   // Fetch available rooms when dates change
   useEffect(() => {
@@ -192,48 +223,37 @@ export function WebReservationPage() {
 
   const handleSubmitReservation = async (finalData: ReservationData) => {
     try {
-      // Step 0: Generate reCAPTCHA token
-      toast.info('Verificando seguridad...', { duration: 1500 });
+      // Verify user is authenticated
+      if (!user || !isAuthenticated) {
+        toast.error('Sesión expirada', {
+          description: 'Por favor inicie sesión nuevamente.',
+          duration: 5000
+        });
+        navigate('/login');
+        return;
+      }
+
+      // Use authenticated user's id_cliente
+      const idCliente = Number(user.id);
       
-      let recaptchaToken: string | null = null;
-      
-      if (isRecaptchaReady) {
-        recaptchaToken = await executeRecaptcha('submit_reservation');
-        
-        if (!recaptchaToken) {
-          toast.error('Error de verificación de seguridad', {
-            description: 'Por favor recargue la página e intente nuevamente.',
-            duration: 5000
-          });
-          return;
-        }
-      } else {
-        console.warn('[WebReservationPage] reCAPTCHA not ready, proceeding without token');
+      if (!idCliente || Number.isNaN(idCliente)) {
+        toast.error('Error de autenticación', {
+          description: 'No se pudo obtener la información del usuario. Por favor intente nuevamente.',
+          duration: 5000
+        });
+        return;
       }
       
-      // Step 1: Create the guest/client first
-      toast.info('Creando información del cliente...', { duration: 2000 });
-      
-      const guestData = {
-        firstName: finalData.guestInfo.firstName,
-        firstLastName: finalData.guestInfo.lastName,
-        secondLastName: '', // Optional
-        email: finalData.guestInfo.email,
-        phone: finalData.guestInfo.phone,
-        documentType: 'id_card' as const, // Default to ID card
-        documentNumber: finalData.guestInfo.nationalId,
-        nationality: 'Costa Rica', // Default, could be enhanced
-      };
-      
-      const createdGuest = await guestApiService.createGuest(guestData);
-      
-      if (!createdGuest || !createdGuest.id) {
-        throw new Error('No se pudo crear el cliente');
-      }
+      console.log('[WebReservationPage] Creating reservation for authenticated user:', {
+        userId: user.id,
+        idCliente,
+        email: user.email,
+        name: `${user.firstName} ${user.lastName}`
+      });
       
       toast.info('Creando reserva...', { duration: 2000 });
       
-      // Step 2: Create the reservation with proper DTO format (including reCAPTCHA token)
+      // Create the reservation with the authenticated user's id_cliente
       const habitaciones: CreateReservationRoomDto[] = finalData.selectedRoomIds.map(roomId => ({
         id_habitacion: Number(roomId),
         fecha_llegada: finalData.checkIn,
@@ -243,13 +263,12 @@ export function WebReservationPage() {
         bebes: finalData.babies
       }));
       
-      const reservationPayload: CreateReservationDto & { recaptcha_token?: string } = {
-        id_cliente: Number(createdGuest.id),
+      const reservationPayload: CreateReservationDto = {
+        id_cliente: idCliente, // Use authenticated user's ID
         id_estado_res: 1, // Estado "Pendiente" o "Confirmada"
-        id_fuente: 2, // Fuente "Sitio Web" (adjust based on your backend IDs)
+        id_fuente: 2, // Fuente "Sitio Web"
         notas: finalData.specialRequests || undefined,
-        habitaciones,
-        ...(recaptchaToken && { recaptcha_token: recaptchaToken })
+        habitaciones
       };
       
       createReservation(reservationPayload, {
@@ -388,10 +407,11 @@ export function WebReservationPage() {
             />
           )}
 
-          {currentStep === 3 && (
+          {currentStep === 3 && user && (
             <ReservationStepThree
               reservationData={reservationData}
               selectedRooms={availableRooms.filter((room: Room) => reservationData.selectedRoomIds.includes(room.id))}
+              authenticatedUser={user}
               onComplete={handleStepComplete}
               onBack={goToPreviousStep}
               capacityWarning={capacityWarning}

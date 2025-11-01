@@ -1,39 +1,15 @@
 /**
- * Reservation Step Three - Guest Information and Special Requests
+ * Reservation Step Three - Special Requests and Services
  * 
- * Final step: collect guest information and special requests including extra amenities
+ * Final step: collect special requests and select additional services.
+ * Guest information is auto-filled from authenticated user.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Room } from '../../../../types/core';
+import type { AuthUser } from '../../types/auth';
 import { useAdditionalServices } from '../../../reservations/hooks/useReservationQueries';
-
-/**
- * Secure email validation function that avoids ReDoS vulnerabilities
- */
-function isValidEmail(email: string): boolean {
-  // Basic structure check without vulnerable regex
-  const parts = email.split('@');
-  if (parts.length !== 2) return false;
-  
-  const [localPart, domain] = parts;
-  
-  // Check local part (before @)
-  if (!localPart || localPart.length > 64) return false;
-  if (localPart.startsWith('.') || localPart.endsWith('.')) return false;
-  if (localPart.includes('..')) return false;
-  
-  // Check domain part (after @)
-  if (!domain || domain.length > 253) return false;
-  if (domain.startsWith('.') || domain.endsWith('.')) return false;
-  if (!domain.includes('.')) return false;
-  
-  // Simple character validation using safe regex
-  const validLocalChars = /^[a-zA-Z0-9._%+-]+$/.test(localPart);
-  const validDomainChars = /^[a-zA-Z0-9.-]+$/.test(domain);
-  
-  return validLocalChars && validDomainChars;
-}
+import { formatCurrency } from '../../utils/currency';
 
 interface GuestInfo {
   firstName: string;
@@ -53,6 +29,7 @@ interface ReservationStepThreeProps {
     readonly selectedRoomIds: string[];
   };
   readonly selectedRooms: Room[];
+  readonly authenticatedUser: AuthUser; // User from auth context
   readonly onComplete: (data: { 
     guestInfo: GuestInfo; 
     specialRequests: string; 
@@ -74,17 +51,19 @@ interface FormErrors {
 export function ReservationStepThree({
   reservationData,
   selectedRooms,
+  authenticatedUser,
   onComplete,
   onBack,
   capacityWarning,
   isSubmitting: externalIsSubmitting
 }: ReservationStepThreeProps) {
+  // Initialize guest info from authenticated user
   const [guestInfo, setGuestInfo] = useState<GuestInfo>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    nationalId: ''
+    firstName: authenticatedUser.firstName,
+    lastName: authenticatedUser.lastName,
+    email: authenticatedUser.email,
+    phone: authenticatedUser.phone || '',
+    nationalId: '' // This might not be in AuthUser, keep editable
   });
 
   const [specialRequests, setSpecialRequests] = useState('');
@@ -98,6 +77,17 @@ export function ReservationStepThree({
   // Load additional services from API
   const { data: additionalServices = [], isLoading: isLoadingServices } = useAdditionalServices();
 
+  // Update guest info when authenticated user changes
+  useEffect(() => {
+    setGuestInfo(prev => ({
+      ...prev,
+      firstName: authenticatedUser.firstName,
+      lastName: authenticatedUser.lastName,
+      email: authenticatedUser.email,
+      phone: authenticatedUser.phone || prev.phone,
+    }));
+  }, [authenticatedUser]);
+
   const calculateNights = (): number => {
     const checkIn = new Date(reservationData.checkIn);
     const checkOut = new Date(reservationData.checkOut);
@@ -110,40 +100,21 @@ export function ReservationStepThree({
     return selectedRooms.reduce((total, room) => total + room.pricePerNight, 0) * nights;
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-CR', {
-      style: 'currency',
-      currency: 'CRC',
-      minimumFractionDigits: 0
-    }).format(price);
-  };
-
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    if (!guestInfo.firstName.trim()) {
-      newErrors.firstName = 'El nombre es requerido';
+    // Name, lastName, and email are readonly from authenticated user, no need to validate
+
+    // Only validate phone if it's editable
+    if (guestInfo.phone?.trim()) {
+      const phoneDigits = guestInfo.phone.replaceAll(/[\s-]/g, '');
+      if (!/^\d{8,}$/.test(phoneDigits)) {
+        newErrors.phone = 'Ingrese un número de teléfono válido (mínimo 8 dígitos)';
+      }
     }
 
-    if (!guestInfo.lastName.trim()) {
-      newErrors.lastName = 'Los apellidos son requeridos';
-    }
-
-    if (!guestInfo.email.trim()) {
-      newErrors.email = 'El email es requerido';
-    } else if (!isValidEmail(guestInfo.email)) {
-      newErrors.email = 'Ingrese un email válido';
-    }
-
-    if (!guestInfo.phone.trim()) {
-      newErrors.phone = 'El teléfono es requerido';
-    } else if (!/^\d{8,}$/.test(guestInfo.phone.replace(/[\s-]/g, ''))) {
-      newErrors.phone = 'Ingrese un número de teléfono válido (mínimo 8 dígitos)';
-    }
-
-    if (!guestInfo.nationalId.trim()) {
-      newErrors.nationalId = 'La identificación es requerida';
-    }
+    // National ID is optional for web reservations (user might not have it in profile)
+    // Remove validation to allow submission without it
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -225,17 +196,17 @@ export function ReservationStepThree({
             <p><strong>Fechas:</strong> {reservationData.checkIn} - {reservationData.checkOut}</p>
             <p><strong>Noches:</strong> {calculateNights()}</p>
             <p><strong>Huéspedes:</strong> {reservationData.adults + reservationData.children + reservationData.babies} (
-              {reservationData.adults} adulto{reservationData.adults !== 1 ? 's' : ''}
-              {reservationData.children > 0 && `, ${reservationData.children} niño${reservationData.children !== 1 ? 's' : ''}`}
-              {reservationData.babies > 0 && `, ${reservationData.babies} bebé${reservationData.babies !== 1 ? 's' : ''}`}
+              {reservationData.adults} adulto{reservationData.adults === 1 ? '' : 's'}
+              {reservationData.children > 0 && `, ${reservationData.children} niño${reservationData.children === 1 ? '' : 's'}`}
+              {reservationData.babies > 0 && `, ${reservationData.babies} bebé${reservationData.babies === 1 ? '' : 's'}`}
             )</p>
           </div>
           <div>
             <p><strong>Habitaciones:</strong></p>
             {selectedRooms.map(room => (
-              <p key={room.id} className="ml-2">• {room.name} - {formatPrice(room.pricePerNight)}/noche</p>
+              <p key={room.id} className="ml-2">• {room.name} - {formatCurrency(room.pricePerNight)}/noche</p>
             ))}
-            <p className="font-semibold mt-2">Total: {formatPrice(calculateTotalPrice())}</p>
+            <p className="font-semibold mt-2">Total: {formatCurrency(calculateTotalPrice())}</p>
           </div>
         </div>
 
@@ -251,7 +222,10 @@ export function ReservationStepThree({
 
       {/* Guest Information */}
       <div className="space-y-6">
-        <h3 className="text-lg font-semibold text-gray-900">Información del huésped principal</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">Información del huésped principal</h3>
+          <span className="text-sm text-gray-500 italic">Información de su cuenta</span>
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -262,15 +236,12 @@ export function ReservationStepThree({
               type="text"
               id="firstName"
               value={guestInfo.firstName}
-              onChange={(e) => updateGuestInfo('firstName', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-offset-2 transition-colors ${
-                errors.firstName 
-                  ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
-                  : 'border-gray-300 focus:border-green-500 focus:ring-green-500'
-              }`}
+              readOnly
+              disabled
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
               placeholder="Su nombre"
             />
-            {errors.firstName && <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>}
+            <p className="mt-1 text-xs text-gray-500">Tomado de su perfil</p>
           </div>
 
           <div>
@@ -281,15 +252,12 @@ export function ReservationStepThree({
               type="text"
               id="lastName"
               value={guestInfo.lastName}
-              onChange={(e) => updateGuestInfo('lastName', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-offset-2 transition-colors ${
-                errors.lastName 
-                  ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
-                  : 'border-gray-300 focus:border-green-500 focus:ring-green-500'
-              }`}
+              readOnly
+              disabled
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
               placeholder="Sus apellidos"
             />
-            {errors.lastName && <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>}
+            <p className="mt-1 text-xs text-gray-500">Tomado de su perfil</p>
           </div>
 
           <div>
@@ -300,15 +268,12 @@ export function ReservationStepThree({
               type="email"
               id="email"
               value={guestInfo.email}
-              onChange={(e) => updateGuestInfo('email', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-offset-2 transition-colors ${
-                errors.email 
-                  ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
-                  : 'border-gray-300 focus:border-green-500 focus:ring-green-500'
-              }`}
+              readOnly
+              disabled
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
               placeholder="correo@ejemplo.com"
             />
-            {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+            <p className="mt-1 text-xs text-gray-500">Tomado de su perfil</p>
           </div>
 
           <div>
@@ -412,7 +377,7 @@ export function ReservationStepThree({
                         <div className="flex items-baseline justify-between">
                           <h4 className="font-medium text-gray-900">{service.name}</h4>
                           <span className="text-sm font-semibold ml-4" style={{ color: 'var(--color-darkGreen1)' }}>
-                            ₡{service.price.toLocaleString()}
+                            {formatCurrency(service.price)}
                           </span>
                         </div>
                         {service.description && (
@@ -451,7 +416,7 @@ export function ReservationStepThree({
                     <div className="mt-3 pt-3 border-t border-gray-200 text-right">
                       <span className="text-sm text-gray-600">Subtotal: </span>
                       <span className="font-semibold" style={{ color: 'var(--color-darkGreen1)' }}>
-                        ₡{(service.price * quantity).toLocaleString()}
+                        {formatCurrency(service.price * quantity)}
                       </span>
                     </div>
                   )}
@@ -466,10 +431,10 @@ export function ReservationStepThree({
             <div className="flex justify-between items-center">
               <span className="font-medium text-gray-900">Total servicios adicionales:</span>
               <span className="text-lg font-bold" style={{ color: 'var(--color-darkGreen1)' }}>
-                ₡{Array.from(selectedServices.entries()).reduce((total, [serviceId, qty]) => {
+                {formatCurrency(Array.from(selectedServices.entries()).reduce((total, [serviceId, qty]) => {
                   const service = additionalServices.find(s => s.id === serviceId);
                   return total + (service ? service.price * qty : 0);
-                }, 0).toLocaleString()}
+                }, 0))}
               </span>
             </div>
           </div>
@@ -489,7 +454,7 @@ export function ReservationStepThree({
             <ul className="text-blue-700 text-sm space-y-1">
               <li>• "Necesitamos acomodación para {reservationData.adults + reservationData.children + reservationData.babies} personas en las habitaciones seleccionadas"</li>
               <li>• "Por favor preparar camas adicionales o sofás cama"</li>
-              {reservationData.babies > 0 && <li>• "Requerimos {reservationData.babies} cuna{reservationData.babies !== 1 ? 's' : ''} para bebés"</li>}
+              {reservationData.babies > 0 && <li>• "Requerimos {reservationData.babies} cuna{reservationData.babies === 1 ? '' : 's'} para bebés"</li>}
               <li>• "Preferimos habitaciones cercanas entre sí"</li>
             </ul>
           </div>

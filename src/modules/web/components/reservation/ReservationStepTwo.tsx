@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import type { Room } from '../../../../types/core';
 import { RoomCard } from '../RoomCard';
+import { formatCurrency } from '../../utils/currency';
 
 interface ReservationStepTwoProps {
   readonly checkIn: string;
@@ -117,15 +118,6 @@ export function ReservationStepTwo({
     }
   };
 
-  // Format price in Costa Rican colones
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-CR', {
-      style: 'currency',
-      currency: 'CRC',
-      minimumFractionDigits: 0
-    }).format(price);
-  };
-
   return (
     <div className="space-y-6">
       <div className="text-center mb-8">
@@ -143,7 +135,7 @@ export function ReservationStepTwo({
             {getSelectedRooms().map(room => (
               <div key={room.id} className="flex justify-between items-center text-sm">
                 <span className="text-green-700">{room.name}</span>
-                <span className="text-green-800 font-medium">{formatPrice(room.pricePerNight)}/noche</span>
+                <span className="text-green-800 font-medium">{formatCurrency(room.pricePerNight)}/noche</span>
               </div>
             ))}
           </div>
@@ -152,7 +144,7 @@ export function ReservationStepTwo({
               Capacidad total: {calculateTotalCapacity()} persona{calculateTotalCapacity() !== 1 ? 's' : ''}
             </span>
             <span className="text-green-800 font-bold">
-              Total: {formatPrice(calculateTotalPrice())}
+              Total: {formatCurrency(calculateTotalPrice())}
             </span>
           </div>
         </div>

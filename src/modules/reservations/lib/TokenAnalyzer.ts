@@ -31,7 +31,7 @@ export class TokenAnalyzer {
    */
   static analyzeCurrentToken(): TokenAnalysis {
     const adminToken = localStorage.getItem('adminAuthToken');
-    const clienteToken = localStorage.getItem('clienteAuthToken'); // Si existe
+    const clienteToken = localStorage.getItem('authToken'); // ✅ CORREGIDO: El web auth usa 'authToken'
     
     console.log('[TOKEN ANALYSIS] Checking available tokens:', {
       hasAdminToken: !!adminToken,
@@ -103,7 +103,7 @@ export class TokenAnalyzer {
    */
   static getTokenInfo(): { type: string; preview?: string; full?: string } {
     const adminToken = localStorage.getItem('adminAuthToken');
-    const clienteToken = localStorage.getItem('clienteAuthToken');
+    const clienteToken = localStorage.getItem('authToken'); // ✅ CORREGIDO: El web auth usa 'authToken'
     
     if (clienteToken) {
       return {

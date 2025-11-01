@@ -14,6 +14,7 @@ import { TimeSeriesChart } from '../components/reports/TimeSeriesChart';
 import { DistributionChart } from '../components/reports/DistributionChart';
 import { ReportsTable } from '../components/reports/ReportsTable';
 import { Alert } from '../../../components/ui/Alert';
+import { ReportsDashboardSkeleton } from '../components/ui/Skeleton';
 import type { ChartMetric, ExportFormat, ReservationReportFilters } from '../types/reports';
 
 const CHART_METRICS: Array<{ value: ChartMetric; label: string }> = [
@@ -156,6 +157,11 @@ export const ReservationReportsPage: React.FC = () => {
         onApply={handleApplyFilters}
         onClear={handleClearFilters}
       />
+
+      {/* Loading State - Full Dashboard Skeleton */}
+      {isLoading && (
+        <ReportsDashboardSkeleton />
+      )}
 
       {/* Error State */}
       {error && (

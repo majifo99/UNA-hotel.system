@@ -41,11 +41,28 @@ export const mockConfig = {
     unavailableRoomIds: [], // Specific rooms to mark as unavailable
   },
 
-  // Business rules
+  // Business rules - Hotel Lanaku policies
   business: {
     taxRate: 0.13, // 13% IVA Costa Rica
     depositRate: 0.5, // 50% deposit required
-    cancellationHours: 24, // Hours before check-in to allow free cancellation
+    
+    // Cancellation policies (Hotel Lanaku)
+    cancellation: {
+      standardHours: 72, // 72 hours (3 days) before check-in for free cancellation
+      highSeasonDays: 15, // 15 days before check-in for high season
+      firstNightPenalty: 100, // 100% of first night if cancelled late
+      noShowPenalty: 100, // 100% of total stay for no-show
+    },
+    
+    // Supported currencies
+    currencies: {
+      primary: 'CRC', // Costa Rican Colón
+      supported: ['CRC', 'USD', 'EUR'], // Colones, Dollars, Euros
+      exchangeRates: {
+        USD_to_CRC: 520, // Approximate exchange rate
+        EUR_to_CRC: 580, // Approximate exchange rate
+      }
+    }
   },
 
   // Feature flags for development
