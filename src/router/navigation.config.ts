@@ -33,7 +33,7 @@ import {
   BarChart3,
   FileText,
   Settings,
-  CheckSquare,
+  History,
   LogIn,
   LogOut,
   ArrowLeftRight,
@@ -396,24 +396,16 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
         category: 'management',
         shortcut: [7, 1], // ALT+7, luego 1
       },
+      
       {
-        id: 'housekeeping-tasks',
-        label: 'Tareas Diarias',
-        path: ROUTES.HOUSEKEEPING.TASKS,
-        icon: CheckSquare,
-        description: 'Tareas de limpieza del día',
-        category: 'management',
-        shortcut: [7, 2], // ALT+7, luego 2
-      },
-      {
-        id: 'housekeeping-reports',
-        label: 'Reportes Housekeeping',
-        path: ROUTES.HOUSEKEEPING.REPORTS,
-        icon: BarChart3,
-        description: 'Reportes de limpieza y mantenimiento',
-        category: 'management',
-        shortcut: [7, 3], // ALT+7, luego 3
-      },
+      id: 'housekeeping-historiales',
+      label: 'Historiales',
+      path: ROUTES.HOUSEKEEPING.HISTORIALES,
+      icon: History,
+      description: 'Eventos y cambios de limpieza',
+      category: 'management',
+      shortcut: [7, 4], // ALT+7 luego 4
+    },
     ],
   },
   {
@@ -435,23 +427,16 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
         shortcut: [8, 1], // ALT+8, luego 1
       },
       {
-        id: 'maintenance-preventive',
-        label: 'Preventivo',
-        path: ROUTES.MANTENIMIENTO.PREVENTIVO,
-        icon: Clock,
-        description: 'Mantenimiento preventivo programado',
+        id: 'maintenance-history',
+        label: 'Historiales',
+        path: ROUTES.MANTENIMIENTO.HISTORIALES,
+        icon: History,                 
+        description: 'Eventos y cambios de mantenimiento',
         category: 'management',
-        shortcut: [8, 2], // ALT+8, luego 2
+        shortcut: [8, 2],              
       },
-      {
-        id: 'maintenance-reports',
-        label: 'Reportes Mantenimiento',
-        path: ROUTES.MANTENIMIENTO.REPORTS,
-        icon: BarChart3,
-        description: 'Reportes de mantenimiento',
-        category: 'management',
-        shortcut: [8, 3], // ALT+8, luego 3
-      },
+
+     
     ],
   },
 

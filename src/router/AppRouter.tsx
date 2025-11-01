@@ -19,8 +19,18 @@ import ReduceStay from '../modules/frontdesk/components/ReduceStay';
 import { FolioPage } from '../modules/frontdesk/pages/FolioPage';
 import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
 import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
+
+
+import HistorialLimpiezasPage from '../modules/housekeeping/pages/HistorialLimpiezasPage';
+
+import HistorialMantenimientosPage from '../modules/Mantenimiento/pages/HistorialMantenimientosPage';
+
+
+
 import { AdminLoginPage, AdminAuthProvider, ProtectedRoute } from '../modules/admin';
 import { ReservationReportsPage } from '../modules/reservations/pages/ReservationReportsPage';
+
+
 
 /**
  * TanStack Query Client Configuration
@@ -185,14 +195,22 @@ const router = createBrowserRouter([
           },
         ],
       },
-      {
-        path: 'housekeeping',
-        element: <HousekeepingDashboard />,
+        {
+        path: "housekeeping",
+        children: [
+          { index: true, element: <HousekeepingDashboard /> },
+          { path: "historiales", element: <HistorialLimpiezasPage /> },
+        ],
       },
+
       {
         path: 'mantenimiento',
-        element: <Mantenimiento />,
+        children: [
+          { index: true, element: <Mantenimiento /> },                 // /mantenimiento
+          { path: 'historiales', element: <HistorialMantenimientosPage /> }, // /mantenimiento/historiales
+        ],
       },
+
       {
         path: 'guests',
         children: [
