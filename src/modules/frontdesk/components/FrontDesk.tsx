@@ -54,10 +54,12 @@ const mapRoomTypeToFrontdesk = (type: Room['type']): FrontdeskRoomType => {
 const mapFrontdeskStatusToRoom = (status: FrontdeskRoomStatus): Room['status'] => {
   const statusMap: Record<FrontdeskRoomStatus, Room['status']> = {
     'available': 'available',
+    'occupied': 'occupied',
     'reserved': 'available', // Reserved rooms are technically available in core
     'checked-in': 'occupied',
     'checked-out': 'cleaning',
     'maintenance': 'maintenance',
+    'cleaning': 'cleaning',
   };
   return statusMap[status];
 };
@@ -65,18 +67,22 @@ const mapFrontdeskStatusToRoom = (status: FrontdeskRoomStatus): Room['status'] =
 // =================== CONSTANTS ===================
 const ROOM_STATUS_COLORS = {
   available: 'bg-green-100 text-green-800 border-green-200',
+  occupied: 'bg-red-100 text-red-800 border-red-200',
   reserved: 'bg-purple-100 text-purple-800 border-purple-200',
   'checked-in': 'bg-red-100 text-red-800 border-red-200',
   'checked-out': 'bg-orange-100 text-orange-800 border-orange-200',
-  maintenance: 'bg-yellow-100 text-yellow-800 border-yellow-200'
+  maintenance: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  cleaning: 'bg-purple-100 text-purple-800 border-purple-200'
 } as const;
 
 const ROOM_STATUS_LABELS = {
   available: 'Disponible',
+  occupied: 'Ocupada',
   reserved: 'Reservada',
   'checked-in': 'Ocupada',
   'checked-out': 'Check-out',
-  maintenance: 'Mantenimiento'
+  maintenance: 'Mantenimiento',
+  cleaning: 'Limpieza'
 } as const;
 
 // =================== INTERFACES ===================
@@ -242,8 +248,8 @@ const FrontDesk: React.FC = () => {
   const floors = [...new Set(rooms.map(r => r.floor))];
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--color-darkGreen1)' }}>
+      <div className="p-6">
         <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
           <div className="p-8 space-y-8">
             {/* Header */}
@@ -317,6 +323,20 @@ const FrontDesk: React.FC = () => {
                   <ArrowLeftRight className="w-4 h-4" />
                   Cambio de Habitación
                 </button>
+                <button
+                  onClick={() => navigate(ROUTES.FRONTDESK.DATE_MODIFICATION)}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600"
+                >
+                  <Calendar className="w-4 h-4" />
+                  Modificar Fechas
+                </button>
+                <button
+                  onClick={() => navigate(ROUTES.FRONTDESK.REDUCE_STAY)}
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Reducir Estadía
+                </button>
               </div>
             </div>
 
@@ -353,7 +373,9 @@ const FrontDesk: React.FC = () => {
 
             {/* Content Based on Active View */}
             {activeView === 'calendar' ? (
-              <CalendarView />
+              <div className="overflow-x-auto">
+                <CalendarView />
+              </div>
             ) : (
               <>
                 {/* Filters Panel */}

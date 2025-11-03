@@ -1,21 +1,22 @@
-// CheckIn.tsx — Simplificado para migración
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, LogIn, UserPlus, Calendar, Search, User } from 'lucide-react';
+import { ArrowLeft, LogIn, UserPlus, Calendar, Search, User, CheckCircle, AlertCircle } from 'lucide-react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import ReactFlagsSelect from 'react-flags-select';
-import { useCheckIn } from '../hooks/useCheckIn';
+import { useCheckInImproved } from '../hooks/useCheckInImproved';
 import { useGuests } from '../../guests/hooks/useGuests';
 import { useRoomSelection } from '../hooks/useRoomSelection';
 import { useInputValidation } from '../../../hooks/useInputValidation';
-import { ChargeDistributionComponent } from './ChargeDistribution';
+import { useReservationById } from '../../reservations/hooks/useReservationQueries';
 import { ROUTES } from '../../../router/routes';
 import { DEFAULT_CURRENCY } from '../constants/currencies';
+import type { CheckInRequestDTO } from '../types/checkin-api';
 import type { CheckInData, PaymentMethod, Currency } from '../types/checkin';
-import type { ChargeDistribution } from '../types/chargeDistribution';
 import type { Guest } from '../../../types/core/domain';
+import type { RoomInfo } from '../types/room';
 import { CurrencySelector } from './CurrencySelector';
+import { Alert } from '../../../components/ui';
 
 type CheckInType = 'reservation' | 'walk-in';
 type WalkInGuestType = 'new' | 'existing';
@@ -42,6 +43,10 @@ type LocalState = {
   nationality: string;
   selectedGuestId: string;
   guestSearchTerm: string;
+  // ⚖️ División de cargos
+  requiereDivisionCargos: boolean;
+  notasDivision: string;
+  empresaPagadora: string;
 };
 
 // Helper functions to reduce complexity
@@ -100,9 +105,75 @@ const getRoomStatusDisplay = (status: string) => {
   };
 };
 
+// Helper function to render room information content
+const renderRoomInfoContent = (loadingRoomInfo: boolean, roomInfo: RoomInfo | null) => {
+  if (loadingRoomInfo) {
+    return (
+      <div className="mt-3 pt-3 border-t border-gray-200">
+        <div className="text-xs text-gray-500 italic">
+          Cargando información de la habitación...
+        </div>
+      </div>
+    );
+  }
+
+  if (roomInfo) {
+    return (
+      <div className="mt-3 pt-3 border-t border-gray-200">
+        <div className="grid grid-cols-2 gap-4 text-xs text-gray-600">
+          <div>
+            <span className="font-medium">Tipo:</span> {roomInfo.type}
+          </div>
+          <div>
+            <span className="font-medium">Capacidad:</span> {roomInfo.capacity.adults} adultos, {roomInfo.capacity.children} niños
+          </div>
+          <div>
+            <span className="font-medium">Estado:</span>
+            <span className={`ml-1 ${getRoomStatusDisplay(roomInfo.status).color}`}>
+              {getRoomStatusDisplay(roomInfo.status).text}
+            </span>
+          </div>
+          <div>
+            <span className="font-medium">Piso:</span> {roomInfo.floor}
+          </div>
+          <div>
+            <span className="font-medium">Precio:</span> ${roomInfo.price.base}/{roomInfo.price.currency}
+          </div>
+          <div>
+            <span className="font-medium">Vista:</span> {roomInfo.features.hasSeaView ? 'Mar' : 'Ciudad'}
+          </div>
+        </div>
+
+        {/* Amenidades */}
+        <div className="mt-2">
+          <span className="font-medium text-xs text-gray-600">Amenidades:</span>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {roomInfo.amenities.map((amenity: string) => (
+              <span
+                key={amenity}
+                className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
+              >
+                {amenity}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t border-gray-200">
+      <div className="text-xs text-gray-500 italic">
+        Habitación no encontrada en el sistema
+      </div>
+    </div>
+  );
+};
+
 const CheckIn = () => {
   const navigate = useNavigate();
-  const { validateAndSubmit, isSubmitting, error } = useCheckIn();
+  const { validateAndSubmit, isSubmitting, error, clearError: clearCheckInError } = useCheckInImproved();
   const { guests, searchGuests } = useGuests();
   const { 
     suggestions: roomSuggestions, 
@@ -150,22 +221,148 @@ const CheckIn = () => {
     nationality: 'US',
     selectedGuestId: '',
     guestSearchTerm: '',
+    // ⚖️ División de cargos
+    requiereDivisionCargos: false,
+    notasDivision: '',
+    empresaPagadora: '',
   });
-
-  // Estado para división de cargos
-  const [chargeDistribution, setChargeDistribution] = useState<ChargeDistribution | null>(null);
-  const [totalAmount, setTotalAmount] = useState(0); // Monto total a dividir
 
   // Estado para edición del campo de habitación
   const [isRoomEditable, setIsRoomEditable] = useState(false);
 
+  // Estado para información de habitación
+  const [roomInfo, setRoomInfo] = useState<RoomInfo | null>(null);
+  const [loadingRoomInfo, setLoadingRoomInfo] = useState(false);
+
+  // Estados para búsqueda de reserva
+  const [reservationSearchId, setReservationSearchId] = useState('');
+  
+  // Hook para obtener datos de reserva por ID
+  const { 
+    data: foundReservation, 
+    isLoading: isLoadingReservation, 
+    isError: isReservationError,
+    error: reservationError 
+  } = useReservationById(reservationSearchId);
+
+  // Estado para controlar si se han cargado datos de reserva
+  const [hasLoadedReservationData, setHasLoadedReservationData] = useState(false);
+
+  // Efecto para cargar información de habitación cuando cambia el número
+  useEffect(() => {
+    const fetchRoomInfo = async () => {
+      if (formData.roomNumber) {
+        setLoadingRoomInfo(true);
+        try {
+          const info = await getRoomInfo(formData.roomNumber);
+          setRoomInfo(info);
+        } catch (error) {
+          console.error('Error fetching room info:', error);
+          setRoomInfo(null);
+        } finally {
+          setLoadingRoomInfo(false);
+        }
+      } else {
+        setRoomInfo(null);
+      }
+    };
+    fetchRoomInfo();
+  }, [formData.roomNumber, getRoomInfo]);
+
+  // Efecto para autorellenar datos cuando se encuentra una reserva
+  useEffect(() => {
+    if (foundReservation && !hasLoadedReservationData && checkInType === 'reservation') {
+      console.log('Autofilling from reservation:', foundReservation);
+      
+      // Autorellenar datos del huésped
+      if (foundReservation.guest) {
+        const guest = foundReservation.guest;
+        const fullLastName = guest.secondLastName 
+          ? `${guest.firstLastName} ${guest.secondLastName}`
+          : guest.firstLastName;
+        
+        setFormData(prev => ({
+          ...prev,
+          firstName: guest.firstName,
+          lastName: fullLastName,
+          email: guest.email,
+          phone: guest.phone,
+          identificationNumber: guest.documentNumber,
+          nationality: guest.nationality || 'US',
+        }));
+      }
+      
+      // Autorellenar datos de la estancia
+      setFormData(prev => ({
+        ...prev,
+        checkInDate: foundReservation.checkInDate ? foundReservation.checkInDate.split('T')[0] : prev.checkInDate,
+        checkOutDate: foundReservation.checkOutDate ? foundReservation.checkOutDate.split('T')[0] : prev.checkOutDate,
+        numberOfGuests: foundReservation.numberOfGuests,
+        adultos: foundReservation.numberOfAdults,
+        ninos: foundReservation.numberOfChildren,
+        bebes: foundReservation.numberOfInfants,
+        roomNumber: foundReservation.room?.number || prev.roomNumber,
+      }));
+      
+      setHasLoadedReservationData(true);
+    }
+  }, [foundReservation, hasLoadedReservationData, checkInType]);
+
+  // Resetear datos cargados cuando cambia el tipo de check-in
+  useEffect(() => {
+    if (checkInType === 'walk-in') {
+      setHasLoadedReservationData(false);
+      setReservationSearchId('');
+    }
+  }, [checkInType]);
+
   // Función para cambiar el tipo de check-in y limpiar datos relevantes
   const handleCheckInTypeChange = (type: CheckInType) => {
     setCheckInType(type);
+    setHasLoadedReservationData(false);
     if (type === 'walk-in') {
       // Limpiar el ID de reserva para walk-ins
       setFormData(prev => ({ ...prev, reservationId: '' }));
+      setReservationSearchId('');
+    } else {
+      // Limpiar datos de walk-in
+      setFormData(prev => ({
+        ...prev,
+        selectedGuestId: '',
+        guestSearchTerm: ''
+      }));
     }
+  };
+
+  // Función para buscar reserva por ID
+  const handleSearchReservation = () => {
+    if (formData.reservationId.trim()) {
+      setReservationSearchId(formData.reservationId.trim());
+      setHasLoadedReservationData(false);
+    }
+  };
+
+  // Función para limpiar búsqueda de reserva
+  const handleClearReservation = () => {
+    setFormData(prev => ({
+      ...prev,
+      reservationId: '',
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      identificationNumber: '',
+      nationality: 'US',
+      checkInDate: new Date().toISOString().split('T')[0],
+      checkOutDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      numberOfGuests: 1,
+      adultos: 1,
+      ninos: 0,
+      bebes: 0,
+      roomNumber: ''
+    }));
+    setReservationSearchId('');
+    setHasLoadedReservationData(false);
   };
 
   // Función para cambiar el tipo de huésped en walk-in
@@ -231,40 +428,90 @@ const CheckIn = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const checkInData: CheckInData = {
-      reservationId: checkInType === 'walk-in' 
-        ? `WALKIN-${Date.now()}` 
-        : formData.reservationId || `WALKIN-${Date.now()}`,
-      guestName: `${formData.firstName} ${formData.lastName}`,
-      roomNumber: formData.roomNumber,
-      checkInDate: formData.checkInDate,
-      checkOutDate: formData.checkOutDate,
-      numberOfGuests: formData.numberOfGuests,
-      adultos: formData.adultos,
-      ninos: formData.ninos,
-      bebes: formData.bebes,
-      identificationNumber: formData.identificationNumber,
-      paymentStatus: formData.paymentStatus,
-      paymentMethod: formData.paymentMethod || undefined,
-      currency: formData.currency,
-      observacion_checkin: formData.observacion_checkin || undefined,
-      isWalkIn: checkInType === 'walk-in',
-      guestEmail: formData.email,
-      guestPhone: formData.phone,
-      guestNationality: formData.nationality,
-      // División de cargos
-      useChargeDistribution: chargeDistribution !== null,
-      chargeDistribution: chargeDistribution || undefined,
-      totalAmount: totalAmount > 0 ? totalAmount : undefined,
-      // Agregar ID del huésped existente si se seleccionó uno
-      ...(checkInType === 'walk-in' && walkInGuestType === 'existing' && formData.selectedGuestId && {
-        existingGuestId: formData.selectedGuestId
-      })
-    };
+    console.log('🚀 Iniciando proceso de check-in...', {
+      checkInType,
+      walkInGuestType,
+      formData: {
+        reservationId: formData.reservationId,
+        roomNumber: formData.roomNumber,
+        firstName: formData.firstName,
+        lastName: formData.lastName
+      }
+    });
 
-    const success = await validateAndSubmit(checkInData);
-    if (success) {
-      navigate(ROUTES.FRONTDESK.BASE);
+    try {
+      // 1. Validar que tenemos ID de reserva
+      if (checkInType === 'reservation' && !formData.reservationId) {
+        throw new Error('El ID de reserva es requerido para reservas existentes');
+      }
+
+      if (checkInType === 'walk-in') {
+        throw new Error('Walk-in no está implementado aún. Use reservas existentes.');
+      }
+
+      // Limpiar el ID de reserva (remover espacios)
+      const reservaId = formData.reservationId.trim();
+      if (!reservaId) {
+        throw new Error('El ID de reserva no puede estar vacío');
+      }
+
+      // 2. Crear payload exacto para la API según documentación
+      const backendPayload: CheckInRequestDTO = {
+        id_cliente_titular: 1, // El backend lo resolverá desde la reserva
+        fecha_llegada: formData.checkInDate,
+        fecha_salida: formData.checkOutDate,
+        adultos: formData.adultos,
+        ninos: formData.ninos,
+        bebes: formData.bebes,
+        id_hab: parseInt(formData.roomNumber, 10) || 1, // Convertir a número
+        nombre_asignacion: `${formData.firstName} ${formData.lastName} - Check-in desde Frontend`,
+        observacion_checkin: formData.observacion_checkin || 'Check-in realizado desde el sistema frontend'
+      };
+
+      console.log('📋 Payload preparado para API:', backendPayload);
+
+      // 3. Convertir a CheckInData para compatibilidad con el hook
+      const checkInData: CheckInData = {
+        reservationId: formData.reservationId,
+        guestName: `${formData.firstName} ${formData.lastName}`,
+        roomNumber: formData.roomNumber,
+        checkInDate: formData.checkInDate,
+        checkOutDate: formData.checkOutDate,
+        numberOfGuests: formData.numberOfGuests,
+        adultos: formData.adultos,
+        ninos: formData.ninos,
+        bebes: formData.bebes,
+        identificationNumber: formData.identificationNumber,
+        paymentStatus: formData.paymentStatus,
+        paymentMethod: formData.paymentMethod || undefined,
+        currency: formData.currency,
+        observacion_checkin: formData.observacion_checkin || undefined,
+        isWalkIn: (checkInType as string) === 'walk-in',
+        guestEmail: formData.email,
+        guestPhone: formData.phone,
+        guestNationality: formData.nationality,
+        // ⚖️ División de cargos
+        requiereDivisionCargos: formData.requiereDivisionCargos,
+        notasDivision: formData.requiereDivisionCargos ? formData.notasDivision : undefined,
+        empresaPagadora: formData.requiereDivisionCargos ? formData.empresaPagadora : undefined,
+        // Agregar ID del huésped existente si se seleccionó uno
+        ...((checkInType as string) === 'walk-in' && walkInGuestType === 'existing' && formData.selectedGuestId && {
+          existingGuestId: formData.selectedGuestId
+        })
+      };
+
+      const result = await validateAndSubmit(checkInData);
+      
+      if (result.success) {
+        console.log('✅ Check-in exitoso, redirigiendo...');
+        navigate(ROUTES.FRONTDESK.BASE);
+      } else {
+        console.error('❌ Check-in falló:', error);
+        // El error ya se maneja en el hook y se muestra en la UI
+      }
+    } catch (validationError) {
+      console.error('❌ Error de validación:', validationError);
+      // Aquí podrías mostrar el error en la UI usando tu sistema de alertas
     }
   };
 
@@ -309,6 +556,8 @@ const CheckIn = () => {
             </button>
           </div>
 
+
+
           {/* Selector de tipo de Check-In */}
           <div className="mb-6">
             <div className="flex justify-center">
@@ -337,14 +586,25 @@ const CheckIn = () => {
             </div>
             {checkInType === 'walk-in' && (
               <p className="text-center text-sm text-gray-600 mt-2">
-                Huésped sin reserva previa
+                Huésped sin reserva previa (No disponible)
               </p>
             )}
           </div>
           
+          {/* Sistema de alertas mejorado */}
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-              {error}
+            <div className="mb-6">
+              <Alert
+                type="error"
+                title="Error en Check-In"
+                message={error}
+                onClose={() => {
+                  // Limpiar error del check-in
+                  if (typeof clearCheckInError === 'function') {
+                    clearCheckInError();
+                  }
+                }}
+              />
             </div>
           )}
 
@@ -353,19 +613,123 @@ const CheckIn = () => {
             {checkInType === 'reservation' && (
               <div className="border border-gray-200 rounded-lg p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Información de la Reserva</h2>
-                <div>
-                  <label htmlFor="reservationId" className="block text-sm font-medium text-gray-700 mb-2">
-                    ID de Reserva <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="reservationId"
-                    type="text"
-                    value={formData.reservationId}
-                    onChange={(e) => setFormData(prev => ({ ...prev, reservationId: e.target.value }))}
-                    className={getInputClasses(false, false)}
-                    required={checkInType === 'reservation'}
-                    placeholder="Ingrese el ID de la reserva"
-                  />
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="reservationId" className="block text-sm font-medium text-gray-700 mb-2">
+                      Código de Reserva <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        id="reservationId"
+                        type="text"
+                        value={formData.reservationId}
+                        onChange={(e) => {
+                          // Permitir letras, números, guiones
+                          const value = e.target.value.toUpperCase();
+                          if (/^[A-Z0-9-]*$/.test(value)) {
+                            setFormData(prev => ({ ...prev, reservationId: value }));
+                            if (hasLoadedReservationData) {
+                              setHasLoadedReservationData(false);
+                            }
+                          }
+                        }}
+                        className={getInputClasses(false, false)}
+                        required={checkInType === 'reservation'}
+                        placeholder="Ej: JTFLGLKR o JTFL-GLKR"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSearchReservation();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSearchReservation}
+                        disabled={!formData.reservationId.trim() || isLoadingReservation}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {isLoadingReservation ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Buscando...
+                          </>
+                        ) : (
+                          <>
+                            <Search className="w-4 h-4" />
+                            Buscar
+                          </>
+                        )}
+                      </button>
+                      {hasLoadedReservationData && (
+                        <button
+                          type="button"
+                          onClick={handleClearReservation}
+                          className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 flex items-center gap-2"
+                        >
+                          Limpiar
+                        </button>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Ingrese el código de 8 caracteres (con o sin guión). Ejemplo: JTFLGLKR
+                    </p>
+                  </div>
+
+                  {/* Estado de búsqueda de reserva */}
+                  {isLoadingReservation && (
+                    <div className="flex items-center gap-2 text-blue-600 text-sm">
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      Buscando reserva...
+                    </div>
+                  )}
+
+                  {isReservationError && reservationError && (
+                    <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+                      <AlertCircle className="w-4 h-4" />
+                      No se encontró la reserva o ocurrió un error: {reservationError.message}
+                    </div>
+                  )}
+
+                  {foundReservation && hasLoadedReservationData && (
+                    <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md text-green-700 text-sm">
+                      <CheckCircle className="w-4 h-4" />
+                      Reserva encontrada - Datos cargados automáticamente
+                      <div className="ml-auto">
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                          Estado: {foundReservation.status}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Información adicional de la reserva encontrada */}
+                  {foundReservation && hasLoadedReservationData && (
+                    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-2">Detalles de la Reserva</h3>
+                      <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                        <div><strong>Confirmación:</strong> {foundReservation.confirmationNumber}</div>
+                        <div><strong>Estado:</strong> {foundReservation.status}</div>
+                        <div><strong>Huéspedes:</strong> {foundReservation.numberOfGuests} personas</div>
+                        <div><strong>Noches:</strong> {foundReservation.numberOfNights}</div>
+                        <div><strong>Total:</strong> ${foundReservation.total}</div>
+                        {foundReservation.specialRequests && (
+                          <div className="col-span-2"><strong>Solicitudes:</strong> {foundReservation.specialRequests}</div>
+                        )}
+                      </div>
+                      
+                      {/* Instrucciones para el check-in */}
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                        <div className="flex items-center gap-2 text-blue-800 text-sm">
+                          <CheckCircle className="w-4 h-4" />
+                          <span className="font-medium">Listo para Check-In</span>
+                        </div>
+                        <p className="text-blue-700 text-xs mt-1">
+                          Los datos se han cargado automáticamente. Verifique la información y complete el check-in.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -384,12 +748,25 @@ const CheckIn = () => {
               {/* Selector de tipo de huésped para Walk-In */}
               {checkInType === 'walk-in' && (
                 <div className="mb-6">
+                  {/* Mensaje temporal para Walk-In */}
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                    <div className="flex items-center gap-2 text-yellow-800">
+                      <AlertCircle className="w-5 h-5" />
+                      <p className="font-medium">Walk-In en Desarrollo</p>
+                    </div>
+                    <p className="text-yellow-700 text-sm mt-1">
+                      La funcionalidad de Walk-In está en desarrollo. Por ahora, use "Reserva Existente" 
+                      con un ID de reserva válido.
+                    </p>
+                  </div>
+                  
                   <div className="flex justify-center">
                     <div className="bg-gray-100 p-1 rounded-lg flex">
                       <button
                         type="button"
                         onClick={() => handleWalkInGuestTypeChange('new')}
                         className={getButtonClasses(walkInGuestType === 'new', 'green')}
+                        disabled={true}
                       >
                         <div className="flex items-center gap-2">
                           <UserPlus className="w-4 h-4" />
@@ -400,6 +777,7 @@ const CheckIn = () => {
                         type="button"
                         onClick={() => handleWalkInGuestTypeChange('existing')}
                         className={getButtonClasses(walkInGuestType === 'existing', 'green')}
+                        disabled={true}
                       >
                         <div className="flex items-center gap-2">
                           <Search className="w-4 h-4" />
@@ -481,9 +859,9 @@ const CheckIn = () => {
                       }
                     }}
                     onBlur={(e) => validate('firstName', e.target.value, getCommonRules('firstName'))}
-                    className={getInputClasses(!!errors.firstName, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId))}
+                    className={getInputClasses(!!errors.firstName, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData)}
                     required
-                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId)}
+                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData}
                     placeholder="Ej: Juan"
                   />
                   {errors.firstName && (
@@ -509,9 +887,9 @@ const CheckIn = () => {
                       }
                     }}
                     onBlur={(e) => validate('lastName', e.target.value, getCommonRules('lastName'))}
-                    className={getInputClasses(!!errors.lastName, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId))}
+                    className={getInputClasses(!!errors.lastName, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData)}
                     required
-                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId)}
+                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData}
                     placeholder="Ej: Pérez"
                   />
                   {errors.lastName && (
@@ -533,9 +911,9 @@ const CheckIn = () => {
                       clearError('email');
                     }}
                     onBlur={(e) => validate('email', e.target.value, getCommonRules('email'))}
-                    className={getInputClasses(!!errors.email, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId))}
+                    className={getInputClasses(!!errors.email, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData)}
                     required
-                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId)}
+                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData}
                     placeholder="Ej: juan@email.com"
                   />
                   {errors.email && (
@@ -555,7 +933,7 @@ const CheckIn = () => {
                       id: 'phone',
                       name: 'phone',
                       required: true,
-                      readOnly: isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId),
+                      readOnly: isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData,
                     }}
                     inputClass="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -572,7 +950,7 @@ const CheckIn = () => {
                     selectButtonClassName="react-flags-select-button"
                     aria-labelledby="nationality-label"
                     aria-required="true"
-                    disabled={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId)}
+                    disabled={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData}
                   />
                 </div>
 
@@ -594,9 +972,9 @@ const CheckIn = () => {
                       }
                     }}
                     onBlur={(e) => validate('identificationNumber', e.target.value, getCommonRules('identification'))}
-                    className={getInputClasses(!!errors.identificationNumber, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId))}
+                    className={getInputClasses(!!errors.identificationNumber, isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData)}
                     required
-                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId)}
+                    readOnly={isFieldReadOnly(checkInType, walkInGuestType, formData.selectedGuestId) || hasLoadedReservationData}
                     placeholder="Ej: 123456789 o AB123456"
                   />
                   {errors.identificationNumber && (
@@ -668,62 +1046,26 @@ const CheckIn = () => {
               </div>
             </div>
 
-            {/* División de Cargos */}
-            <div className="border border-purple-200 bg-purple-50 rounded-lg p-6">
-              <ChargeDistributionComponent
-                totalAmount={totalAmount}
-                guestCount={formData.numberOfGuests}
-                onDistributionChange={setChargeDistribution}
-              />
-              
-              {/* Campo para establecer el monto total */}
-              <div className="mt-4 pt-4 border-t border-purple-200">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Monto Total de la Estancia ({formData.currency})
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="999999.99"
-                  step="0.01"
-                  value={totalAmount}
-                  onChange={(e) => {
-                    const value = Number.parseFloat(e.target.value) || 0;
-                    if (value >= 0 && value <= 999999.99) {
-                      setTotalAmount(value);
-                      clearError('totalAmount');
-                    }
-                  }}
-                  onBlur={(e) => validate('totalAmount', e.target.value, getCommonRules('currency'))}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 ${
-                    errors.totalAmount 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : 'border-gray-300 focus:ring-purple-500'
-                  }`}
-                  placeholder="0.00"
-                />
-                {errors.totalAmount && (
-                  <p className="mt-1 text-sm text-red-600">{errors.totalAmount}</p>
-                )}
-                <p className="text-xs text-gray-500 mt-1">
-                  Ingrese el monto total para habilitar la división de cargos (máx. $999,999.99)
-                </p>
-              </div>
-            </div>
-
             {/* Información adicional para Walk-In */}
             {checkInType === 'walk-in' && (
               <div className="border border-yellow-200 bg-yellow-50 rounded-lg p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Información Adicional - Walk-In</h2>
-                <div className="bg-blue-50 border border-blue-200 rounded-md p-3 w-full">
-                  <p className="text-sm text-blue-800">
-                    <strong>Walk-In:</strong> Este huésped no tiene reserva previa. 
-                    Se generará automáticamente un ID de registro.
-                    {walkInGuestType === 'existing' && formData.selectedGuestId && (
-                      <span className="block mt-1">
-                        <strong>Huésped seleccionado:</strong> Los datos del huésped existente se han cargado automáticamente.
-                      </span>
-                    )}
+                <div className="bg-red-50 border border-red-200 rounded-md p-3 w-full">
+                  <div className="flex items-center gap-2 text-red-800">
+                    <AlertCircle className="w-5 h-5" />
+                    <p className="font-medium">Funcionalidad No Disponible</p>
+                  </div>
+                  <p className="text-sm text-red-700 mt-2">
+                    <strong>Walk-In está en desarrollo.</strong> Esta funcionalidad requiere:
+                  </p>
+                  <ul className="text-sm text-red-700 mt-1 ml-4 space-y-1">
+                    <li>• Creación automática de cliente en backend</li>
+                    <li>• Generación de ID de reserva temporal</li>
+                    <li>• Validación de disponibilidad de habitación</li>
+                    <li>• Configuración de precios y políticas</li>
+                  </ul>
+                  <p className="text-sm text-red-700 mt-2">
+                    <strong>Solución temporal:</strong> Use "Reserva Existente" con un ID válido.
                   </p>
                 </div>
               </div>
@@ -873,8 +1215,8 @@ const CheckIn = () => {
                         maxLength={10}
                         onChange={(e) => {
                           const value = e.target.value;
-                          // Solo permitir alfanumérico y guiones
-                          if (/^[a-zA-Z0-9-]*$/.test(value)) {
+                          // Para la API, solo permitir números para habitación
+                          if (/^\d*$/.test(value)) {
                             setFormData(prev => ({ ...prev, roomNumber: value }));
                             searchRoomSuggestions(value);
                             clearError('roomNumber');
@@ -888,7 +1230,7 @@ const CheckIn = () => {
                         }}
                         className={getRoomInputClasses(!!errors.roomNumber, isRoomEditable)}
                         required
-                        placeholder="101"
+                        placeholder="101 (solo números)"
                       />
                       
                       {/* Error de validación */}
@@ -913,6 +1255,15 @@ const CheckIn = () => {
                               Habitación {room}
                             </button>
                           ))}
+                        </div>
+                      )}
+                      
+                      {/* Mostrar mensaje si no hay sugerencias pero el usuario está escribiendo */}
+                      {isRoomEditable && formData.roomNumber.length > 0 && roomSuggestions.length === 0 && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-10 p-3">
+                          <p className="text-sm text-gray-500">
+                            No se encontraron habitaciones que coincidan con "{formData.roomNumber}"
+                          </p>
                         </div>
                       )}
                     </div>
@@ -954,57 +1305,95 @@ const CheckIn = () => {
                 </div>
                 
                 {/* Información adicional de la habitación */}
-                {formData.roomNumber && (() => {
-                  const roomInfo = getRoomInfo(formData.roomNumber);
-                  return roomInfo ? (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <div className="grid grid-cols-2 gap-4 text-xs text-gray-600">
-                        <div>
-                          <span className="font-medium">Tipo:</span> {roomInfo.type}
-                        </div>
-                        <div>
-                          <span className="font-medium">Capacidad:</span> {roomInfo.capacity.adults} adultos, {roomInfo.capacity.children} niños
-                        </div>
-                        <div>
-                          <span className="font-medium">Estado:</span> 
-                          <span className={`ml-1 ${getRoomStatusDisplay(roomInfo.status).color}`}>
-                            {getRoomStatusDisplay(roomInfo.status).text}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="font-medium">Piso:</span> {roomInfo.floor}
-                        </div>
-                        <div>
-                          <span className="font-medium">Precio:</span> ${roomInfo.price.base}/{roomInfo.price.currency}
-                        </div>
-                        <div>
-                          <span className="font-medium">Vista:</span> {roomInfo.features.hasSeaView ? 'Mar' : 'Ciudad'}
-                        </div>
+                {formData.roomNumber && (
+                  <>
+                    {renderRoomInfoContent(loadingRoomInfo, roomInfo)}
+                  </>
+                )}
+              </div>
+
+              {/* ⚖️ División de Cargos al Checkout */}
+              <div className="mt-6 border-t pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">⚖️ División de Cargos</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center">
+                    <input
+                      id="requiereDivisionCargos"
+                      type="checkbox"
+                      checked={formData.requiereDivisionCargos}
+                      onChange={(e) => setFormData(prev => ({ 
+                        ...prev, 
+                        requiereDivisionCargos: e.target.checked,
+                        // Limpiar campos relacionados si se desmarca
+                        notasDivision: e.target.checked ? prev.notasDivision : '',
+                        empresaPagadora: e.target.checked ? prev.empresaPagadora : ''
+                      }))}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="requiereDivisionCargos" className="ml-2 block text-sm font-medium text-gray-700">
+                      Requiere división de cargos en el checkout
+                    </label>
+                  </div>
+
+                  {formData.requiereDivisionCargos && (
+                    <div className="ml-6 space-y-4 border-l-4 border-blue-500 pl-4 bg-blue-50 p-4 rounded-r-lg">
+                      <div className="bg-blue-100 border border-blue-300 rounded-md p-3">
+                        <p className="text-sm text-blue-800">
+                          <strong>ℹ️ Información:</strong> Esta configuración indica que los cargos 
+                          deberán dividirse entre diferentes responsables durante el checkout. 
+                          La división real se realizará en ese momento usando el sistema de distribución de folios.
+                        </p>
                       </div>
-                      
-                      {/* Amenidades */}
-                      <div className="mt-2">
-                        <span className="font-medium text-xs text-gray-600">Amenidades:</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {roomInfo.amenities.map((amenity) => (
-                            <span 
-                              key={amenity} 
-                              className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
-                            >
-                              {amenity}
-                            </span>
-                          ))}
+
+                      <div>
+                        <label htmlFor="empresaPagadora" className="block text-sm font-medium text-gray-700 mb-2">
+                          Empresa/Agencia Pagadora (opcional)
+                        </label>
+                        <input
+                          id="empresaPagadora"
+                          type="text"
+                          value={formData.empresaPagadora}
+                          onChange={(e) => setFormData(prev => ({ ...prev, empresaPagadora: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Ej: Corporativo ABC, Agencia XYZ..."
+                          maxLength={100}
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          Nombre de la empresa o agencia que pagará parte o todos los cargos
+                        </p>
+                      </div>
+
+                      <div>
+                        <label htmlFor="notasDivision" className="block text-sm font-medium text-gray-700 mb-2">
+                          Notas sobre la división
+                        </label>
+                        <textarea
+                          id="notasDivision"
+                          value={formData.notasDivision}
+                          onChange={(e) => setFormData(prev => ({ ...prev, notasDivision: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          rows={3}
+                          placeholder="Ej: 'Hospedaje y desayuno a cargo de la empresa. Otros cargos al huésped.'"
+                          maxLength={300}
+                        />
+                        <div className="mt-1 text-xs text-gray-500 text-right">
+                          {formData.notasDivision.length}/300 caracteres
                         </div>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Instrucciones específicas sobre cómo dividir los cargos (se usarán en el checkout)
+                        </p>
+                      </div>
+
+                      <div className="bg-yellow-50 border border-yellow-300 rounded-md p-3">
+                        <p className="text-sm text-yellow-800">
+                          <strong>⚠️ Recordatorio:</strong> Esta es solo una nota de que se requerirá división. 
+                          La configuración detallada (tipos de cargo, porcentajes, responsables específicos) 
+                          se realizará durante el proceso de checkout.
+                        </p>
                       </div>
                     </div>
-                  ) : (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <div className="text-xs text-gray-500 italic">
-                        Habitación no encontrada en el sistema
-                      </div>
-                    </div>
-                  );
-                })()}
+                  )}
+                </div>
               </div>
 
               {/* Observaciones */}

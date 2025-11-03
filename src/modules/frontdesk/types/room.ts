@@ -20,6 +20,7 @@ export interface RoomInfo {
     hasKitchen: boolean;
     smokingAllowed: boolean;
   };
+  guestName?: string; // Name of the guest occupying the room
 }
 
 export interface RoomSearchFilters {

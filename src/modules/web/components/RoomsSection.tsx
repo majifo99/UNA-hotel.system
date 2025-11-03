@@ -1,13 +1,15 @@
 /**
  * RoomsSection Component - Scalable Rooms Display Section
  * 
- * Uses real room data and displays rooms dynamically
+ * Uses real room data from API and displays rooms dynamically
  */
 
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { RoomCard } from './RoomCard';
-import { roomsData } from '../../reservations/data/roomsData';
+import { roomService } from '../../reservations/services/roomService';
 import type { Room } from '../../../types/core';
+import { formatCurrency } from '../utils/currency';
 
 interface RoomsSectionProps {
   readonly title?: string;
@@ -26,18 +28,42 @@ export function RoomsSection({
   roomTypes = [],
   className = ""
 }: RoomsSectionProps) {
+  const [rooms, setRooms] = useState<Room[]>([]);
+
+  // Fetch rooms from API
+  useEffect(() => {
+    const fetchRooms = async () => {
+      try {
+        // Get all room types to fetch available rooms
+        // const roomTypesData = await roomService.getAllRoomTypes();
+        
+        // For now, fetch all available rooms (you can adjust the date range)
+        const today = new Date().toISOString().split('T')[0];
+        const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+        
+        const availableRooms = await roomService.getAvailableRooms(today, tomorrow);
+        
+        setRooms(availableRooms);
+      } catch (err) {
+        console.error('Error fetching rooms:', err);
+        setRooms([]);
+      }
+    };
+
+    fetchRooms();
+  }, []);
   
   // Filter and process rooms
   const getFilteredRooms = (): Room[] => {
-    let filteredRooms = roomsData.filter(room => room.isAvailable);
+    let filteredRooms = rooms.filter((room: Room) => room.isAvailable);
     
     // Filter by room types if specified
     if (roomTypes.length > 0) {
-      filteredRooms = filteredRooms.filter(room => roomTypes.includes(room.type));
+      filteredRooms = filteredRooms.filter((room: Room) => roomTypes.includes(room.type));
     }
     
     // Sort rooms by price to show a good variety
-    filteredRooms.sort((a, b) => a.pricePerNight - b.pricePerNight);
+    filteredRooms.sort((a: Room, b: Room) => a.pricePerNight - b.pricePerNight);
     
     // If we need to limit, try to show variety (different types)
     if (maxRooms && filteredRooms.length > maxRooms) {
@@ -54,7 +80,7 @@ export function RoomsSection({
       
       // If we still need more rooms, add the cheapest remaining ones
       if (selectedRooms.length < maxRooms) {
-        const remainingRooms = filteredRooms.filter(room => !selectedRooms.includes(room));
+        const remainingRooms = filteredRooms.filter((room: Room) => !selectedRooms.includes(room));
         const needed = maxRooms - selectedRooms.length;
         selectedRooms.push(...remainingRooms.slice(0, needed));
       }
@@ -69,12 +95,12 @@ export function RoomsSection({
 
   // Get room statistics for insights
   const getRoomStats = () => {
-    const totalRooms = roomsData.length;
-    const availableRooms = roomsData.filter(room => room.isAvailable).length;
-    const roomTypeCount = new Set(roomsData.map(room => room.type)).size;
+    const totalRooms = rooms.length;
+    const availableRooms = rooms.filter((room: Room) => room.isAvailable).length;
+    const roomTypeCount = new Set(rooms.map((room: Room) => room.type)).size;
     const priceRange = {
-      min: Math.min(...roomsData.map(room => room.pricePerNight)),
-      max: Math.max(...roomsData.map(room => room.pricePerNight))
+      min: rooms.length > 0 ? Math.min(...rooms.map((room: Room) => room.pricePerNight)) : 0,
+      max: rooms.length > 0 ? Math.max(...rooms.map((room: Room) => room.pricePerNight)) : 0
     };
     
     return {
@@ -130,7 +156,7 @@ export function RoomsSection({
               {stats.roomTypeCount} tipos diferentes
             </span>
             <span className="bg-una-bg-200 px-3 py-1 rounded-full">
-              Desde ₡{stats.priceRange.min.toLocaleString()}/noche
+              Desde {formatCurrency(stats.priceRange.min)}/noche
             </span>
           </div>
         </div>
@@ -150,7 +176,7 @@ export function RoomsSection({
               className="inline-block px-8 py-3 text-white rounded-md text-lg font-semibold hover:opacity-90 transition-opacity"
               style={{ backgroundColor: 'var(--color-darkGreen1)' }}
             >
-              Ver Todas las Habitaciones ({roomsData.filter(r => r.isAvailable).length})
+              Ver Todas las Habitaciones ({displayRooms.length})
             </Link>
           </div>
         )}

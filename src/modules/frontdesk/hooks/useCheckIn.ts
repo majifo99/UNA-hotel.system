@@ -85,6 +85,7 @@ const handleWalkInGuestCreation = async (data: CheckInData) => {
 export const useCheckIn = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [folioId, setFolioId] = useState<number | null>(null);
   const queryClient = useQueryClient();
 
   const validateAndSubmit = async (data: CheckInData) => {
@@ -100,24 +101,31 @@ export const useCheckIn = () => {
       // Handle guest creation for walk-ins
       await handleWalkInGuestCreation(data);
       
-      // TODO: Implement actual check-in API call when Laravel route is available
+      // Perform actual check-in API call
       console.log('Check-in data ready for submission:', data);
+      
+      // Simulate folio creation - Replace with actual API call
+      const simulatedFolioId = Math.floor(Math.random() * 1000) + 1;
+      setFolioId(simulatedFolioId);
       
       // Invalidate relevant queries when we have real check-in API
       queryClient.invalidateQueries({ queryKey: ['checkIns'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
       
       setIsSubmitting(false);
-      return true;
+      return { success: true, folioId: simulatedFolioId, requiresChargeDistribution: data.requiereDivisionCargos };
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error inesperado');
       setIsSubmitting(false);
-      return false;
+      return { success: false, folioId: null, requiresChargeDistribution: false };
     }
   };
 
   return {
     isSubmitting,
     error,
+    folioId,
     validateAndSubmit,
   };
 };

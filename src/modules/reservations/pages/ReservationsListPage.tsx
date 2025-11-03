@@ -1,8 +1,14 @@
 ﻿import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Reservation } from '../types';
 import { useReservationsList } from '../hooks/useReservationQueries';
-import { ReservationsFilters, ReservationsTable, type ReservationListFilters } from '../components/list';
-import { ReservationEditDialog, ReservationCancelDialog } from '../components/modals';
+import { 
+  ReservationsFilters, 
+  ReservationsTable,  
+  TablePagination,
+  type ReservationListFilters,
+  type PaginationInfo,
+} from '../components/list';
 
 const STRINGS = {
   title: 'Gestión de reservaciones',
@@ -67,15 +73,54 @@ function applyFilters(reservations: Reservation[], filters: ReservationListFilte
 }
 
 export const ReservationsListPage: React.FC = () => {
+  const navigate = useNavigate();
   const { data = [], isLoading, isError, refetch } = useReservationsList();
   const [filters, setFilters] = React.useState<ReservationListFilters>(DEFAULT_FILTERS);
-  const [reservationToEdit, setReservationToEdit] = React.useState<Reservation | null>(null);
-  const [reservationToCancel, setReservationToCancel] = React.useState<Reservation | null>(null);
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [perPage, setPerPage] = React.useState(10);
 
   const filteredReservations = React.useMemo(
     () => applyFilters(data, filters),
     [data, filters]
   );
+
+  // Paginación local
+  const paginatedReservations = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * perPage;
+    const endIndex = startIndex + perPage;
+    return filteredReservations.slice(startIndex, endIndex);
+  }, [filteredReservations, currentPage, perPage]);
+
+  const pagination: PaginationInfo = React.useMemo(() => {
+    const total = filteredReservations.length;
+    const lastPage = Math.ceil(total / perPage);
+    const from = total === 0 ? 0 : (currentPage - 1) * perPage + 1;
+    const to = Math.min(currentPage * perPage, total);
+
+    return {
+      currentPage,
+      perPage,
+      total,
+      from,
+      to,
+      lastPage,
+    };
+  }, [filteredReservations.length, currentPage, perPage]);
+
+  // Reset a página 1 cuando cambian los filtros
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setCurrentPage(1);
+  };
 
   const stats = React.useMemo(() => {
     if (!data || data.length === 0) {
@@ -108,24 +153,6 @@ export const ReservationsListPage: React.FC = () => {
 
     return counters;
   }, [data]);
-
-  React.useEffect(() => {
-    if (reservationToEdit) {
-      const latest = data.find((reservation) => reservation.id === reservationToEdit.id);
-      if (latest && latest !== reservationToEdit) {
-        setReservationToEdit(latest);
-      }
-    }
-  }, [data, reservationToEdit]);
-
-  React.useEffect(() => {
-    if (reservationToCancel) {
-      const latest = data.find((reservation) => reservation.id === reservationToCancel.id);
-      if (latest && latest !== reservationToCancel) {
-        setReservationToCancel(latest);
-      }
-    }
-  }, [data, reservationToCancel]);
 
   const handleResetFilters = () => {
     setFilters(DEFAULT_FILTERS);
@@ -168,37 +195,33 @@ export const ReservationsListPage: React.FC = () => {
             onChange={setFilters}
             onReset={handleResetFilters}
           />
+          {filteredReservations.length > 0 && (
+            <div className="mt-4 text-sm text-slate-600">
+              Se encontraron <strong>{filteredReservations.length}</strong> reservacion{filteredReservations.length === 1 ? '' : 'es'}
+            </div>
+          )}
         </div>
-        <div className="px-2 pb-6 pt-4 md:px-6">
+        <div className="px-2 pb-2 pt-4 md:px-6">
           <ReservationsTable
-            reservations={filteredReservations}
+            reservations={paginatedReservations}
             isLoading={isLoading}
             isError={isError}
             onRetry={refetch}
-            onEdit={setReservationToEdit}
-            onCancel={setReservationToCancel}
+            onEdit={(reservation) => navigate(`/reservations/${reservation.id}/edit`)}
+            onCancel={(reservation) => navigate(`/reservations/${reservation.id}/cancel`)}
+            onViewDetail={(reservation) => navigate(`/reservations/${reservation.id}/detail`)}
           />
         </div>
+        {filteredReservations.length > 0 && (
+          <TablePagination
+            pagination={pagination}
+            onPageChange={handlePageChange}
+            onPerPageChange={handlePerPageChange}
+          />
+        )}
       </section>
-
-      {reservationToEdit && (
-        <ReservationEditDialog
-          reservation={reservationToEdit}
-          isOpen={Boolean(reservationToEdit)}
-          onClose={() => setReservationToEdit(null)}
-        />
-      )}
-
-      {reservationToCancel && (
-        <ReservationCancelDialog
-          reservation={reservationToCancel}
-          isOpen={Boolean(reservationToCancel)}
-          onClose={() => setReservationToCancel(null)}
-        />
-      )}
     </div>
   );
 };
 
 export default ReservationsListPage;
-

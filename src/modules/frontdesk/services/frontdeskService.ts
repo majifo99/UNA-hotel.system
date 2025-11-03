@@ -4,6 +4,8 @@ import type {
   RoomFilters, 
   DashboardStats
 } from '../types';
+import type { LaravelRoomResponse } from '../types/laravelApi';
+import { mapLaravelRoomToRoom } from '../types/laravelApi';
 
 // Importar datos simulados para desarrollo
 import { 
@@ -18,7 +20,7 @@ import {
  */
 export class FrontdeskService {
   private static baseURL = '/frontdesk';
-  private static isDevelopment = import.meta.env.DEV;
+  private static readonly useMocks = (import.meta.env.VITE_USE_MOCKS === 'true');
 
   // =================== ROOMS ===================
   
@@ -26,7 +28,7 @@ export class FrontdeskService {
    * Obtener todas las habitaciones con filtros opcionales
    */
   static async getRooms(filters?: RoomFilters): Promise<Room[]> {
-    if (this.isDevelopment) {
+    if (this.useMocks) {
       await simulateNetworkDelay();
       
       if (simulateRandomError()) { 
@@ -48,40 +50,83 @@ export class FrontdeskService {
 
     try {
       const params = new URLSearchParams();
-      if (filters) {
-        Object.entries(filters).forEach(([key, value]) => {
-          if (value !== undefined && value !== null && value !== '') {
-            params.append(key, value.toString());
-          }
-        });
+      if (filters?.status) {
+        // Mapear estado interno a estado del Laravel backend
+        const laravelStatus = this.mapStatusToLaravel(filters.status);
+        if (laravelStatus) {
+          params.append('estado', laravelStatus);
+        }
+      }
+      
+      if (filters?.floor) {
+        params.append('piso', filters.floor.toString());
       }
 
-      const response = await apiClient.get(`${this.baseURL}/rooms?${params.toString()}`);
-      return response.data;
+      const url = params.toString() ? `/habitaciones?${params.toString()}` : '/habitaciones';
+      const response = await apiClient.get<LaravelRoomResponse>(url);
+      
+      // Mapear datos del Laravel backend a estructura interna
+      const rooms = response.data.data.map(mapLaravelRoomToRoom);
+      
+      return rooms;
     } catch (error) {
-      console.error('Error al obtener habitaciones:', error);
+      console.error('Error al obtener habitaciones del Laravel backend:', error);
       throw error;
     }
   }
 
   /**
-   * Obtener una habitación por ID
+   * Mapear estado interno a estado del Laravel backend
    */
-  static async getRoomById(id: string): Promise<Room> {
-    if (this.isDevelopment) {
+  private static mapStatusToLaravel(status: string): string | null {
+    switch (status) {
+      case 'available':
+        return 'Disponible';
+      case 'occupied':
+        return 'Ocupada';
+      case 'maintenance':
+        return 'Mantenimiento';
+      case 'cleaning':
+        return 'Sucia';
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Obtener una habitación por ID o número
+   */
+  static async getRoomById(identifier: string): Promise<Room> {
+    if (this.useMocks) {
       await simulateNetworkDelay();
-      const room = mockRooms.find(r => r.id === id);
+      
+      // Buscar por ID o por número de habitación
+      const room = mockRooms.find(r => r.id === identifier || r.number === identifier);
       if (!room) {
-        throw new Error(`Habitación con ID ${id} no encontrada`);
+        throw new Error(`Habitación con identificador ${identifier} no encontrada`);
       }
       return room;
     }
 
     try {
-      const response = await apiClient.get(`${this.baseURL}/rooms/${id}`);
-      return response.data;
+      // Primero intentar obtener todas las habitaciones y buscar por número
+      const allRoomsResponse = await apiClient.get<LaravelRoomResponse>('/habitaciones');
+      
+      // Buscar la habitación por número o ID
+      const laravelRoom = allRoomsResponse.data.data.find(room => 
+        room.numero === identifier || 
+        room.id_habitacion.toString() === identifier
+      );
+      
+      if (!laravelRoom) {
+        throw new Error(`Habitación con identificador ${identifier} no encontrada`);
+      }
+      
+      const mappedRoom = mapLaravelRoomToRoom(laravelRoom);
+      
+      return mappedRoom;
     } catch (error) {
-      console.error('Error al obtener habitación:', error);
+      console.error('Error al obtener habitación del Laravel backend:', error);
       throw error;
     }
   }
@@ -90,7 +135,7 @@ export class FrontdeskService {
    * Actualizar estado de una habitación
    */
   static async updateRoomStatus(id: string, status: Room['status']): Promise<Room> {
-    if (this.isDevelopment) {
+    if (this.useMocks) {
       await simulateNetworkDelay();
       
       if (simulateRandomError()) {
@@ -126,13 +171,13 @@ export class FrontdeskService {
    * Obtener estadísticas del dashboard
    */
   static async getDashboardStats(): Promise<DashboardStats> {
-    if (this.isDevelopment) {
+    if (this.useMocks) {
       await simulateNetworkDelay();
       
       if (simulateRandomError()) {
-        throw new Error('Error al obtener estadísticas');
+        throw new Error('Error al obtener estadísticas del dashboard');
       }
-
+      
       return mockDashboardStats;
     }
 
@@ -140,7 +185,152 @@ export class FrontdeskService {
       const response = await apiClient.get(`${this.baseURL}/dashboard/stats`);
       return response.data;
     } catch (error) {
-      console.error('Error al obtener estadísticas:', error);
+      console.error('Error al obtener estadísticas del dashboard:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Obtener asignaciones actuales de habitaciones con información de huéspedes
+   */
+  static async getCurrentRoomAssignments(): Promise<Array<{
+    roomId: string;
+    roomNumber: string;
+    guestName: string;
+    reservationId: string;
+    checkInDate: string;
+    checkOutDate: string;
+  }>> {
+    if (this.useMocks) {
+      await simulateNetworkDelay();
+      
+      if (simulateRandomError()) {
+        throw new Error('Error al obtener asignaciones de habitaciones');
+      }
+
+      // Mock current assignments
+      return [
+        {
+          roomId: '1',
+          roomNumber: '101',
+          guestName: 'Juan Pérez',
+          reservationId: 'RES-001',
+          checkInDate: '2024-10-05',
+          checkOutDate: '2024-10-08'
+        },
+        {
+          roomId: '4',
+          roomNumber: '202',
+          guestName: 'María González',
+          reservationId: 'RES-002',
+          checkInDate: '2024-10-06',
+          checkOutDate: '2024-10-10'
+        }
+      ];
+    }
+
+    try {
+      // In a real implementation, this would call an endpoint that returns current room assignments
+      // For now, we'll return an empty array as the real API structure isn't defined
+      const response = await apiClient.get(`${this.baseURL}/current-assignments`);
+      return response.data || [];
+    } catch (error) {
+      console.error('Error al obtener asignaciones actuales:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener la reserva activa de un huésped específico
+   */
+  static async getActiveReservationByGuest(guestId: string): Promise<{
+    id: string;
+    reservationId: string;
+    roomNumber: string;
+    habitacion: string;
+    adultos: number;
+    ninos: number;
+    bebes: number;
+    numberOfAdults: number;
+    numberOfChildren: number;
+    numberOfBabies: number;
+    checkInDate: string;
+    checkOutDate: string;
+    status: string;
+  } | null> {
+    if (this.useMocks) {
+      await simulateNetworkDelay();
+      
+      if (simulateRandomError()) {
+        throw new Error('Error al obtener reserva del huésped');
+      }
+
+      // Mock active reservation based on guest ID
+      const mockReservations: Record<string, any> = {
+        'guest-001': {
+          id: 'RES-001',
+          reservationId: 'RES-001',
+          roomNumber: '101',
+          habitacion: '101',
+          adultos: 2,
+          ninos: 1,
+          bebes: 0,
+          numberOfAdults: 2,
+          numberOfChildren: 1,
+          numberOfBabies: 0,
+          checkInDate: '2024-10-05',
+          checkOutDate: '2024-10-08',
+          status: 'checked_in'
+        },
+        'guest-002': {
+          id: 'RES-002',
+          reservationId: 'RES-002',
+          roomNumber: '202',
+          habitacion: '202',
+          adultos: 1,
+          ninos: 0,
+          bebes: 1,
+          numberOfAdults: 1,
+          numberOfChildren: 0,
+          numberOfBabies: 1,
+          checkInDate: '2024-10-06',
+          checkOutDate: '2024-10-10',
+          status: 'checked_in'
+        }
+      };
+      
+      return mockReservations[guestId] || null;
+    }
+
+    try {
+      // Intentar múltiples endpoints para encontrar la reserva activa
+      const endpoints = [
+        `/api/guests/${guestId}/active-reservation`,
+        `/api/reservations/by-guest/${guestId}/active`,
+        `/frontdesk/guest/${guestId}/reservation`,
+        `/reservations/guest/${guestId}/current`
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`🔍 Buscando reserva activa en: ${endpoint}`);
+          const response = await apiClient.get(endpoint);
+          
+          if (response.data && response.data.data) {
+            console.log(`✅ Reserva encontrada en: ${endpoint}`, response.data.data);
+            return response.data.data;
+          }
+        } catch (error) {
+          console.log(`❌ No encontrado en: ${endpoint}`);
+          continue;
+        }
+      }
+      
+      console.log('⚠️ No se encontró reserva activa para el huésped');
+      return null;
+      
+    } catch (error) {
+      console.error('Error al obtener reserva del huésped:', error);
       throw error;
     }
   }

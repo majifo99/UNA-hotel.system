@@ -24,8 +24,11 @@ export const ROUTES = {
     CHECKIN: '/frontdesk/checkin',
     CHECKOUT: '/frontdesk/checkout',
     ROOM_CHANGE: '/frontdesk/room-change',
+    DATE_MODIFICATION: '/frontdesk/date-modification',
+    REDUCE_STAY: '/frontdesk/reduce-stay',
     DASHBOARD: '/frontdesk/dashboard',
     REGISTER: '/frontdesk/register',
+    FOLIO_MANAGEMENT: (folioId: string) => `/frontdesk/folio/${folioId}`,
   },
 
   // Reservations Module
@@ -104,8 +107,7 @@ export const ROUTES = {
   HOUSEKEEPING: {
     BASE: '/housekeeping',
     DASHBOARD: '/housekeeping',
-    TASKS: '/housekeeping/tasks',
-    REPORTS: '/housekeeping/reports',
+    HISTORIALES: '/housekeeping/historiales',  
   },
 
   // Maintenance Module
@@ -113,8 +115,8 @@ export const ROUTES = {
     BASE: '/mantenimiento',
     DASHBOARD: '/mantenimiento/dashboard',
     SOLICITUDES: '/mantenimiento/solicitudes',
-    PREVENTIVO: '/mantenimiento/preventivo',
-    REPORTS: '/mantenimiento/reports',
+    HISTORIALES: '/mantenimiento/historiales',
+    
   },
 
 } as const;
@@ -137,6 +139,9 @@ export interface RouteParams {
   
   // Payment routes
   paymentId: string;
+  
+  // Folio routes
+  folioId: string;
 }
 
 /**

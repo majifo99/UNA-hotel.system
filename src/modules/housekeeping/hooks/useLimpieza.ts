@@ -1,8 +1,6 @@
-// src/hooks/useLimpieza.ts
-
 import { useCallback, useMemo, useState, useEffect } from "react";
 import type { Prioridad, LimpiezaItem } from "../types/limpieza";
-import { PRIORIDADES, ESTADO_HAB } from "../types/limpieza";
+import { PRIORIDADES } from "../types/limpieza";
 import { limpiezaService } from "../services/limpiezaService";
 
 type UseAssignFormParams = {
@@ -10,60 +8,90 @@ type UseAssignFormParams = {
   editingId?: number | null;
   initialItem?: Partial<LimpiezaItem> | null;
   onSuccess?: () => void;
-  onClose?: () => void;
+  onClose?: () => void;          // se mantiene por compat, pero no lo usamos para cerrar
+  onPatched?: (updated: any) => void;
 };
 
+/* ------------------------- helpers ------------------------ */
+const trim = (s?: string) => (s ?? "").trim();
+const isYMD = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+const isHM  = (s?: string) => !!s && /^\d{2}:\d{2}$/.test(s);
+
+const invalidRoom = (id: number | null) =>
+  id == null || Number.isNaN(Number(id));
+
+const hasFechaOnly = (f?: string, h?: string) => !!f && !h;
+const hasHoraOnly  = (f?: string, h?: string) => !!h && !f;
+const missingDatePair = (f?: string, h?: string) =>
+  hasFechaOnly(f, h) || hasHoraOnly(f, h);
+
+const invalidFechaFmt = (f?: string, faltaPar?: boolean) =>
+  !!f && !faltaPar && !isYMD(f);
+
+const invalidHoraFmt = (h?: string, faltaPar?: boolean) =>
+  !!h && !faltaPar && !isHM(h);
+
+const invalidPrioridad = (p?: Prioridad | null) =>
+  !!p && !PRIORIDADES.includes(p);
+
+const invalidAsignado = (a: number | null) =>
+  a != null && Number.isNaN(Number(a));
+
+const invalidNombre = (n: string) =>
+  !!n && (n.length < 3 || n.length > 100);
+
+const invalidDescripcion = (d: string) =>
+  !!d && d.length > 500;
+
+const invalidNotas = (n: string) =>
+  !!n && n.length > 500;
+
+const anyFieldChanged = (ctx: {
+  prioridad: Prioridad | null;
+  nombre: string;
+  descripcion: string;
+  notas: string;
+  fecha?: string;
+  hora?: string;
+  asignadoA: number | null;
+}) => {
+  if (ctx.prioridad && !invalidPrioridad(ctx.prioridad)) return true;
+  if (ctx.nombre) return true;
+  if (ctx.descripcion) return true;
+  if (ctx.notas) return true;
+  if (ctx.fecha && ctx.hora) return true;
+  if (typeof ctx.asignadoA === "number") return true;
+  return false;
+};
+/* --------------------------------------------------------- */
+
 export function useAssignForm(params: UseAssignFormParams) {
-  const { id_habitacion: initialRoomId, editingId, initialItem, onSuccess, onClose } = params;
+  const { id_habitacion: initialRoomId, editingId, onSuccess,  onPatched } = params;
 
   // ----- State del formulario -----
-  // Renombrado para que value + setter "matcheen" (idHabitacion / setIdHabitacion)
   const [idHabitacion, setIdHabitacion] = useState<number | null>(initialRoomId);
+  const [asignadoA, setAsignadoA] = useState<number | null>(null);
 
-  const [prioridad, setPrioridad] = useState<Prioridad | null>(
-    ((initialItem?.prioridad as unknown) as Prioridad) ?? null
-  );
-  const [nombre, setNombre] = useState<string>(initialItem?.nombre ?? "");
-  const [descripcion, setDescripcion] = useState<string>(initialItem?.descripcion ?? "");
-
-  const [fecha, setFecha] = useState<string>(() => {
-    if (initialItem?.fecha_inicio) {
-      const d = new Date(initialItem.fecha_inicio);
-      if (!Number.isNaN(d.getTime())) {
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const dd = String(d.getDate()).padStart(2, "0");
-        return `${yyyy}-${mm}-${dd}`;
-      }
-    }
-    return "";
-  });
-
-  const [hora, setHora] = useState<string>(() => {
-    if (initialItem?.fecha_inicio) {
-      const d = new Date(initialItem.fecha_inicio);
-      if (!Number.isNaN(d.getTime())) {
-        const HH = String(d.getHours()).padStart(2, "0");
-        const MM = String(d.getMinutes()).padStart(2, "0");
-        return `${HH}:${MM}`;
-      }
-    }
-    return "";
-  });
-
-  const [notas, setNotas] = useState<string>(initialItem?.notas ?? "");
+  // Solo edición por PATCH (todos vacíos por diseño)
+  const [prioridad, setPrioridad] = useState<Prioridad | null>(null);
+  const [nombre, setNombre] = useState<string>("");
+  const [descripcion, setDescripcion] = useState<string>("");
+  const [fecha, setFecha] = useState<string>("");
+  const [hora, setHora] = useState<string>("");
+  const [notas, setNotas] = useState<string>("");
 
   useEffect(() => {
     if (initialRoomId != null) setIdHabitacion(initialRoomId);
   }, [initialRoomId]);
 
-  // ----- UI state -----
+  // ----- UI -----
   const [loading, setLoading] = useState<boolean>(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
-  // ----- Helpers -----
-  const buildISO = useCallback((d: string, t: string) => {
+  // fecha + hora → ISO
+  const buildISO = useCallback((d?: string, t?: string) => {
+    if (!d || !t) return undefined;
     const [Y, M, D] = d.split("-").map(Number);
     const [h, m] = t.split(":").map(Number);
     const js = new Date(Y, (M ?? 1) - 1, D ?? 1, h ?? 0, m ?? 0, 0, 0);
@@ -71,36 +99,56 @@ export function useAssignForm(params: UseAssignFormParams) {
   }, []);
 
   const canSave = useMemo(() => {
-    if (idHabitacion == null || Number.isNaN(Number(idHabitacion))) return false;
-    const trimmed = nombre.trim();
-    if (!trimmed || trimmed.length < 3 || trimmed.length > 100) return false;
-    if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return false;
-    if (!hora || !/^\d{2}:\d{2}$/.test(hora)) return false;
-    if (descripcion && descripcion.length > 500) return false;
-    if (notas && notas.length > 500) return false;
-    if (prioridad && !PRIORIDADES.includes(prioridad)) return false;
-    return true;
-  }, [idHabitacion, nombre, fecha, hora, descripcion, notas, prioridad]);
+    if (invalidRoom(idHabitacion)) return false;
+    return anyFieldChanged({
+      prioridad,
+      nombre: trim(nombre),
+      descripcion: trim(descripcion),
+      notas: trim(notas),
+      fecha,
+      hora,
+      asignadoA,
+    });
+  }, [idHabitacion, prioridad, nombre, descripcion, notas, fecha, hora, asignadoA]);
 
   const validate = useCallback(() => {
     const e: Record<string, string> = {};
-    if (idHabitacion == null || Number.isNaN(Number(idHabitacion))) {
-      e.id_habitacion = "Selecciona una habitación válida.";
-    }
-    const trimmed = nombre.trim();
-    if (!trimmed) e.nombre = "El nombre es obligatorio.";
-    else if (trimmed.length < 3) e.nombre = "Debe tener al menos 3 caracteres.";
-    else if (trimmed.length > 100) e.nombre = "Máximo 100 caracteres.";
-    if (!fecha) e.fecha = "La fecha es obligatoria.";
-    else if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) e.fecha = "Formato inválido (yyyy-MM-dd).";
-    if (!hora) e.hora = "La hora es obligatoria.";
-    else if (!/^\d{2}:\d{2}$/.test(hora)) e.hora = "Formato inválido (HH:mm).";
-    if (descripcion && descripcion.length > 500) e.descripcion = "Máximo 500 caracteres.";
-    if (notas && notas.length > 500) e.notas = "Máximo 500 caracteres.";
-    if (prioridad && !PRIORIDADES.includes(prioridad)) e.prioridad = "Prioridad inválida.";
+
+    const tNombre = trim(nombre);
+    const tDesc   = trim(descripcion);
+    const tNotas  = trim(notas);
+    const faltaPar = missingDatePair(fecha, hora);
+
+    const checks = [
+      { cond: invalidRoom(idHabitacion),           key: "id_habitacion", msg: "Selecciona una habitación válida." },
+      { cond: faltaPar,                            key: "fecha",         msg: "Si cambias la programación, llena fecha y hora." },
+      { cond: invalidFechaFmt(fecha, faltaPar),    key: "fecha",         msg: "Formato inválido (yyyy-MM-dd)." },
+      { cond: invalidHoraFmt(hora, faltaPar),      key: "hora",          msg: "Formato inválido (HH:mm)." },
+      { cond: invalidNombre(tNombre),              key: "nombre",        msg: "El nombre debe tener entre 3 y 100 caracteres." },
+      { cond: invalidDescripcion(tDesc),           key: "descripcion",   msg: "Máximo 500 caracteres." },
+      { cond: invalidNotas(tNotas),                key: "notas",         msg: "Máximo 500 caracteres." },
+      { cond: invalidPrioridad(prioridad),         key: "prioridad",     msg: "Prioridad inválida." },
+      { cond: invalidAsignado(asignadoA),          key: "asignadoA",     msg: "Selecciona un usuario válido." },
+      {
+        cond: !anyFieldChanged({
+          prioridad,
+          nombre: tNombre,
+          descripcion: tDesc,
+          notas: tNotas,
+          fecha,
+          hora,
+          asignadoA,
+        }),
+        key: "form",
+        msg: "No hay cambios para guardar.",
+      },
+    ] as const;
+
+    for (const c of checks) if (c.cond) e[c.key] = c.msg;
+
     setErrors(e);
     return Object.keys(e).length === 0;
-  }, [idHabitacion, nombre, fecha, hora, descripcion, notas, prioridad]);
+  }, [idHabitacion, nombre, descripcion, notas, prioridad, fecha, hora, asignadoA]);
 
   const reset = useCallback(() => {
     setPrioridad(null);
@@ -109,6 +157,7 @@ export function useAssignForm(params: UseAssignFormParams) {
     setFecha("");
     setHora("");
     setNotas("");
+    setAsignadoA(null);
     setErrors({});
     setToast(null);
   }, []);
@@ -123,80 +172,78 @@ export function useAssignForm(params: UseAssignFormParams) {
     setLoading(true);
     setToast(null);
     try {
-      const payload = {
-        id_habitacion: idHabitacion, // ← el campo del API sigue en snake_case
-        nombre: nombre.trim(),
-        prioridad: prioridad ?? null,
-        descripcion: descripcion?.trim() || null,
-        fecha_inicio: buildISO(fecha, hora),
-        notas: notas?.trim() || null,
-        id_estado_hab: ESTADO_HAB.SUCIA,
-        fecha_final: null as string | null,
-      };
+      // targetId: si no llega editingId, buscamos por habitación
+      let targetId: number | null =
+        editingId != null && !Number.isNaN(Number(editingId)) ? editingId : null;
 
-      if (editingId != null && !Number.isNaN(Number(editingId))) {
-        await limpiezaService.updateLimpieza(editingId, payload, { method: "PATCH" });
-      } else {
+      if (targetId == null) {
         const list = await limpiezaService.getLimpiezas({ id_habitacion: idHabitacion, per_page: 1 });
-        const first = list?.data?.[0] as any;
-        const candidateId: number | null = first?.id_limpieza ?? first?.id ?? first?.Id ?? null;
-
-        if (candidateId != null && !Number.isNaN(Number(candidateId))) {
-          await limpiezaService.updateLimpieza(candidateId, payload, { method: "PATCH" });
-        } else {
-          await limpiezaService.createLimpieza(payload as any);
-        }
+        const first = (list?.data ?? [])[0] as any;
+        targetId = first?.id_limpieza ?? first?.id ?? null;
       }
 
-      setToast({ type: "success", msg: "Habitación asignada exitosamente." });
+      if (targetId == null) throw new Error("No se encontró una limpieza existente para esta habitación.");
+
+      // payload solo con lo cambiado
+      const payload: Record<string, any> = {};
+      const tNombre = trim(nombre);
+      const tDesc   = trim(descripcion);
+      const tNotas  = trim(notas);
+
+      if (prioridad) payload.prioridad = prioridad;
+      if (tNombre)   payload.nombre = tNombre;
+      if (tDesc)     payload.descripcion = tDesc;
+      if (tNotas)    payload.notas = tNotas;
+
+      const iso = buildISO(fecha, hora);
+      if (iso) payload.fecha_inicio = iso;
+
+      if (typeof asignadoA === "number") payload.id_usuario_asigna = asignadoA;
+
+      const resp = await limpiezaService.updateLimpieza(targetId, payload, "PATCH");
+      const updated = (resp as any)?.data ?? resp;
+
+      onPatched?.(updated);
+      setToast({ type: "success", msg: "Cambios guardados." });
+
+      // 👇 ya NO cerramos el modal aquí
       onSuccess?.();
-      setTimeout(() => {
-        onClose?.();
-        reset();
-      }, 700);
     } catch (err: any) {
-      const msg =
-        typeof err?.message === "string" ? err.message : "No se pudo guardar la asignación.";
+      const msg = typeof err?.message === "string" ? err.message : "No se pudo actualizar.";
       setToast({ type: "error", msg });
-      console.error("[useAssignForm] ✗ Error al guardar:", err);
+      console.error("[useAssignForm] PATCH error:", err);
     } finally {
       setLoading(false);
     }
   }, [
     validate,
     idHabitacion,
-    nombre,
     prioridad,
+    nombre,
     descripcion,
+    notas,
     fecha,
     hora,
-    notas,
+    asignadoA,
     editingId,
     onSuccess,
-    onClose,
-    reset,
     buildISO,
+    onPatched,
   ]);
 
   return {
-    // nombres “canónicos”
     idHabitacion,
     setIdHabitacion,
-    // alias para no romper consumidores existentes (UI que espera snake_case)
     id_habitacion: idHabitacion,
-    // resto
-    prioridad,
-    setPrioridad,
-    nombre,
-    setNombre,
-    descripcion,
-    setDescripcion,
-    fecha,
-    setFecha,
-    hora,
-    setHora,
-    notas,
-    setNotas,
+
+    prioridad, setPrioridad,
+    nombre, setNombre,
+    descripcion, setDescripcion,
+    fecha, setFecha,
+    hora, setHora,
+    notas, setNotas,
+    asignadoA, setAsignadoA,
+
     errors,
     canSave,
     loading,

@@ -4,7 +4,9 @@ import { MainLayout } from '../layouts/MainLayout';
 import { Home } from '../pages/Home';
 import { ReservationsListPage } from '../modules/reservations/pages/ReservationsListPage';
 import { CreateReservationPage } from '../modules/reservations/pages/CreateReservationPage';
-import { SelectServicesPage } from '../modules/reservations/pages/SelectServicesPage';
+import { ReservationDetailFullPage } from '../modules/reservations/pages/ReservationDetailFullPage';
+import { ReservationEditPage } from '../modules/reservations/pages/ReservationEditPage';
+import { ReservationCancelPage } from '../modules/reservations/pages/ReservationCancelPage';
 import HousekeepingDashboard from '../modules/housekeeping/pages/HousekeepingDashboard';
 import { GuestsPage } from '../modules/guests/pages/GuestsPage';
 import { CreateGuestPage } from '../modules/guests/pages/CreateGuestPage';
@@ -12,8 +14,23 @@ import FrontDesk from '../modules/frontdesk/components/FrontDesk';
 import CheckInPage from '../modules/frontdesk/pages/CheckInPage';
 import CheckOutPage from '../modules/frontdesk/pages/CheckOutPage';
 import RoomChange from '../modules/frontdesk/components/RoomChange';
+import DateModification from '../modules/frontdesk/components/DateModification';
+import ReduceStay from '../modules/frontdesk/components/ReduceStay';
+import { FolioPage } from '../modules/frontdesk/pages/FolioPage';
 import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
 import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
+
+
+import HistorialLimpiezasPage from '../modules/housekeeping/pages/HistorialLimpiezasPage';
+
+import HistorialMantenimientosPage from '../modules/Mantenimiento/pages/HistorialMantenimientosPage';
+
+
+
+import { AdminLoginPage, AdminAuthProvider, ProtectedRoute } from '../modules/admin';
+import { ReservationReportsPage } from '../modules/reservations/pages/ReservationReportsPage';
+
+
 
 /**
  * TanStack Query Client Configuration
@@ -41,6 +58,8 @@ const queryClient = new QueryClient({
  *
  * Wraps all routes with:
  * - TanStack Query Provider (for server state management)
+ * - Admin Auth Provider (for admin authentication)
+ * - Protected Route (requires authentication)
  * - Main Layout (sidebar, header, main content area)
  *
  * The Outlet component renders the matched child route
@@ -48,9 +67,13 @@ const queryClient = new QueryClient({
 function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
-      <MainLayout>
-        <Outlet />
-      </MainLayout>
+      <AdminAuthProvider>
+        <ProtectedRoute>
+          <MainLayout>
+            <Outlet />
+          </MainLayout>
+        </ProtectedRoute>
+      </AdminAuthProvider>
     </QueryClientProvider>
   );
 }
@@ -59,6 +82,7 @@ function RootLayout() {
  * Application Router Configuration
  *
  * Route Structure:
+ * /admin/login              - Admin authentication page (no layout)
  * /                          - Dashboard/Home page
  * /reservations              - Reservations list and management
  * /reservations/create       - Create new reservation form
@@ -72,6 +96,17 @@ function RootLayout() {
  * 3. Update the Sidebar navigation items
  */
 const router = createBrowserRouter([
+  {
+    // Admin login route - standalone without layout
+    path: '/admin/login',
+    element: (
+      <QueryClientProvider client={queryClient}>
+        <AdminAuthProvider>
+          <AdminLoginPage />
+        </AdminAuthProvider>
+      </QueryClientProvider>
+    ),
+  },
   {
     path: '/',
     element: <RootLayout />,
@@ -108,6 +143,18 @@ const router = createBrowserRouter([
             element: <RoomChange />,
           },
           {
+            path: 'date-modification',
+            element: <DateModification />,
+          },
+          {
+            path: 'reduce-stay',
+            element: <ReduceStay />,
+          },
+          {
+            path: 'folio/:folioId',
+            element: <FolioPage />,
+          },
+          {
             path: 'register',
             element: <Navigate to="/reservations/create" replace />,
           },
@@ -127,21 +174,43 @@ const router = createBrowserRouter([
             element: <CreateReservationPage />,
           },
           {
-            // Select services for reservation
-            path: 'create/services',
-            element: <SelectServicesPage />,
+            // View reservation detail
+            path: ':id/detail',
+            element: <ReservationDetailFullPage />,
           },
-          // Future detail routes can be added here, e.g. /reservations/:id
+          {
+            // Edit reservation
+            path: ':id/edit',
+            element: <ReservationEditPage />,
+          },
+          {
+            // Cancel reservation
+            path: ':id/cancel',
+            element: <ReservationCancelPage />,
+          },
+          {
+            // Reports and analytics
+            path: 'reports',
+            element: <ReservationReportsPage />,
+          },
         ],
       },
-      {
-        path: 'housekeeping',
-        element: <HousekeepingDashboard />,
+        {
+        path: "housekeeping",
+        children: [
+          { index: true, element: <HousekeepingDashboard /> },
+          { path: "historiales", element: <HistorialLimpiezasPage /> },
+        ],
       },
+
       {
         path: 'mantenimiento',
-        element: <Mantenimiento />,
+        children: [
+          { index: true, element: <Mantenimiento /> },                 // /mantenimiento
+          { path: 'historiales', element: <HistorialMantenimientosPage /> }, // /mantenimiento/historiales
+        ],
       },
+
       {
         path: 'guests',
         children: [

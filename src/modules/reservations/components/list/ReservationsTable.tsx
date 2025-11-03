@@ -1,7 +1,8 @@
 ﻿import React from 'react';
-import { Pencil, Ban, Loader2 } from 'lucide-react';
+import { Pencil, Ban, Eye } from 'lucide-react';
 import type { Reservation } from '../../types';
 import { ReservationStatusBadge } from '../ReservationStatusBadge';
+import { ReservationTableSkeleton } from '../ui/Skeleton';
 
 interface ReservationsTableProps {
   reservations: Reservation[];
@@ -10,6 +11,7 @@ interface ReservationsTableProps {
   onRetry?: () => void;
   onEdit: (reservation: Reservation) => void;
   onCancel: (reservation: Reservation) => void;
+  onViewDetail: (reservation: Reservation) => void;
 }
 
 const isActionDisabled = (reservation: Reservation) => {
@@ -30,16 +32,10 @@ export const ReservationsTable: React.FC<ReservationsTableProps> = ({
   onRetry,
   onEdit,
   onCancel,
+  onViewDetail,
 }) => {
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-white p-12 shadow-sm">
-        <div className="flex items-center gap-3 text-slate-500">
-          <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-          <span className="text-sm font-medium">Cargando reservaciones...</span>
-        </div>
-      </div>
-    );
+    return <ReservationTableSkeleton rows={10} />;
   }
 
   if (isError) {
@@ -123,6 +119,15 @@ export const ReservationsTable: React.FC<ReservationsTableProps> = ({
                   </td>
                   <td className="px-5 py-4 align-middle text-right">
                     <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onViewDetail(reservation)}
+                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                        title="Ver detalle completo"
+                      >
+                        <Eye className="h-4 w-4" aria-hidden />
+                        Ver
+                      </button>
                       <button
                         type="button"
                         onClick={() => onEdit(reservation)}

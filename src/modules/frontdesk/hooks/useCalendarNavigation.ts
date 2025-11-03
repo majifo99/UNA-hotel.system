@@ -7,19 +7,37 @@ export const useCalendarNavigation = () => {
 
   const calendarDays = useMemo(() => {
     if (viewMode === 'month') {
-      // Para vista mensual, generar todo el mes usando el helper existente
+      // Para vista mensual, generar todo el mes
       const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-      
-      // Usar el helper existente para mantener la consistencia
-      return generateCalendarDays(startOfMonth, 30); // 30 días para cubrir el mes completo
+      // Calcular días del mes actual
+      const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+      return generateCalendarDays(startOfMonth, daysInMonth);
     } else {
-      // Para vista semanal, usar la lógica existente
+      // Para vista semanal, generar 7 días desde la fecha actual
       const startDate = new Date(currentDate);
-      const today = new Date();
-      startDate.setFullYear(today.getFullYear(), today.getMonth(), today.getDate());
-      return generateCalendarDays(startDate);
+      startDate.setHours(0, 0, 0, 0);
+      return generateCalendarDays(startDate, 7);
     }
   }, [currentDate, viewMode]);
+
+  // Calcular el rango de fechas para consultas
+  const dateRange = useMemo(() => {
+    if (calendarDays.length === 0) {
+      const today = new Date();
+      return {
+        startDate: today.toISOString().split('T')[0],
+        endDate: today.toISOString().split('T')[0]
+      };
+    }
+
+    const firstDay = calendarDays[0].date;
+    const lastDay = calendarDays[calendarDays.length - 1].date;
+
+    return {
+      startDate: firstDay.toISOString().split('T')[0],
+      endDate: lastDay.toISOString().split('T')[0]
+    };
+  }, [calendarDays]);
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate);
@@ -57,6 +75,7 @@ export const useCalendarNavigation = () => {
     navigateWeek,
     navigateMonth,
     goToToday,
-    getCurrentMonthYear
+    getCurrentMonthYear,
+    dateRange
   };
 };

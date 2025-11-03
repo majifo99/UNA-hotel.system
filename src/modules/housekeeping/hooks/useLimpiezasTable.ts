@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { limpiezaService } from "../services/limpiezaService";
 import type { LimpiezaFilters, LimpiezaPaginatedResponse } from "../types/limpieza";
 import type { SortKey } from "../types/table";
@@ -8,40 +8,119 @@ export type UseLimpiezasTableProps = { initialFilters?: LimpiezaFilters };
 type SortState = { key: SortKey; dir: "asc" | "desc" };
 export type LimpiezasTableController = ReturnType<typeof useLimpiezasTable>;
 
+const getId = (it: any): number => (it?.id_limpieza ?? it?.id) as number;
+// ✅ S7744: evitar JSON.stringify({ ...f }) → no crear objeto vacío
+const keyOf = (f: LimpiezaFilters) => JSON.stringify(f);
+const CACHE_KEY = "hk_limpiezas_cache_v1";
+
+const MIN_FIRST_SKELETON_MS = 600;
+
 export function useLimpiezasTable({ initialFilters }: Readonly<UseLimpiezasTableProps> = {}) {
   const [filters, setFilters] = useState<LimpiezaFilters>({ per_page: 10, ...initialFilters });
-  const [loading, setLoading] = useState(false);
+  const [sort, setSort] = useState<SortState>({ key: "habitacion", dir: "asc" });
+
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pageData, setPageData] = useState<LimpiezaPaginatedResponse | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [sort, setSort] = useState<SortState>({ key: "fecha_inicio", dir: "desc" });
+
+  const cacheRef = useRef<Map<string, LimpiezaPaginatedResponse>>(new Map());
+  const abortRef = useRef<AbortController | null>(null);
+
+  const firstLoadRef = useRef(true);
+  const startedAtRef = useRef<number>(Date.now());
+  const [forceSkeleton, setForceSkeleton] = useState(true);
+
+  useEffect(() => {
+    const t = globalThis.setTimeout(() => setForceSkeleton(false), MIN_FIRST_SKELETON_MS);
+    return () => globalThis.clearTimeout(t);
+  }, []);
+
+  // Hidratar cache de sessionStorage
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(CACHE_KEY);
+      if (raw) {
+        const obj = JSON.parse(raw) as Record<string, LimpiezaPaginatedResponse>;
+        cacheRef.current = new Map<string, LimpiezaPaginatedResponse>(Object.entries(obj));
+        const k = keyOf(filters);
+        const cached = cacheRef.current.get(k);
+        if (cached) setPageData(cached);
+      }
+    } catch {
+      // silencio intencional (no afecta S7744)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const persistCache = useCallback(() => {
+    try {
+      const obj = Object.fromEntries(cacheRef.current.entries());
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify(obj));
+    } catch {
+      // silencio
+    }
+  }, []);
 
   const fetchData = useCallback(async () => {
+    const k = keyOf(filters);
+
+    const cached = cacheRef.current.get(k);
+    if (cached) setPageData(cached);
+
+    if (abortRef.current) abortRef.current.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+
     setLoading(true);
     setError(null);
+
     try {
-      const data = await limpiezaService.getLimpiezas(filters);
+      const data = await limpiezaService.getLimpiezas(filters, { signal: ac.signal });
+      cacheRef.current.set(k, data);
+      persistCache();
       setPageData(data);
       setSelectedIds([]);
+
+      // Prefetch next page (sin objeto vacío inútil)
+      const next = (data.current_page ?? 1) + 1;
+      if (next <= (data.last_page ?? 1)) {
+        const nk = keyOf({ ...filters, page: next });
+        if (!cacheRef.current.get(nk)) {
+          limpiezaService
+            .getLimpiezas({ ...filters, page: next })
+            .then((d) => {
+              cacheRef.current.set(nk, d);
+              persistCache();
+            })
+            .catch(() => {
+              /* noop */
+            });
+        }
+      }
     } catch (e: any) {
-      setError(e?.message ?? "Error cargando limpiezas");
+      if (e?.name !== "AbortError") setError(e?.message ?? "Error cargando limpiezas");
     } finally {
+      firstLoadRef.current = false;
+      if (abortRef.current === ac) abortRef.current = null;
       setLoading(false);
+      setForceSkeleton(false);
     }
-  }, [filters]);
+  }, [filters, persistCache]);
 
   useEffect(() => {
     fetchData();
+    return () => abortRef.current?.abort();
   }, [fetchData]);
 
   const items = useMemo(() => pageData?.data ?? [], [pageData]);
 
   const getSortableValue = useCallback((item: any, key: SortKey) => {
-    if (key === "habitacion") return item.habitacion?.numero ?? "";
-    if (key === "estado") return item.estadoHabitacion?.nombre ?? "";
-    if (key === "tipo") return item.habitacion?.tipo?.nombre ?? "";
-    if (key === "piso") return item.habitacion?.piso ?? "";
-    return item[key];
+    if (key === "habitacion") return item?.habitacion?.numero ?? "";
+    if (key === "estado") return item?.estado?.nombre ?? "";
+    if (key === "tipo") return item?.habitacion?.tipo?.nombre ?? "";
+    if (key === "piso") return item?.habitacion?.piso ?? "";
+    return item?.[key];
   }, []);
 
   const sortedItems = useMemo(() => {
@@ -53,8 +132,10 @@ export function useLimpiezasTable({ initialFilters }: Readonly<UseLimpiezasTable
       if (valA == null && valB == null) return 0;
       if (valA == null) return -1 * dir;
       if (valB == null) return 1 * dir;
-      if (typeof valA === "number" && typeof valB === "number") return (valA - valB) * dir;
-      return String(valA).localeCompare(String(valB)) * dir;
+      const numA = Number(valA);
+      const numB = Number(valB);
+      if (!Number.isNaN(numA) && !Number.isNaN(numB)) return (numA - numB) * dir;
+      return String(valA).localeCompare(String(valB), undefined, { numeric: true }) * dir;
     });
     return copy;
   }, [items, sort, getSortableValue]);
@@ -63,54 +144,74 @@ export function useLimpiezasTable({ initialFilters }: Readonly<UseLimpiezasTable
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   const toggleAllPage = () => {
-    const ids = items.map((x) => x.id_limpieza);
+    const ids = items.map((x) => getId(x));
     const all = ids.every((id) => selectedIds.includes(id));
-    setSelectedIds((prev) => (all ? prev.filter((id) => !ids.includes(id)) : Array.from(new Set([...prev, ...ids]))));
+    setSelectedIds((prev) =>
+      all ? prev.filter((id) => !ids.includes(id)) : Array.from(new Set([...prev, ...ids])),
+    );
   };
 
   const gotoPage = (page: number) => {
     if (!pageData) return;
     if (page >= 1 && page <= pageData.last_page) {
       setFilters((f) => ({ ...f, page }));
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      globalThis.scrollTo?.({ top: 0, behavior: "smooth" });
     }
   };
 
+  const debounceRef = useRef<number | null>(null);
   const setPerPage = (per_page: number) => setFilters((f) => ({ ...f, per_page, page: 1 }));
-  const applyFilters = (patch: Partial<LimpiezaFilters>) => setFilters((f) => ({ ...f, ...patch, page: 1 }));
-  const handleSort = (key: SortKey) =>
-    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
-  const patchItemOptimistic = useCallback((id_limpieza: number, patch: Partial<any>) => {
+  const applyFilters = (patch: Partial<LimpiezaFilters>, debounceMs = 250) => {
+    if (debounceRef.current) globalThis.clearTimeout(debounceRef.current);
+    debounceRef.current = globalThis.setTimeout(() => {
+      setFilters((f) => ({ ...f, ...patch, page: 1 }));
+    }, debounceMs);
+  };
+
+  const handleSort = (_key: SortKey) => setSort({ key: "habitacion", dir: "asc" });
+
+  // ✅ FIX S7744: evitar spread sobre {} con ?? {}
+  const patchItemOptimistic = useCallback((idAny: number, patch: Partial<any>) => {
     setPageData((prev) => {
       if (!prev) return prev;
-      const data = prev.data.map((it) =>
-        it.id_limpieza === id_limpieza
-          ? {
-              ...it,
-              ...patch,
-              estadoHabitacion: {
-                ...(it.estadoHabitacion ?? {}),
-                id_estado_hab: patch.id_estado_hab ?? it.estadoHabitacion?.id_estado_hab,
-                nombre: patch.id_estado_hab === ESTADO_HAB.LIMPIA ? "Limpia" : "Sucia",
-              },
-            }
-          : it
-      );
+
+      const data = prev.data.map((it) => {
+        const itId = getId(it);
+        if (itId !== idAny) return it;
+
+        const newEstadoId =
+          patch.id_estado_hab ?? (patch.fecha_final ? ESTADO_HAB.LIMPIA : ESTADO_HAB.SUCIA);
+        const newEstadoNombre = newEstadoId === ESTADO_HAB.LIMPIA ? "Limpia" : "Sucia";
+
+        const prevEstado = it.estado;
+        const nextEstado = prevEstado
+          ? { ...prevEstado, id: newEstadoId, nombre: newEstadoNombre }
+          : { id: newEstadoId, nombre: newEstadoNombre };
+
+        return {
+          ...it,
+          ...patch,
+          estado: nextEstado,
+        };
+      });
+
       return { ...prev, data };
     });
   }, []);
 
-  const finalizarLimpieza = async (id_limpieza: number, payload: { fecha_final: string; notas: string | null }) => {
+  const finalizarLimpieza = async (
+    idAny: number,
+    payload: { fecha_final: string; notas: string | null },
+  ) => {
     const snapshot = pageData;
-    patchItemOptimistic(id_limpieza, {
+    patchItemOptimistic(idAny, {
       id_estado_hab: ESTADO_HAB.LIMPIA,
       fecha_final: payload.fecha_final,
       notas: payload.notas ?? null,
     });
     try {
-      await limpiezaService.updateLimpieza(id_limpieza, {
-        id_estado_hab: ESTADO_HAB.LIMPIA,
+      await limpiezaService.finalizarLimpieza(idAny, {
         fecha_final: payload.fecha_final,
         notas: payload.notas ?? null,
       });
@@ -121,23 +222,24 @@ export function useLimpiezasTable({ initialFilters }: Readonly<UseLimpiezasTable
     }
   };
 
-  const reabrirLimpieza = async (id_limpieza: number) => {
+  const reabrirLimpieza = async (idAny: number) => {
     const snapshot = pageData;
-    patchItemOptimistic(id_limpieza, {
-      id_estado_hab: ESTADO_HAB.SUCIA,
-      fecha_final: null,
-    });
+    patchItemOptimistic(idAny, { id_estado_hab: ESTADO_HAB.SUCIA, fecha_final: null });
     try {
-      await limpiezaService.updateLimpieza(id_limpieza, {
-        id_estado_hab: ESTADO_HAB.SUCIA,
-        fecha_final: null,
-      });
+      await limpiezaService.updateLimpieza(idAny, { id_estado_hab: ESTADO_HAB.SUCIA, fecha_final: null });
     } catch (e: any) {
       setPageData(snapshot ?? null);
       setError(e?.message ?? "No se pudo marcar como SUCIA");
       throw e;
     }
   };
+
+  const isFirstLoad = firstLoadRef.current && loading;
+  const isRevalidating = !firstLoadRef.current && loading;
+  const showInitialSkeleton =
+    (loading && !pageData) ||
+    (isFirstLoad && loading) ||
+    (!pageData && forceSkeleton && Date.now() - startedAtRef.current < MIN_FIRST_SKELETON_MS);
 
   return {
     loading,
@@ -165,5 +267,9 @@ export function useLimpiezasTable({ initialFilters }: Readonly<UseLimpiezasTable
     refetch: fetchData,
     setFilters,
     filters,
+    isFirstLoad,
+    isRevalidating,
+    showInitialSkeleton,
+    hasPageData: Boolean(pageData),
   };
 }
