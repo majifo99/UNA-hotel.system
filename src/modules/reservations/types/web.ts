@@ -119,6 +119,30 @@ export interface ReservaWebResponse {
 }
 
 /**
+ * Respuesta paginada de Laravel para reservas web
+ */
+export interface PaginatedReservaWebResponse {
+  readonly current_page: number;
+  readonly data: ReservaWebResponse[];
+  readonly first_page_url: string;
+  readonly from: number;
+  readonly last_page: number;
+  readonly last_page_url: string;
+  readonly links: ReadonlyArray<{
+    readonly url: string | null;
+    readonly label: string;
+    readonly page: number | null;
+    readonly active: boolean;
+  }>;
+  readonly next_page_url: string | null;
+  readonly path: string;
+  readonly per_page: number;
+  readonly prev_page_url: string | null;
+  readonly to: number;
+  readonly total: number;
+}
+
+/**
  * Respuesta exitosa de cancelación
  */
 export interface CancelReservaWebResponse {

@@ -28,6 +28,7 @@ import type {
   ReservaWebResponse,
   CancelReservaWebResponse,
   ReservaWebFilters,
+  PaginatedReservaWebResponse,
 } from '../../types/web';
 import type { Reservation } from '../../types';
 import { mapApiReservaFullToReservation } from '../../types';
@@ -145,12 +146,12 @@ export class ReservationWebService {
 
       console.log('[ReservationWebService] Fetching my reservations:', url);
 
-      const res = await apiClient.get<ReservaWebResponse[]>(url);
+      const res = await apiClient.get<PaginatedReservaWebResponse>(url);
 
-      console.log('[ReservationWebService] Found', res.data.length, 'reservations');
+      console.log('[ReservationWebService] Found', res.data.data.length, 'reservations');
 
       // Mapear respuesta a formato interno
-      return res.data.map((apiReserva) => mapApiReservaFullToReservation(apiReserva as any));
+      return res.data.data.map((apiReserva) => mapApiReservaFullToReservation(apiReserva as any));
     } catch (error) {
       console.error('[ReservationWebService] Error fetching reservations:', error);
       throw error;
