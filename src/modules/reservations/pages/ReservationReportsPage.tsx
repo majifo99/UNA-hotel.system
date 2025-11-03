@@ -4,7 +4,7 @@
  * Main page for reservation analytics and reporting
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Download, TrendingUp, DollarSign, CheckCircle, XCircle } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useReservationReports } from '../hooks/useReservationReports';
@@ -27,24 +27,7 @@ const CHART_METRICS: Array<{ value: ChartMetric; label: string }> = [
 export const ReservationReportsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedMetric, setSelectedMetric] = useState<ChartMetric>('reservations');
-
-  // Initialize filters from URL or defaults
-  const getInitialFilters = (): ReservationReportFilters => {
-    const period = searchParams.get('periodo') || searchParams.get('period') || 'all';
-    const status = searchParams.get('estado') || searchParams.get('status') || 'all';
-    const roomType = searchParams.get('tipo_habitacion') || searchParams.get('roomType') || undefined;
-    const startDate = searchParams.get('fecha_desde') || searchParams.get('startDate') || undefined;
-    const endDate = searchParams.get('fecha_hasta') || searchParams.get('endDate') || undefined;
-
-    return {
-      period: period as ReservationReportFilters['period'],
-      status: status as ReservationReportFilters['status'],
-      roomType,
-      startDate,
-      endDate,
-      metric: 'reservations'
-    };
-  };
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const {
     data,
@@ -57,19 +40,36 @@ export const ReservationReportsPage: React.FC = () => {
     refetch
   } = useReservationReports();
 
-  // Sync filters with URL on mount
+  // Initialize filters from URL only once on mount
   useEffect(() => {
-    const urlFilters = getInitialFilters();
-    const hasUrlParams = searchParams.toString().length > 0;
+    if (isInitialized) return;
+    
+    const period = searchParams.get('periodo') || searchParams.get('period');
+    const status = searchParams.get('estado') || searchParams.get('status');
+    const roomType = searchParams.get('tipo_habitacion') || searchParams.get('roomType');
+    const startDate = searchParams.get('fecha_desde') || searchParams.get('startDate');
+    const endDate = searchParams.get('fecha_hasta') || searchParams.get('endDate');
+
+    const hasUrlParams = period || status || roomType || startDate || endDate;
     
     if (hasUrlParams) {
-      setFilters(urlFilters);
+      setFilters({
+        period: (period as ReservationReportFilters['period']) || 'all',
+        status: (status as ReservationReportFilters['status']) || 'all',
+        roomType: roomType || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+        metric: 'reservations'
+      });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    
+    setIsInitialized(true);
+  }, [isInitialized, searchParams, setFilters]);
 
-  // Update URL when filters change
+  // Update URL when filters change (but not on initial mount)
   useEffect(() => {
+    if (!isInitialized) return;
+    
     const params = new URLSearchParams();
     
     if (filters.period && filters.period !== 'all') {
@@ -89,28 +89,30 @@ export const ReservationReportsPage: React.FC = () => {
     }
 
     setSearchParams(params, { replace: true });
-  }, [filters, setSearchParams]);
+  }, [filters, isInitialized, setSearchParams]);
 
-  const handleFiltersChange = (newFilters: ReservationReportFilters) => {
+  const handleFiltersChange = useCallback((newFilters: ReservationReportFilters) => {
     setFilters(newFilters);
-  };
+  }, [setFilters]);
 
-  const handleApplyFilters = () => {
+  const handleApplyFilters = useCallback(() => {
     refetch();
-  };
+  }, [refetch]);
 
-  const handleClearFilters = () => {
+  const handleClearFilters = useCallback(() => {
     const defaultFilters: ReservationReportFilters = { 
       period: 'all',
       status: 'all', 
       metric: 'reservations' 
     };
     setFilters(defaultFilters);
-  };
+  }, [setFilters]);
 
-  const handleExport = async (format: ExportFormat) => {
-    await exportData(format);
-  };
+  const handleExport = useCallback(async (format: ExportFormat) => {
+    // CSV from frontend, PDF from backend
+    const useBackend = format === 'pdf';
+    await exportData(format, useBackend);
+  }, [exportData]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -131,20 +133,22 @@ export const ReservationReportsPage: React.FC = () => {
             <button
               type="button"
               onClick={() => handleExport('csv')}
-              disabled={exportStatus.isExporting || isLoading}
+              disabled={exportStatus.isExporting || isLoading || !data}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Exportar datos a formato CSV"
             >
               <Download className="w-4 h-4 mr-2" />
-              {exportStatus.isExporting ? 'Exportando...' : 'Exportar CSV'}
+              {exportStatus.isExporting ? 'Generando...' : 'Exportar CSV'}
             </button>
             <button
               type="button"
               onClick={() => handleExport('pdf')}
-              disabled={exportStatus.isExporting || isLoading}
+              disabled={exportStatus.isExporting || isLoading || !data}
               className="inline-flex items-center px-4 py-2 border border-neutral-300 text-sm font-medium rounded-md text-neutral-700 bg-white hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Exportar reporte completo a PDF"
             >
               <Download className="w-4 h-4 mr-2" />
-              {exportStatus.isExporting ? 'Exportando...' : 'Exportar PDF'}
+              {exportStatus.isExporting ? 'Generando...' : 'Exportar PDF'}
             </button>
           </div>
         </div>
@@ -171,7 +175,7 @@ export const ReservationReportsPage: React.FC = () => {
       )}
 
       {/* Empty State - No data */}
-      {!isLoading && !error && data && data.kpis.totalReservations === 0 && (
+      {!isLoading && !error && data?.kpis.totalReservations === 0 && (
         <div className="mb-6">
           <Alert 
             type="info" 
