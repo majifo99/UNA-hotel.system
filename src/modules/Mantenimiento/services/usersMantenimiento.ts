@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { UserItem } from "../types/user";
+import type { UserItem } from "../types/userMantenimientoType";
 
 const API_URL = import.meta.env.VITE_API_URL ;
 
