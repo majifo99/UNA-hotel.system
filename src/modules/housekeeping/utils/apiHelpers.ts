@@ -50,6 +50,15 @@ export async function authenticatedRequest<T = any>(
     : await res.text();
 
   if (!res.ok) {
+    // Manejo especial para errores de autenticación
+    if (res.status === 401) {
+      throw new Error("Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.");
+    }
+
+    if (res.status === 403) {
+      throw new Error("No tienes permisos para realizar esta acción.");
+    }
+
     const msg =
       typeof parsed === "object" && parsed && ("message" in parsed || "error" in parsed)
         ? (parsed as any).message ?? (parsed as any).error

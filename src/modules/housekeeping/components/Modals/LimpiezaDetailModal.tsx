@@ -68,12 +68,7 @@ export default function LimpiezaDetailModal({
   const [loading, setLoading] = useState(false);
   const [item, setItem] = useState<LimpiezaItem | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  // (Demo) Historial
-  const history = [
-    { fecha: "22/9/2025", usuario: "Ana García", texto: "Todo en orden", estado: "Completado" },
-    { fecha: "21/9/2025", usuario: "María López", texto: "Cambio de cortinas", estado: "Completado" },
-  ];
+  const [historial, setHistorial] = useState<LimpiezaItem[]>([]);
 
   useEffect(() => {
     if (!open || !limpiezaId) return;
@@ -83,7 +78,26 @@ export default function LimpiezaDetailModal({
       setError(null);
       try {
         const res = await limpiezaService.getLimpiezaById(limpiezaId);
-        if (!cancelled) setItem(res.data);
+        if (!cancelled) {
+          setItem(res.data);
+
+          // ✅ Cargar historial de la habitación (últimas 3 limpiezas finalizadas)
+          if (res.data?.habitacion?.id) {
+            try {
+              const histRes = await limpiezaService.getHistorialLimpiezas(res.data.habitacion.id);
+              if (!cancelled) {
+                // Filtrar solo las finalizadas y limitar a 3
+                const finalizadas = (histRes.data || [])
+                  .filter(h => h.fecha_final)
+                  .slice(0, 3);
+                setHistorial(finalizadas);
+              }
+            } catch (histErr) {
+              console.warn("Error cargando historial:", histErr);
+              // No mostramos error al usuario, solo no habrá historial
+            }
+          }
+        }
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? "Error cargando detalles");
       } finally {
@@ -226,7 +240,7 @@ export default function LimpiezaDetailModal({
                         <UserCheck className="w-4 h-4" style={{ color: BRAND_GREEN }} />
                         <span>
                           Asignado a:{" "}
-                          <strong>{item.usuario_asignado?.nombre ?? (item as any)?.asignador?.name ?? "—"}</strong>
+                          <strong>{item.usuario_asignado?.nombre || (item as any)?.asignador?.name || "—"}</strong>
                         </span>
                       </div>
                       <div className="mt-1 text-slate-700">
@@ -251,33 +265,55 @@ export default function LimpiezaDetailModal({
                 </div>
 
                 {/* Historial */}
-                <div className={cn(card, "mb-2")}>
-                  <div className="text-slate-700 font-medium mb-3">Historial de limpieza</div>
-                  <div className="space-y-3">
-                    {history.map((h) => {
-                      const key = `${h.fecha}-${h.usuario}-${h.estado}`;
-                      return (
-                        <div
-                          key={key}
-                          className="grid grid-cols-1 md:grid-cols-12 items-center gap-3 rounded-lg border border-slate-200/70 p-3"
-                        >
-                          <div className="md:col-span-3">
-                            <div className="text-sm font-medium text-slate-900">{h.fecha}</div>
-                            <div className="text-xs text-slate-600">{h.usuario}</div>
+                {historial.length > 0 && (
+                  <div className={cn(card, "mb-2")}>
+                    <div className="text-slate-700 font-medium mb-3">
+                      Historial de limpieza (últimas 3)
+                    </div>
+                    <div className="space-y-3">
+                      {historial.map((h) => {
+                        const key = `${h.id ?? h.id_limpieza}-${h.fecha_final}`;
+                        const usuario = h.usuario_asignado?.nombre || (h as any)?.asignador?.name || "Sin asignar";
+                        const notas = h.notas || "Sin observaciones";
+
+                        return (
+                          <div
+                            key={key}
+                            className="grid grid-cols-1 md:grid-cols-12 items-center gap-3 rounded-lg border border-slate-200/70 p-3"
+                          >
+                            <div className="md:col-span-3">
+                              <div className="text-sm font-medium text-slate-900">
+                                {fmtDateTime(h.fecha_final)}
+                              </div>
+                              <div className="text-xs text-slate-600">{usuario}</div>
+                            </div>
+                            <div className="md:col-span-9 flex items-center justify-between gap-3">
+                              <Pill tone="green">
+                                <span className="inline-flex items-center gap-1">
+                                  <BadgeCheck className="w-3 h-3" /> Completado
+                                </span>
+                              </Pill>
+                              <div className="text-xs text-slate-600 truncate" title={notas}>
+                                {notas}
+                              </div>
+                            </div>
                           </div>
-                          <div className="md:col-span-9 flex items-center justify-between gap-3">
-                            <Pill tone="green">
-                              <span className="inline-flex items-center gap-1">
-                                <BadgeCheck className="w-3 h-3" /> {h.estado}
-                              </span>
-                            </Pill>
-                            <div className="text-xs text-slate-600">{h.texto}</div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {historial.length === 0 && (
+                  <div className={cn(card, "mb-2")}>
+                    <div className="text-slate-700 font-medium mb-3">
+                      Historial de limpieza
+                    </div>
+                    <div className="text-sm text-slate-500 text-center py-4">
+                      No hay historial de limpiezas finalizadas para esta habitación
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>
