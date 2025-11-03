@@ -15,8 +15,8 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
-import type { TimeSeriesDataPoint, ChartMetric } from '../../types/reports';
-import { getMetricColor } from '../../utils/reportColors';
+import type { TimeSeriesDataPoint, ChartMetric } from '../types/reports';
+import { getMetricColor } from '../utils/reportColors';
 
 export interface TimeSeriesChartProps {
   readonly data: readonly TimeSeriesDataPoint[];

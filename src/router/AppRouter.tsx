@@ -20,7 +20,7 @@ import { FolioPage } from '../modules/frontdesk/pages/FolioPage';
 import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
 import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
 import { AdminLoginPage, AdminAuthProvider, ProtectedRoute } from '../modules/admin';
-import { ReservationReportsPage } from '../modules/reservations/pages/ReservationReportsPage';
+import { ReservationReportsPage } from '../modules/reservations/features/reports';
 
 /**
  * TanStack Query Client Configuration

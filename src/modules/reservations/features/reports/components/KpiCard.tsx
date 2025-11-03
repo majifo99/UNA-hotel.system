@@ -6,7 +6,7 @@
 
 import React from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { hexToRgba } from '../../utils/colorUtils';
+import { hexToRgba } from '../utils/colorUtils';
 
 export interface KpiCardProps {
   readonly icon: LucideIcon;

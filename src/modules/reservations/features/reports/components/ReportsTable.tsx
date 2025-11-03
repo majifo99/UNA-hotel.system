@@ -6,8 +6,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
-import type { ReservationReportRow } from '../../types/reports';
-import { ReservationStatusBadge } from '../ReservationStatusBadge';
+import type { ReservationReportRow } from '../types/reports';
+import { ReservationStatusBadge } from './ReservationStatusBadge';
 
 export interface ReportsTableProps {
   readonly data: readonly ReservationReportRow[];

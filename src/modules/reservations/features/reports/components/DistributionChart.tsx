@@ -13,9 +13,9 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
-import type { DistributionDataPoint } from '../../types/reports';
-import { getPaletteColor } from '../../utils/colorUtils';
-import { getDistributionColor } from '../../utils/reportColors';
+import type { DistributionDataPoint } from '../types/reports';
+import { getPaletteColor } from '../utils/colorUtils';
+import { getDistributionColor } from '../utils/reportColors';
 
 export interface DistributionChartProps {
   readonly data: readonly DistributionDataPoint[];
@@ -46,14 +46,20 @@ export const DistributionChart: React.FC<DistributionChartProps> = ({
     );
   }
 
-  const chartData = data.map((item, idx) => ({
-    name: item.name,
-    value: item.value,
-    percentage: item.percentage,
-    color: item.color || (category 
+  const chartData = data.map((item, idx) => {
+    // Determine color based on category or palette index
+    const colorIndex = typeof item.name === 'number' ? item.name : idx;
+    const defaultColor = category 
       ? getDistributionColor(item.name, category, idx)
-      : getPaletteColor(item.name || idx))
-  }));
+      : getPaletteColor(colorIndex);
+
+    return {
+      name: item.name,
+      value: item.value,
+      percentage: item.percentage,
+      color: item.color || defaultColor
+    };
+  });
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">

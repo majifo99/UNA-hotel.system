@@ -29,6 +29,7 @@ export type {
 } from './forms';
 
 // === REPORTS ===
+// Los tipos de reportes están ahora en features/reports
 export type {
   ReservationKpiDto,
   TimeSeriesDataPoint,
@@ -41,7 +42,7 @@ export type {
   ExportFormat,
   ExportConfig,
   ExportStatus
-} from './reports';
+} from '../features/reports/types/reports';
 
 // === API TYPES ===
 // Legacy API

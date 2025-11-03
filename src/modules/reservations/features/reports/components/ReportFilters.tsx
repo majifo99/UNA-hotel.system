@@ -9,9 +9,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Filter, X } from 'lucide-react';
-import type { ReservationReportFilters, TimePeriod } from '../../types/reports';
-import type { ReservationStatus } from '../../types/enums/ReservationStatus';
-import { useDebounce } from '../../../../hooks/useDebounce';
+import type { ReservationReportFilters, TimePeriod } from '../types/reports';
+import type { ReservationStatus } from '../types/enums/ReservationStatus';
+import { useDebounce } from '../../../../../hooks/useDebounce';
 import { FilterBadge } from './FilterBadge';
 
 /**

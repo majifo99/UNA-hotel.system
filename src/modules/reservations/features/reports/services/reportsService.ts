@@ -8,7 +8,7 @@
  * @module services/reports
  */
 
-import { apiClientExtended } from '../../../services/apiClient';
+import { apiClientExtended } from '../../../../../services/apiClient';
 import type { 
   ReservationReportDto, 
   ReservationReportFilters,

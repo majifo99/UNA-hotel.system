@@ -8,13 +8,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Download, TrendingUp, DollarSign, CheckCircle, XCircle } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useReservationReports } from '../hooks/useReservationReports';
-import { ReportFilters } from '../components/reports/ReportFilters';
-import { KpiCard } from '../components/reports/KpiCard';
-import { TimeSeriesChart } from '../components/reports/TimeSeriesChart';
-import { DistributionChart } from '../components/reports/DistributionChart';
-import { ReportsTable } from '../components/reports/ReportsTable';
-import { Alert } from '../../../components/ui/Alert';
-import { ReportsDashboardSkeleton } from '../components/ui/Skeleton';
+import { ReportFilters } from '../components/ReportFilters';
+import { KpiCard } from '../components/KpiCard';
+import { TimeSeriesChart } from '../components/TimeSeriesChart';
+import { DistributionChart } from '../components/DistributionChart';
+import { ReportsTable } from '../components/ReportsTable';
+import { Alert } from '../../../../../components/ui/Alert';
+import { ReportsDashboardSkeleton } from '../../../components/ui/Skeleton';
 import type { ChartMetric, ExportFormat, ReservationReportFilters } from '../types/reports';
 
 const CHART_METRICS: Array<{ value: ChartMetric; label: string }> = [
