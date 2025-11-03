@@ -473,11 +473,11 @@ export class CheckInApiService extends BaseApiService {
       errors.push('El número de niños no puede ser negativo');
     }
 
-    if (payload.bebes < 0) {
+    if (payload.bebes !== undefined && payload.bebes < 0) {
       errors.push('El número de bebés no puede ser negativo');
     }
 
-    if (payload.adultos === 0 && payload.ninos === 0 && payload.bebes === 0) {
+    if (payload.adultos === 0 && payload.ninos === 0 && (payload.bebes === undefined || payload.bebes === 0)) {
       errors.push('Debe haber al menos un huésped (adulto, niño o bebé)');
     }
 

@@ -81,13 +81,13 @@ export const RoomChangeResultModal: React.FC<RoomChangeResultModalProps> = ({
                 <h3 className="font-semibold text-gray-900">Habitación Anterior</h3>
               </div>
               <p className="text-xl font-bold text-gray-800 mb-2">
-                {result.habitacion_antigua.nombre}
+                {result.habitacion_antigua?.nombre || 'N/A'}
               </p>
               <p className="text-gray-600">
-                ID: {result.habitacion_antigua.id}
+                ID: {result.habitacion_antigua?.id || 'N/A'}
               </p>
               <p className="text-lg font-semibold text-gray-700 mt-2">
-                ${result.habitacion_antigua.precio.toFixed(2)}
+                ${(result.habitacion_antigua?.precio ?? 0).toFixed(2)}
               </p>
             </div>
 
@@ -98,13 +98,13 @@ export const RoomChangeResultModal: React.FC<RoomChangeResultModalProps> = ({
                 <h3 className="font-semibold text-blue-900">Habitación Nueva</h3>
               </div>
               <p className="text-xl font-bold text-blue-800 mb-2">
-                {result.habitacion_nueva.nombre}
+                {result.habitacion_nueva?.nombre || 'N/A'}
               </p>
               <p className="text-blue-600">
-                ID: {result.habitacion_nueva.id}
+                ID: {result.habitacion_nueva?.id || 'N/A'}
               </p>
               <p className="text-lg font-semibold text-blue-700 mt-2">
-                ${result.habitacion_nueva.precio.toFixed(2)}
+                ${(result.habitacion_nueva?.precio ?? 0).toFixed(2)}
               </p>
             </div>
           </div>
@@ -126,17 +126,17 @@ export const RoomChangeResultModal: React.FC<RoomChangeResultModalProps> = ({
               <div className="text-right">
                 <p className="text-sm text-gray-600">Diferencia</p>
                 <p className={`text-2xl font-bold ${ajusteInfo.color}`}>
-                  {result.diferencia_precio >= 0 ? '+' : ''}
-                  ${result.diferencia_precio.toFixed(2)}
+                  {(result.diferencia_precio ?? 0) >= 0 ? '+' : ''}
+                  ${(result.diferencia_precio ?? 0).toFixed(2)}
                 </p>
               </div>
             </div>
             
-            {result.monto_ajuste !== 0 && (
+            {(result.monto_ajuste ?? 0) !== 0 && (
               <div className="mt-3 pt-3 border-t border-gray-200">
                 <p className="text-sm text-gray-600">Monto del Ajuste</p>
                 <p className={`text-xl font-bold ${ajusteInfo.color}`}>
-                  ${Math.abs(result.monto_ajuste).toFixed(2)}
+                  ${Math.abs(result.monto_ajuste ?? 0).toFixed(2)}
                 </p>
               </div>
             )}
@@ -150,36 +150,36 @@ export const RoomChangeResultModal: React.FC<RoomChangeResultModalProps> = ({
               <div className="flex justify-between items-center pb-2 border-b border-gray-200">
                 <span className="text-gray-600">Total Nuevo:</span>
                 <span className="text-xl font-bold text-gray-900">
-                  ${result.reserva.total_nuevo.toFixed(2)}
+                  ${(result.reserva?.total_nuevo ?? 0).toFixed(2)}
                 </span>
               </div>
               
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Monto Pagado:</span>
                 <span className="text-lg font-semibold text-green-600">
-                  ${result.reserva.monto_pagado.toFixed(2)}
+                  ${(result.reserva?.monto_pagado ?? 0).toFixed(2)}
                 </span>
               </div>
               
               <div className="flex justify-between items-center pb-3 border-b-2 border-gray-300">
                 <span className="text-gray-600">Monto Pendiente:</span>
                 <span className="text-lg font-semibold text-orange-600">
-                  ${result.reserva.monto_pendiente.toFixed(2)}
+                  ${(result.reserva?.monto_pendiente ?? 0).toFixed(2)}
                 </span>
               </div>
 
-              {result.reserva.monto_pendiente > 0 && (
+              {(result.reserva?.monto_pendiente ?? 0) > 0 && (
                 <div className="bg-orange-50 border border-orange-200 rounded-md p-3 mt-3">
                   <p className="text-sm text-orange-800">
-                    <strong>Nota:</strong> El huésped debe pagar ${result.reserva.monto_pendiente.toFixed(2)} para completar la reserva.
+                    <strong>Nota:</strong> El huésped debe pagar ${(result.reserva?.monto_pendiente ?? 0).toFixed(2)} para completar la reserva.
                   </p>
                 </div>
               )}
 
-              {result.reserva.monto_pendiente < 0 && (
+              {(result.reserva?.monto_pendiente ?? 0) < 0 && (
                 <div className="bg-green-50 border border-green-200 rounded-md p-3 mt-3">
                   <p className="text-sm text-green-800">
-                    <strong>Reembolso:</strong> Se debe reembolsar ${Math.abs(result.reserva.monto_pendiente).toFixed(2)} al huésped.
+                    <strong>Reembolso:</strong> Se debe reembolsar ${Math.abs(result.reserva?.monto_pendiente ?? 0).toFixed(2)} al huésped.
                   </p>
                 </div>
               )}

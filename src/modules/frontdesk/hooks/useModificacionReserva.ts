@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import ModificacionReservaService from '../services/ModificacionReservaService';
 import type {
   CambiarHabitacionRequest,
@@ -23,6 +24,7 @@ export const useModificacionReserva = () => {
       ModificacionReservaService.cambiarHabitacion(idReserva, data),
     onSuccess: () => {
       setError(null);
+      toast.success('Cambio de habitación realizado exitosamente');
       // Invalidar queries relacionadas
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
@@ -30,7 +32,9 @@ export const useModificacionReserva = () => {
     },
     onError: (err: unknown) => {
       console.error('Error al cambiar habitación:', err);
-      setError(err instanceof Error ? err.message : 'Error desconocido al cambiar habitación');
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cambiar habitación';
+      setError(errorMessage);
+      toast.error(`Error: ${errorMessage}`);
     },
   });
 
@@ -40,12 +44,15 @@ export const useModificacionReserva = () => {
       ModificacionReservaService.modificarFechas(idReserva, data),
     onSuccess: () => {
       setError(null);
+      toast.success('Fechas modificadas exitosamente');
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
     },
     onError: (err: unknown) => {
       console.error('Error al modificar fechas:', err);
-      setError(err instanceof Error ? err.message : 'Error desconocido al modificar fechas');
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido al modificar fechas';
+      setError(errorMessage);
+      toast.error(`Error: ${errorMessage}`);
     },
   });
 
@@ -55,12 +62,15 @@ export const useModificacionReserva = () => {
       ModificacionReservaService.reducirEstadia(idReserva, data),
     onSuccess: () => {
       setError(null);
+      toast.success('Estadía reducida exitosamente');
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
     },
     onError: (err: unknown) => {
       console.error('Error al reducir estadía:', err);
-      setError(err instanceof Error ? err.message : 'Error desconocido al reducir estadía');
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido al reducir estadía';
+      setError(errorMessage);
+      toast.error(`Error: ${errorMessage}`);
     },
   });
 

@@ -1,3 +1,7 @@
+// 🔄 Check-Out Components
+export { default as CheckOut } from './CheckOut'; // V1 - Antiguo (respaldo)
+export { default as CheckOutNew } from './CheckOutNew'; // V2 - Nuevo (principal)
+
 export { ChargeDistributionComponent } from './ChargeDistribution';
 export { default as RoomChange } from './RoomChange';
 export { default as DateModification } from './DateModification';

@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { Users, Bed, Filter, RefreshCw, Calendar, Grid, LogIn, LogOut, ArrowLeftRight } from 'lucide-react';
+import { Users, Bed, Filter, Calendar, Grid, LogIn, LogOut, ArrowLeftRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../router/routes';
 import { 
   useRooms, 
-  useDashboardStats, 
-  useUpdateRoomStatus 
+  useDashboardStats
 } from '../hooks';
 import type { Room } from '../../../types/core/domain';
 import type { FrontdeskRoom, RoomFilters, FrontdeskRoomStatus, FrontdeskRoomType } from '../types';
@@ -51,28 +50,15 @@ const mapRoomTypeToFrontdesk = (type: Room['type']): FrontdeskRoomType => {
   return typeMap[type];
 };
 
-const mapFrontdeskStatusToRoom = (status: FrontdeskRoomStatus): Room['status'] => {
-  const statusMap: Record<FrontdeskRoomStatus, Room['status']> = {
-    'available': 'available',
-    'occupied': 'occupied',
-    'reserved': 'available', // Reserved rooms are technically available in core
-    'checked-in': 'occupied',
-    'checked-out': 'cleaning',
-    'maintenance': 'maintenance',
-    'cleaning': 'cleaning',
-  };
-  return statusMap[status];
-};
-
 // =================== CONSTANTS ===================
 const ROOM_STATUS_COLORS = {
-  available: 'bg-green-100 text-green-800 border-green-200',
-  occupied: 'bg-red-100 text-red-800 border-red-200',
-  reserved: 'bg-purple-100 text-purple-800 border-purple-200',
-  'checked-in': 'bg-red-100 text-red-800 border-red-200',
-  'checked-out': 'bg-orange-100 text-orange-800 border-orange-200',
-  maintenance: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  cleaning: 'bg-purple-100 text-purple-800 border-purple-200'
+  available: 'bg-green-500 text-white border-green-600 shadow-green-200',
+  occupied: 'bg-red-500 text-white border-red-600 shadow-red-200',
+  reserved: 'bg-purple-500 text-white border-purple-600 shadow-purple-200',
+  'checked-in': 'bg-red-500 text-white border-red-600 shadow-red-200',
+  'checked-out': 'bg-orange-500 text-white border-orange-600 shadow-orange-200',
+  maintenance: 'bg-yellow-500 text-white border-yellow-600 shadow-yellow-200',
+  cleaning: 'bg-blue-400 text-white border-blue-500 shadow-blue-200'
 } as const;
 
 const ROOM_STATUS_LABELS = {
@@ -96,7 +82,6 @@ interface StatsCardProps {
 
 interface RoomCardProps {
   room: FrontdeskRoom;
-  onStatusChange: (roomId: string, status: FrontdeskRoom['status']) => void;
 }
 
 // =================== COMPONENTS ===================
@@ -136,75 +121,48 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
   </div>
 );
 
-const RoomCard: React.FC<RoomCardProps> = ({ room, onStatusChange }) => {
+const RoomCard: React.FC<RoomCardProps> = ({ room }) => {
   const statusColor = ROOM_STATUS_COLORS[room.status];
   const statusLabel = ROOM_STATUS_LABELS[room.status];
 
   return (
-    <div className="border-2 border-gray-200 rounded-xl p-5 bg-white shadow-sm hover:shadow-lg transition-all duration-300 hover:border-gray-300">
+    <div className={`border-2 rounded-xl p-5 shadow-lg hover:shadow-xl transition-all duration-300 ${statusColor}`}>
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="font-bold text-xl text-gray-900">
+          <h3 className="font-bold text-2xl">
             Habitación {room.roomNumber}
           </h3>
-          <p className="text-sm font-medium text-gray-600">{room.type}</p>
+          <p className="text-sm font-medium opacity-90">{room.type}</p>
         </div>
-        <span className={`px-3 py-1.5 rounded-full text-xs font-semibold border-2 ${statusColor} shadow-sm`}>
+        <span className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 bg-white/20 backdrop-blur-sm`}>
           {statusLabel}
         </span>
       </div>
 
-      <div className="space-y-3 mb-5">
-        <div className="flex items-center text-sm text-gray-700">
-          <Users className="w-4 h-4 mr-3 text-gray-500" />
+      <div className="space-y-3 mb-5 bg-white/10 backdrop-blur-sm rounded-lg p-3">
+        <div className="flex items-center text-sm">
+          <Users className="w-4 h-4 mr-3" />
           <span className="font-medium">Capacidad:</span>
           <span className="ml-1 font-semibold">{room.capacity} personas</span>
         </div>
-        <div className="flex items-center text-sm text-gray-700">
-          <Bed className="w-4 h-4 mr-3 text-gray-500" />
+        <div className="flex items-center text-sm">
+          <Bed className="w-4 h-4 mr-3" />
           <span className="font-medium">Tipo:</span>
           <span className="ml-1 font-semibold">{room.type}</span>
         </div>
         {room.currentGuest && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
-            <div className="flex items-center text-sm text-blue-800">
-              <Users className="w-4 h-4 mr-2 text-blue-600" />
+          <div className="bg-white/20 border border-white/30 rounded-lg p-3 mt-3">
+            <div className="flex items-center text-sm">
+              <Users className="w-4 h-4 mr-2" />
               <span className="font-medium">Huésped:</span>
               <span className="ml-1 font-semibold">{room.currentGuest.name}</span>
             </div>
-            <div className="text-xs text-blue-600 mt-1 flex items-center justify-between">
+            <div className="text-xs mt-1 flex items-center justify-between">
               <span>Check-in: {new Date(room.currentGuest.checkIn).toLocaleDateString('es-ES')}</span>
               <span>Check-out: {new Date(room.currentGuest.checkOut).toLocaleDateString('es-ES')}</span>
             </div>
           </div>
         )}
-        {room.guestName?.startsWith('Reserva:') && room.checkIn && (
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mt-3">
-            <div className="flex items-center text-sm text-purple-800">
-              <Users className="w-4 h-4 mr-2 text-purple-600" />
-              <span className="font-medium">Próxima reserva:</span>
-              <span className="ml-1 font-semibold">{room.guestName.replace('Reserva: ', '')}</span>
-            </div>
-            <div className="text-xs text-purple-600 mt-1">
-              Llegada: {new Date(room.checkIn).toLocaleDateString('es-ES')}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="flex gap-2">
-        <select 
-          value={room.status}
-          onChange={(e) => onStatusChange(room.id, e.target.value as FrontdeskRoomStatus)}
-          className="text-sm px-3 py-2 border-2 border-gray-300 rounded-lg flex-1 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors font-medium"
-        >
-          <option value="available">Disponible</option>
-          <option value="reserved">Reservada</option>
-          <option value="checked-in">Ocupada</option>
-          <option value="checked-out">Check-out</option>
-          <option value="maintenance">Mantenimiento</option>
-          <option value="cleaning">Limpieza</option>
-        </select>
       </div>
     </div>
   );
@@ -215,22 +173,23 @@ const RoomCard: React.FC<RoomCardProps> = ({ room, onStatusChange }) => {
 const FrontDesk: React.FC = () => {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<RoomFilters>({});
-  const [showFilters, setShowFilters] = useState(false);
   const [activeView, setActiveView] = useState<'grid' | 'calendar'>('calendar');
+  const [dateFilter, setDateFilter] = useState({
+    startDate: '',
+    endDate: ''
+  });
 
   // Hooks
-  const { data: rooms = [], isLoading: roomsLoading, refetch: refetchRooms } = useRooms(filters);
+  const { data: rooms = [], isLoading: roomsLoading } = useRooms(filters);
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
-  const updateRoomStatusMutation = useUpdateRoomStatus();
 
   // Handlers
-  const handleStatusChange = (roomId: string, status: FrontdeskRoomStatus) => {
-    const coreStatus = mapFrontdeskStatusToRoom(status);
-    updateRoomStatusMutation.mutate({ id: roomId, status: coreStatus });
+  const handleDateFilterChange = (field: 'startDate' | 'endDate', value: string) => {
+    setDateFilter(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleRefresh = () => {
-    refetchRooms();
+  const clearDateFilter = () => {
+    setDateFilter({ startDate: '', endDate: '' });
   };
 
   const filteredRooms = rooms.filter(room => {
@@ -260,7 +219,7 @@ const FrontDesk: React.FC = () => {
                 </h1>
                 <p className="text-lg text-gray-600">Gestión en tiempo real de habitaciones</p>
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-3 items-center">
                 {/* View Toggle */}
                 <div className="flex bg-gray-100 rounded-lg p-1">
                   <button
@@ -287,55 +246,29 @@ const FrontDesk: React.FC = () => {
                   </button>
                 </div>
 
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  <Filter className="w-4 h-4" />
-                  Filtros
-                </button>
-                <button
-                  onClick={handleRefresh}
-                  disabled={roomsLoading}
-                  className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 rounded-lg disabled:opacity-50 transition-all hover:bg-green-700"
-                >
-                  <RefreshCw className={`w-4 h-4 ${roomsLoading ? 'animate-spin' : ''}`} />
-                  Actualizar
-                </button>
+                <div className="h-8 w-px bg-gray-300"></div>
+
+                {/* Botones principales */}
                 <button
                   onClick={() => navigate(ROUTES.FRONTDESK.CHECKIN)}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                  className="flex items-center gap-2 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 shadow-md hover:shadow-lg transition-all font-medium"
                 >
-                  <LogIn className="w-4 h-4" />
+                  <LogIn className="w-5 h-5" />
                   Check-in
                 </button>
                 <button
                   onClick={() => navigate(ROUTES.FRONTDESK.CHECKOUT)}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                  className="flex items-center gap-2 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 shadow-md hover:shadow-lg transition-all font-medium"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-5 h-5" />
                   Check-out
                 </button>
                 <button
                   onClick={() => navigate(ROUTES.FRONTDESK.ROOM_CHANGE)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                  className="flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 shadow-md hover:shadow-lg transition-all font-medium"
                 >
-                  <ArrowLeftRight className="w-4 h-4" />
+                  <ArrowLeftRight className="w-5 h-5" />
                   Cambio de Habitación
-                </button>
-                <button
-                  onClick={() => navigate(ROUTES.FRONTDESK.DATE_MODIFICATION)}
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600"
-                >
-                  <Calendar className="w-4 h-4" />
-                  Modificar Fechas
-                </button>
-                <button
-                  onClick={() => navigate(ROUTES.FRONTDESK.REDUCE_STAY)}
-                  className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Reducir Estadía
                 </button>
               </div>
             </div>
@@ -378,79 +311,127 @@ const FrontDesk: React.FC = () => {
               </div>
             ) : (
               <>
-                {/* Filters Panel */}
-                {showFilters && (
-                  <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 space-y-4">
-                    <h3 className="font-semibold text-gray-800">Filtrar Habitaciones</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div>
-                        <label htmlFor="filter-status" className="block text-sm font-medium text-gray-700 mb-1">
-                          Estado
-                        </label>
-                        <select
-                          id="filter-status"
-                          value={filters.status || ''}
-                          onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as FrontdeskRoomStatus || undefined }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="">Todos los estados</option>
-                          <option value="available">Disponible</option>
-                          <option value="reserved">Reservada</option>
-                          <option value="checked-in">Ocupada</option>
-                          <option value="checked-out">Check-out</option>
-                          <option value="maintenance">Mantenimiento</option>
-                          <option value="cleaning">Limpieza</option>
-                        </select>
-                      </div>
+                {/* Filters Panel - Siempre visible en vista grilla */}
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl border-2 border-gray-200 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                      <Filter className="w-5 h-5" />
+                      Filtros de Búsqueda
+                    </h3>
+                    <button
+                      onClick={() => {
+                        setFilters({});
+                        clearDateFilter();
+                      }}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all shadow-sm"
+                    >
+                      Limpiar Todo
+                    </button>
+                  </div>
 
-                      <div>
-                        <label htmlFor="filter-type" className="block text-sm font-medium text-gray-700 mb-1">
-                          Tipo
-                        </label>
-                        <select
-                          id="filter-type"
-                          value={filters.type || ''}
-                          onChange={(e) => setFilters(prev => ({ 
-                            ...prev, 
-                            type: e.target.value as FrontdeskRoomType || undefined 
-                          }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="">Todos los tipos</option>
-                          {roomTypes.map(type => (
-                            <option key={type} value={type}>{type}</option>
-                          ))}
-                        </select>
-                      </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    {/* Filtro de Estado */}
+                    <div>
+                      <label htmlFor="filter-status" className="block text-sm font-semibold text-gray-700 mb-2">
+                        Estado
+                      </label>
+                      <select
+                        id="filter-status"
+                        value={filters.status || ''}
+                        onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as FrontdeskRoomStatus || undefined }))}
+                        className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white font-medium transition-all"
+                      >
+                        <option value="">Todos</option>
+                        <option value="available">✅ Disponible</option>
+                        <option value="reserved">🟣 Reservada</option>
+                        <option value="checked-in">🔴 Ocupada</option>
+                        <option value="checked-out">🟠 Check-out</option>
+                        <option value="maintenance">🟡 Mantenimiento</option>
+                        <option value="cleaning">🔵 Limpieza</option>
+                      </select>
+                    </div>
 
-                      <div>
-                        <label htmlFor="filter-floor" className="block text-sm font-medium text-gray-700 mb-1">
-                          Piso
-                        </label>
-                        <select
-                          id="filter-floor"
-                          value={filters.floor || ''}
-                          onChange={(e) => setFilters(prev => ({ ...prev, floor: e.target.value ? Number(e.target.value) : undefined }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="">Todos los pisos</option>
-                          {floors.map(floor => (
-                            <option key={floor} value={floor}>Piso {floor}</option>
-                          ))}
-                        </select>
-                      </div>
+                    {/* Filtro de Tipo */}
+                    <div>
+                      <label htmlFor="filter-type" className="block text-sm font-semibold text-gray-700 mb-2">
+                        Tipo de Habitación
+                      </label>
+                      <select
+                        id="filter-type"
+                        value={filters.type || ''}
+                        onChange={(e) => setFilters(prev => ({ 
+                          ...prev, 
+                          type: e.target.value as FrontdeskRoomType || undefined 
+                        }))}
+                        className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white font-medium transition-all"
+                      >
+                        <option value="">Todos los tipos</option>
+                        {roomTypes.map(type => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                      <div className="flex items-end">
-                        <button
-                          onClick={() => setFilters({})}
-                          className="w-full px-3 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-                        >
-                          Limpiar Filtros
-                        </button>
-                      </div>
+                    {/* Filtro de Piso */}
+                    <div>
+                      <label htmlFor="filter-floor" className="block text-sm font-semibold text-gray-700 mb-2">
+                        Piso
+                      </label>
+                      <select
+                        id="filter-floor"
+                        value={filters.floor || ''}
+                        onChange={(e) => setFilters(prev => ({ ...prev, floor: e.target.value ? Number(e.target.value) : undefined }))}
+                        className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white font-medium transition-all"
+                      >
+                        <option value="">Todos los pisos</option>
+                        {floors.map(floor => (
+                          <option key={floor} value={floor}>Piso {floor}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Filtro de Fecha Inicio */}
+                    <div>
+                      <label htmlFor="filter-start-date" className="block text-sm font-semibold text-gray-700 mb-2">
+                        📅 Fecha Inicio
+                      </label>
+                      <input
+                        id="filter-start-date"
+                        type="date"
+                        value={dateFilter.startDate}
+                        onChange={(e) => handleDateFilterChange('startDate', e.target.value)}
+                        className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white font-medium transition-all"
+                      />
+                    </div>
+
+                    {/* Filtro de Fecha Fin */}
+                    <div>
+                      <label htmlFor="filter-end-date" className="block text-sm font-semibold text-gray-700 mb-2">
+                        📅 Fecha Fin
+                      </label>
+                      <input
+                        id="filter-end-date"
+                        type="date"
+                        value={dateFilter.endDate}
+                        onChange={(e) => handleDateFilterChange('endDate', e.target.value)}
+                        min={dateFilter.startDate}
+                        className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white font-medium transition-all"
+                      />
                     </div>
                   </div>
-                )}
+
+                  {/* Indicador de filtros activos */}
+                  {(filters.status || filters.type || filters.floor || dateFilter.startDate || dateFilter.endDate) && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+                      <span className="font-semibold">Filtros activos:</span>
+                      {filters.status && <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">Estado: {ROOM_STATUS_LABELS[filters.status]}</span>}
+                      {filters.type && <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">Tipo: {filters.type}</span>}
+                      {filters.floor && <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">Piso: {filters.floor}</span>}
+                      {dateFilter.startDate && <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">Desde: {new Date(dateFilter.startDate).toLocaleDateString('es-ES')}</span>}
+                      {dateFilter.endDate && <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">Hasta: {new Date(dateFilter.endDate).toLocaleDateString('es-ES')}</span>}
+                    </div>
+                  )}
+                </div>
 
                 {/* Rooms Grid */}
                 <div>
@@ -470,12 +451,11 @@ const FrontDesk: React.FC = () => {
                       ))}
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                       {filteredRooms.map((room) => (
                         <RoomCard
                           key={room.id}
                           room={adaptRoomToFrontdesk(room)}
-                          onStatusChange={handleStatusChange}
                         />
                       ))}
                     </div>
@@ -492,6 +472,39 @@ const FrontDesk: React.FC = () => {
                     <p className="text-gray-600">
                       Ajusta los filtros para ver más resultados
                     </p>
+                  </div>
+                )}
+
+                {/* Leyenda de Colores */}
+                {!roomsLoading && filteredRooms.length > 0 && (
+                  <div className="mt-8 bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl border-2 border-gray-200">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4">Leyenda de Estados</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 rounded-full bg-green-500 shadow-md"></div>
+                        <span className="text-sm font-medium text-gray-700">Disponible</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 rounded-full bg-red-500 shadow-md"></div>
+                        <span className="text-sm font-medium text-gray-700">Ocupada</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 rounded-full bg-purple-500 shadow-md"></div>
+                        <span className="text-sm font-medium text-gray-700">Reservada</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 rounded-full bg-orange-500 shadow-md"></div>
+                        <span className="text-sm font-medium text-gray-700">Check-out</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 rounded-full bg-yellow-500 shadow-md"></div>
+                        <span className="text-sm font-medium text-gray-700">Mantenimiento</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 rounded-full bg-blue-400 shadow-md"></div>
+                        <span className="text-sm font-medium text-gray-700">Limpieza</span>
+                      </div>
+                    </div>
                   </div>
                 )}
               </>

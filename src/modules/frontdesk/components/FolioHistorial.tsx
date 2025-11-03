@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Clock, RefreshCw, DollarSign, Divide, FileX, ChevronDown, ChevronRight } from 'lucide-react';
 import { useFolioHistorial } from '../hooks/useFolioHistorial';
+import type { HistorialItem } from '../services/folioService';
 
 interface FolioHistorialProps {
   folioId: number;
@@ -8,8 +9,29 @@ interface FolioHistorialProps {
 
 type TipoEvento = 'pago' | 'distribucion' | 'cierre' | null;
 
+// Funciones helper para generar summary y descripción desde HistorialItem
+const getSummary = (evento: HistorialItem): string => {
+  switch (evento.tipo) {
+    case 'pago':
+      return evento.metodo ? `Pago - ${evento.metodo}` : 'Pago';
+    case 'distribucion':
+      return 'Distribución de cargos';
+    case 'cierre':
+      return 'Cierre de folio';
+    default:
+      return 'Operación';
+  }
+};
+
+const getDescripcion = (evento: HistorialItem): string => {
+  const parts: string[] = [];
+  if (evento.monto) parts.push(`$${evento.monto.toFixed(2)}`);
+  if (evento.nombre_cliente) parts.push(evento.nombre_cliente);
+  return parts.length > 0 ? parts.join(' - ') : evento.operacion_uid;
+};
+
 export const FolioHistorial: React.FC<FolioHistorialProps> = ({ folioId }) => {
-  const [eventosExpandidos, setEventosExpandidos] = useState<Set<string>>(new Set());
+  const [eventosExpandidos, setEventosExpandidos] = useState<Set<number>>(new Set());
 
   // Usar el hook de historial
   const {
@@ -29,7 +51,7 @@ export const FolioHistorial: React.FC<FolioHistorialProps> = ({ folioId }) => {
     }
   });
 
-  const toggleEventoExpandido = (eventoId: string) => {
+  const toggleEventoExpandido = (eventoId: number) => {
     setEventosExpandidos(prev => {
       const nuevo = new Set(prev);
       if (nuevo.has(eventoId)) {
@@ -149,14 +171,14 @@ export const FolioHistorial: React.FC<FolioHistorialProps> = ({ folioId }) => {
                   {getIconoTipo(evento.tipo)}
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-gray-900">{evento.summary}</h4>
+                      <h4 className="font-medium text-gray-900">{getSummary(evento)}</h4>
                       <span className="text-xs text-gray-500">
                         {formatearFecha(evento.fecha)}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">{evento.descripcion}</p>
-                    {evento.usuario && (
-                      <p className="text-xs text-gray-500 mt-1">Por: {evento.usuario}</p>
+                    <p className="text-sm text-gray-600 mt-1">{getDescripcion(evento)}</p>
+                    {evento.nombre_cliente && (
+                      <p className="text-xs text-gray-500 mt-1">Cliente: {evento.nombre_cliente}</p>
                     )}
                   </div>
                 </div>

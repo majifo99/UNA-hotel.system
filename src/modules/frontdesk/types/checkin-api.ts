@@ -3,6 +3,14 @@
  * Definiciones fuertemente tipadas para la integración con el backend
  */
 
+// Acompañante para check-in
+export interface AcompananteDTO {
+  nombre: string;
+  documento: string;
+  email?: string;
+  id_cliente?: number; // Si es un cliente existente
+}
+
 // DTO para el request de check-in
 export interface CheckInRequestDTO {
   id_cliente_titular: number;
@@ -10,10 +18,12 @@ export interface CheckInRequestDTO {
   fecha_salida: string;  // formato YYYY-MM-DD
   adultos: number;
   ninos: number;
-  bebes: number;
+  bebes?: number; // Opcional para retrocompatibilidad
   id_hab: number;
   nombre_asignacion: string;
   observacion_checkin?: string;
+  pago_modo?: string; // "por_persona" | "por_habitacion" | etc.
+  acompanantes?: AcompananteDTO[];
 }
 
 // Respuesta de la API de check-in

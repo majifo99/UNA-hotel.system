@@ -5,7 +5,6 @@ import { useModificacionReserva } from '../hooks/useModificacionReserva';
 import { useInputValidation } from '../../../hooks/useInputValidation';
 import { useReservationByCode } from '../../reservations/hooks/useReservationQueries';
 import { ROUTES } from '../../../router/routes';
-import type { ModificarFechasResponse } from '../services/ModificacionReservaService';
 
 interface DateModificationFormData {
   reservationSearchId: string;
@@ -26,8 +25,6 @@ const DateModification = () => {
 
   const [reservationSearchId, setReservationSearchId] = useState<string>('');
   const [hasLoadedReservationData, setHasLoadedReservationData] = useState(false);
-  const [showResultModal, setShowResultModal] = useState(false);
-  const [modificationResult, setModificationResult] = useState<ModificarFechasResponse | null>(null);
 
   const { 
     data: foundReservation, 
@@ -35,6 +32,21 @@ const DateModification = () => {
     isError: isReservationError,
     error: reservationError 
   } = useReservationByCode(reservationSearchId, !!reservationSearchId);
+
+  // Función helper para formatear fechas sin problemas de zona horaria
+  const formatDateSafe = (dateString: string) => {
+    // Agregar 'T00:00:00' para evitar problemas de zona horaria
+    const dateParts = dateString.split('T')[0]; // Obtener solo la parte de la fecha
+    const [year, month, day] = dateParts.split('-');
+    const date = new Date(Number.parseInt(year), Number.parseInt(month) - 1, Number.parseInt(day));
+    
+    return date.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
 
   const [formData, setFormData] = useState<DateModificationFormData>({
     reservationSearchId: '',
@@ -141,14 +153,8 @@ const DateModification = () => {
 
     if (result) {
       console.log('✅ Fechas modificadas exitosamente:', result);
-      setModificationResult(result);
-      setShowResultModal(true);
+      // El toast ya se muestra automáticamente en el hook
     }
-  };
-
-  const handleCloseResultModal = () => {
-    setShowResultModal(false);
-    navigate(ROUTES.FRONTDESK.BASE);
   };
 
   const calculateNightsDifference = () => {
@@ -314,24 +320,14 @@ const DateModification = () => {
                     <div className="bg-white rounded-lg p-4 border-2 border-gray-200">
                       <p className="text-sm text-gray-600 mb-1">Check-In Actual</p>
                       <p className="text-xl font-bold text-gray-900">
-                        {new Date(formData.currentCheckIn).toLocaleDateString('es-ES', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
+                        {formatDateSafe(formData.currentCheckIn)}
                       </p>
                     </div>
                     
                     <div className="bg-white rounded-lg p-4 border-2 border-gray-200">
                       <p className="text-sm text-gray-600 mb-1">Check-Out Actual</p>
                       <p className="text-xl font-bold text-gray-900">
-                        {new Date(formData.currentCheckOut).toLocaleDateString('es-ES', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
+                        {formatDateSafe(formData.currentCheckOut)}
                       </p>
                     </div>
                   </div>
@@ -454,145 +450,6 @@ const DateModification = () => {
               </>
             )}
           </form>
-        </div>
-      </div>
-
-      {/* Modal de Resultado */}
-      {showResultModal && modificationResult && (
-        <DateModificationResultModal
-          isOpen={showResultModal}
-          onClose={handleCloseResultModal}
-          result={modificationResult}
-        />
-      )}
-    </div>
-  );
-};
-
-// Modal de Resultado (simplificado por ahora)
-const DateModificationResultModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  result: ModificarFechasResponse;
-}> = ({ isOpen, onClose, result }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-500 to-cyan-600 p-6 text-white rounded-t-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <CheckCircle className="w-12 h-12" />
-              <div>
-                <h2 className="text-2xl font-bold">Fechas Modificadas Exitosamente</h2>
-                <p className="text-blue-100 text-sm">Los cambios se procesaron correctamente</p>
-              </div>
-            </div>
-            <button onClick={onClose} className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2">
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {/* Fechas Comparación */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="border-2 border-gray-200 rounded-lg p-4 bg-gray-50">
-              <h3 className="font-semibold text-gray-900 mb-3">Fechas Anteriores</h3>
-              <p className="text-sm text-gray-600">Check-In:</p>
-              <p className="font-bold text-gray-800 mb-2">
-                {new Date(result.fechas_originales.llegada).toLocaleDateString('es-ES')}
-              </p>
-              <p className="text-sm text-gray-600">Check-Out:</p>
-              <p className="font-bold text-gray-800 mb-2">
-                {new Date(result.fechas_originales.salida).toLocaleDateString('es-ES')}
-              </p>
-              <p className="text-sm text-gray-600">Noches:</p>
-              <p className="text-lg font-bold text-gray-700">{result.fechas_originales.noches}</p>
-            </div>
-
-            <div className="border-2 border-blue-300 rounded-lg p-4 bg-blue-50">
-              <h3 className="font-semibold text-blue-900 mb-3">Fechas Nuevas</h3>
-              <p className="text-sm text-blue-600">Check-In:</p>
-              <p className="font-bold text-blue-800 mb-2">
-                {new Date(result.fechas_nuevas.llegada).toLocaleDateString('es-ES')}
-              </p>
-              <p className="text-sm text-blue-600">Check-Out:</p>
-              <p className="font-bold text-blue-800 mb-2">
-                {new Date(result.fechas_nuevas.salida).toLocaleDateString('es-ES')}
-              </p>
-              <p className="text-sm text-blue-600">Noches:</p>
-              <p className="text-lg font-bold text-blue-700">{result.fechas_nuevas.noches}</p>
-            </div>
-          </div>
-
-          {/* Precios */}
-          <div className="border-2 border-gray-200 rounded-lg p-4">
-            <h3 className="font-semibold text-gray-900 mb-4">Ajustes de Precio</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Precio Anterior:</span>
-                <span className="font-semibold">${result.precios.precio_anterior.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Precio Nuevo:</span>
-                <span className="font-semibold">${result.precios.precio_nuevo.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between border-t pt-2">
-                <span className="text-gray-600">Diferencia:</span>
-                <span className={`font-bold ${result.precios.diferencia >= 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                  {result.precios.diferencia >= 0 ? '+' : ''}${result.precios.diferencia.toFixed(2)}
-                </span>
-              </div>
-              {result.precios.penalidad > 0 && (
-                <div className="flex justify-between text-red-600">
-                  <span>Penalidad:</span>
-                  <span className="font-bold">${result.precios.penalidad.toFixed(2)}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Política */}
-          {result.politica && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="text-sm text-yellow-800">
-                <strong>Política Aplicada:</strong> {result.politica}
-              </p>
-            </div>
-          )}
-
-          {/* Resumen Final */}
-          <div className="bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-lg p-4">
-            <h3 className="font-semibold text-gray-900 mb-3">Resumen de la Reserva</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Total Nuevo:</span>
-                <span className="text-xl font-bold text-gray-900">${result.reserva.total_nuevo.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Monto Pagado:</span>
-                <span className="font-semibold text-green-600">${result.reserva.monto_pagado.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Monto Pendiente:</span>
-                <span className="font-semibold text-orange-600">${result.reserva.monto_pendiente.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 rounded-b-lg border-t">
-          <button
-            onClick={onClose}
-            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-4 rounded-lg transition-all shadow-md hover:shadow-lg"
-          >
-            Cerrar y Continuar
-          </button>
         </div>
       </div>
     </div>

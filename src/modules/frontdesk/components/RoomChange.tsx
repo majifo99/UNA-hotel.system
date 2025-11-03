@@ -7,12 +7,10 @@ import { useInputValidation } from '../../../hooks/useInputValidation';
 import { useReservationByCode } from '../../reservations/hooks/useReservationQueries';
 import { ROUTES } from '../../../router/routes';
 import FrontdeskService from '../services/frontdeskService';
-import RoomChangeResultModal from './modals/RoomChangeResultModal';
 import DateModification from './DateModification';
 import ReduceStay from './ReduceStay';
 import type { RoomChangeReason } from '../types/roomChange';
 import type { RoomInfo } from '../types/room';
-import type { CambiarHabitacionResponse } from '../services/ModificacionReservaService';
 
 // Interfaces para el sistema de recomendaciones inteligente
 interface RoomRecommendation extends RoomInfo {
@@ -180,8 +178,7 @@ const RoomChange = () => {
   const [hasLoadedReservationData, setHasLoadedReservationData] = useState(false);
 
   // Estado para el modal de resultado
-  const [showResultModal, setShowResultModal] = useState(false);
-  const [changeResult, setChangeResult] = useState<CambiarHabitacionResponse | null>(null);
+
 
   // Hook para búsqueda directa de reserva por CÓDIGO DE RESERVA (igual que en CheckIn)
   const { 
@@ -540,20 +537,14 @@ const RoomChange = () => {
 
     if (result) {
       console.log('✅ Cambio de habitación exitoso:', result);
-      
-      // Mostrar modal de resultado
-      setChangeResult(result);
-      setShowResultModal(true);
+      // El toast ya se muestra automáticamente en el hook
+      // Opcional: Limpiar el formulario o redirigir
     } else {
       console.error('❌ Error: No se recibió respuesta del servidor');
     }
   };
 
-  // Función para cerrar el modal y navegar al dashboard
-  const handleCloseResultModal = () => {
-    setShowResultModal(false);
-    navigate(ROUTES.FRONTDESK.BASE);
-  };
+
 
   const totalGuests = formData.adultos + formData.ninos + formData.bebes;
   const selectedRoom = allRooms.find(room => {
@@ -1551,14 +1542,7 @@ const RoomChange = () => {
             </div>
           </form>
 
-          {/* Modal de Resultado */}
-          {showResultModal && changeResult && (
-            <RoomChangeResultModal
-              isOpen={showResultModal}
-              onClose={handleCloseResultModal}
-              result={changeResult}
-            />
-          )}
+
             </>
           )}
       

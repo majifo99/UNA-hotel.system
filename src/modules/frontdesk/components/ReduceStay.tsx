@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, AlertTriangle, CheckCircle, Loader2, Search, X, Info, DollarSign } from 'lucide-react';
+import { ArrowLeft, Clock, AlertTriangle, CheckCircle, Loader2, Search, X, Info } from 'lucide-react';
 import { useModificacionReserva } from '../hooks/useModificacionReserva';
 import { useInputValidation } from '../../../hooks/useInputValidation';
 import { useReservationByCode } from '../../reservations/hooks/useReservationQueries';
 import { ROUTES } from '../../../router/routes';
-import type { ReducirEstadiaResponse } from '../services/ModificacionReservaService';
 
 interface ReduceStayFormData {
   reservationSearchId: string;
@@ -25,8 +24,6 @@ const ReduceStay = () => {
 
   const [reservationSearchId, setReservationSearchId] = useState<string>('');
   const [hasLoadedReservationData, setHasLoadedReservationData] = useState(false);
-  const [showResultModal, setShowResultModal] = useState(false);
-  const [reductionResult, setReductionResult] = useState<ReducirEstadiaResponse | null>(null);
 
   const { 
     data: foundReservation, 
@@ -34,6 +31,20 @@ const ReduceStay = () => {
     isError: isReservationError,
     error: reservationError 
   } = useReservationByCode(reservationSearchId, !!reservationSearchId);
+
+  // Función helper para formatear fechas sin problemas de zona horaria
+  const formatDateSafe = (dateString: string) => {
+    const dateParts = dateString.split('T')[0];
+    const [year, month, day] = dateParts.split('-');
+    const date = new Date(Number.parseInt(year), Number.parseInt(month) - 1, Number.parseInt(day));
+    
+    return date.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
 
   const [formData, setFormData] = useState<ReduceStayFormData>({
     reservationSearchId: '',
@@ -130,14 +141,8 @@ const ReduceStay = () => {
 
     if (result) {
       console.log('✅ Estadía reducida exitosamente:', result);
-      setReductionResult(result);
-      setShowResultModal(true);
+      // El toast ya se muestra automáticamente en el hook
     }
-  };
-
-  const handleCloseResultModal = () => {
-    setShowResultModal(false);
-    navigate(ROUTES.FRONTDESK.BASE);
   };
 
   const calculateNightsCancelled = () => {
@@ -311,12 +316,7 @@ const ReduceStay = () => {
                     <div className="bg-white rounded-lg p-4 border-2 border-gray-200">
                       <p className="text-sm text-gray-600 mb-1">Check-Out Original</p>
                       <p className="text-xl font-bold text-gray-900">
-                        {new Date(formData.currentCheckOut).toLocaleDateString('es-ES', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
+                        {formatDateSafe(formData.currentCheckOut)}
                       </p>
                     </div>
                     
@@ -446,166 +446,6 @@ const ReduceStay = () => {
               </>
             )}
           </form>
-        </div>
-      </div>
-
-      {/* Modal de Resultado */}
-      {showResultModal && reductionResult && (
-        <ReduceStayResultModal
-          isOpen={showResultModal}
-          onClose={handleCloseResultModal}
-          result={reductionResult}
-        />
-      )}
-    </div>
-  );
-};
-
-// Modal de Resultado
-const ReduceStayResultModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  result: ReducirEstadiaResponse;
-}> = ({ isOpen, onClose, result }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-orange-500 to-red-600 p-6 text-white rounded-t-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <CheckCircle className="w-12 h-12" />
-              <div>
-                <h2 className="text-2xl font-bold">Estadía Reducida Exitosamente</h2>
-                <p className="text-orange-100 text-sm">El checkout anticipado se procesó correctamente</p>
-              </div>
-            </div>
-            <button onClick={onClose} className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2">
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {/* Reducción Info */}
-          <div className="border-2 border-orange-200 bg-orange-50 rounded-lg p-4">
-            <h3 className="font-semibold text-orange-900 mb-3">Resumen de la Reducción</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-orange-600">Noches Originales:</p>
-                <p className="text-2xl font-bold text-orange-800">{result.reduccion.noches_originales}</p>
-              </div>
-              <div>
-                <p className="text-sm text-orange-600">Noches Nuevas:</p>
-                <p className="text-2xl font-bold text-orange-800">{result.reduccion.noches_nuevas}</p>
-              </div>
-            </div>
-            <div className="mt-3 pt-3 border-t border-orange-200">
-              <p className="text-sm text-orange-600">Noches Canceladas:</p>
-              <p className="text-3xl font-bold text-red-600">{result.reduccion.noches_canceladas}</p>
-            </div>
-          </div>
-
-          {/* Fechas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="border-2 border-gray-200 rounded-lg p-4 bg-gray-50">
-              <p className="text-sm text-gray-600 mb-1">Check-Out Original:</p>
-              <p className="font-bold text-gray-800">
-                {new Date(result.reduccion.fecha_salida_original).toLocaleDateString('es-ES')}
-              </p>
-            </div>
-            <div className="border-2 border-orange-300 rounded-lg p-4 bg-orange-50">
-              <p className="text-sm text-orange-600 mb-1">Nuevo Check-Out:</p>
-              <p className="font-bold text-orange-800">
-                {new Date(result.reduccion.fecha_salida_nueva).toLocaleDateString('es-ES')}
-              </p>
-            </div>
-          </div>
-
-          {/* Montos */}
-          <div className="border-2 border-gray-200 rounded-lg p-4">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <DollarSign className="w-5 h-5" />
-              Ajustes Financieros
-            </h3>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Precio Original:</span>
-                <span className="font-semibold">${result.montos.precio_original.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Precio Nuevo:</span>
-                <span className="font-semibold">${result.montos.precio_nuevo.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-red-600">
-                <span>Monto Noches Canceladas:</span>
-                <span className="font-bold">${result.montos.monto_noches_canceladas.toFixed(2)}</span>
-              </div>
-              {result.montos.penalidad > 0 && (
-                <div className="flex justify-between text-orange-600 bg-orange-50 p-2 rounded">
-                  <span className="font-medium">Penalidad:</span>
-                  <span className="font-bold">${result.montos.penalidad.toFixed(2)}</span>
-                </div>
-              )}
-              {result.montos.reembolso > 0 && (
-                <div className="flex justify-between text-green-600 bg-green-50 p-2 rounded border-t-2 pt-2">
-                  <span className="font-medium">Reembolso:</span>
-                  <span className="font-bold text-lg">${result.montos.reembolso.toFixed(2)}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Política Aplicada */}
-          {result.politica && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="text-sm text-yellow-800">
-                <strong>Política Aplicada:</strong> {result.politica}
-              </p>
-            </div>
-          )}
-
-          {/* Resumen Final */}
-          <div className="bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-lg p-4">
-            <h3 className="font-semibold text-gray-900 mb-3">Estado Final de la Reserva</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Total Nuevo:</span>
-                <span className="text-xl font-bold text-gray-900">${result.reserva.total_nuevo.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Monto Pagado:</span>
-                <span className="font-semibold text-green-600">${result.reserva.monto_pagado.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Monto Pendiente:</span>
-                <span className={`font-semibold ${result.reserva.monto_pendiente >= 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                  ${result.reserva.monto_pendiente.toFixed(2)}
-                </span>
-              </div>
-            </div>
-
-            {result.reserva.monto_pendiente < 0 && (
-              <div className="mt-4 bg-green-100 border border-green-300 rounded-md p-3">
-                <p className="text-sm text-green-800 font-medium">
-                  💰 Se debe procesar un reembolso de ${Math.abs(result.reserva.monto_pendiente).toFixed(2)} al huésped
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 rounded-b-lg border-t">
-          <button
-            onClick={onClose}
-            className="w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-semibold py-3 px-4 rounded-lg transition-all shadow-md hover:shadow-lg"
-          >
-            Cerrar y Continuar
-          </button>
         </div>
       </div>
     </div>
