@@ -110,45 +110,49 @@ function handleUnauthorized(): void {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeError(error: any): HttpError {
-  // Handle cancelled requests
+  // Handle cancelled requests - early return to avoid type narrowing
   if (axios.isCancel(error)) {
     return {
       code: 'CANCELLED',
       status: 0,
       message: 'Request was cancelled',
-      originalError: error,
+      originalError: error as AxiosError,
     };
   }
   
+  // Create a copy to avoid type narrowing issues
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const err = error as Record<string, any>;
+  
   // Handle non-Axios errors
-  if (!error.isAxiosError && !error.response && !error.request) {
+  if (!err.isAxiosError && !err.response && !err.request) {
     return {
       code: 'UNKNOWN_ERROR',
       status: 0,
-      message: error instanceof Error ? error.message : 'Error desconocido',
+      message: err instanceof Error ? err.message : 'Error desconocido',
     };
   }
   
   // Server responded with error status
-  if (error.response) {
-    const status = error.response.status;
-    const message = error.response.data?.message || error.message || 'Error del servidor';
+  if (err.response) {
+    const status = err.response.status;
+    const message = err.response.data?.message || err.message || 'Error del servidor';
     
     return {
       code: `HTTP_${status}`,
       status,
       message,
-      originalError: error,
+      originalError: error as AxiosError,
     };
   }
   
   // No response received (network error, timeout)
-  if (error.request) {
+  if (err.request) {
     return {
-      code: error.code || 'NETWORK_ERROR',
+      code: err.code || 'NETWORK_ERROR',
       status: 0,
-      message: error.message || 'Error de red. Verifique su conexión.',
-      originalError: error,
+      message: err.message || 'Error de red. Verifique su conexión.',
+      originalError: error as AxiosError,
     };
   }
   
@@ -156,8 +160,8 @@ function normalizeError(error: any): HttpError {
   return {
     code: 'REQUEST_ERROR',
     status: 0,
-    message: error.message || 'Error al configurar la solicitud',
-    originalError: error,
+    message: err.message || 'Error al configurar la solicitud',
+    originalError: error as AxiosError,
   };
 }
 
