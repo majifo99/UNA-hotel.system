@@ -108,7 +108,17 @@ function handleUnauthorized(): void {
 /**
  * Normalize error to HttpError structure
  */
-function normalizeError(error: AxiosError): HttpError {
+function normalizeError(error: unknown): HttpError {
+  // Handle non-Axios errors
+  if (!axios.isAxiosError(error)) {
+    return {
+      code: 'UNKNOWN_ERROR',
+      status: 0,
+      message: error instanceof Error ? error.message : 'Error desconocido',
+    };
+  }
+  
+  // Handle cancelled requests
   if (axios.isCancel(error)) {
     return {
       code: 'CANCELLED',
@@ -118,8 +128,8 @@ function normalizeError(error: AxiosError): HttpError {
     };
   }
   
+  // Server responded with error status
   if (error.response) {
-    // Server responded with error status
     const status = error.response.status;
     const message = (error.response.data as { message?: string })?.message || error.message;
     
@@ -131,8 +141,8 @@ function normalizeError(error: AxiosError): HttpError {
     };
   }
   
+  // No response received (network error, timeout)
   if (error.request) {
-    // No response received (network error, timeout)
     return {
       code: error.code || 'NETWORK_ERROR',
       status: 0,
@@ -196,7 +206,7 @@ function setupInterceptors(
       }
       return response;
     },
-    (error: AxiosError) => {
+    (error: unknown) => {
       // Don't log cancelled requests
       if (axios.isCancel(error)) {
         return Promise.reject(error);
