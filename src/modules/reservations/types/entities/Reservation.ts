@@ -45,6 +45,7 @@ export interface Reservation {
   
   // Estado y metadata
   status: ReservationStatus;
+  source?: string; // Fuente de la reserva (ej: "Web", "Booking", "Directo")
   specialRequests?: string;
   paymentMethod?: PaymentMethod;
   createdAt: string; // ISO 8601 datetime string

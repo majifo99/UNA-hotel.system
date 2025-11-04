@@ -210,6 +210,7 @@ export function mapApiReservaFullToReservation(api: ApiReservaFull): Reservation
     
     // Status & Meta
     status: mapEstadoNombreToStatus(api.estado.nombre),
+    source: api.fuente?.nombre || undefined,
     specialRequests: api.notas || undefined,
     additionalServices: [],
     createdAt: api.created_at,

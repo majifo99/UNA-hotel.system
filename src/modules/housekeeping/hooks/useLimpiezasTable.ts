@@ -9,7 +9,8 @@ type SortState = { key: SortKey; dir: "asc" | "desc" };
 export type LimpiezasTableController = ReturnType<typeof useLimpiezasTable>;
 
 const getId = (it: any): number => (it?.id_limpieza ?? it?.id) as number;
-const keyOf = (f: LimpiezaFilters) => JSON.stringify({ ...f });
+// ✅ S7744: evitar JSON.stringify({ ...f }) → no crear objeto vacío
+const keyOf = (f: LimpiezaFilters) => JSON.stringify(f);
 const CACHE_KEY = "hk_limpiezas_cache_v1";
 
 const MIN_FIRST_SKELETON_MS = 600;
@@ -29,9 +30,10 @@ export function useLimpiezasTable({ initialFilters }: Readonly<UseLimpiezasTable
   const firstLoadRef = useRef(true);
   const startedAtRef = useRef<number>(Date.now());
   const [forceSkeleton, setForceSkeleton] = useState(true);
+
   useEffect(() => {
-    const t = setTimeout(() => setForceSkeleton(false), MIN_FIRST_SKELETON_MS);
-    return () => clearTimeout(t);
+    const t = globalThis.setTimeout(() => setForceSkeleton(false), MIN_FIRST_SKELETON_MS);
+    return () => globalThis.clearTimeout(t);
   }, []);
 
   // Hidratar cache de sessionStorage
@@ -45,7 +47,9 @@ export function useLimpiezasTable({ initialFilters }: Readonly<UseLimpiezasTable
         const cached = cacheRef.current.get(k);
         if (cached) setPageData(cached);
       }
-    } catch {}
+    } catch {
+      // silencio intencional (no afecta S7744)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -53,7 +57,9 @@ export function useLimpiezasTable({ initialFilters }: Readonly<UseLimpiezasTable
     try {
       const obj = Object.fromEntries(cacheRef.current.entries());
       sessionStorage.setItem(CACHE_KEY, JSON.stringify(obj));
-    } catch {}
+    } catch {
+      // silencio
+    }
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -76,17 +82,20 @@ export function useLimpiezasTable({ initialFilters }: Readonly<UseLimpiezasTable
       setPageData(data);
       setSelectedIds([]);
 
-      // prefetch next page
+      // Prefetch next page (sin objeto vacío inútil)
       const next = (data.current_page ?? 1) + 1;
       if (next <= (data.last_page ?? 1)) {
         const nk = keyOf({ ...filters, page: next });
         if (!cacheRef.current.get(nk)) {
-          limpiezaService.getLimpiezas({ ...filters, page: next }, {})
+          limpiezaService
+            .getLimpiezas({ ...filters, page: next })
             .then((d) => {
               cacheRef.current.set(nk, d);
               persistCache();
             })
-            .catch(() => {});
+            .catch(() => {
+              /* noop */
+            });
         }
       }
     } catch (e: any) {
@@ -133,54 +142,79 @@ export function useLimpiezasTable({ initialFilters }: Readonly<UseLimpiezasTable
 
   const toggleOne = (id: number) =>
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
   const toggleAllPage = () => {
     const ids = items.map((x) => getId(x));
     const all = ids.every((id) => selectedIds.includes(id));
-    setSelectedIds((prev) => (all ? prev.filter((id) => !ids.includes(id)) : Array.from(new Set([...prev, ...ids]))));
+    setSelectedIds((prev) =>
+      all ? prev.filter((id) => !ids.includes(id)) : Array.from(new Set([...prev, ...ids])),
+    );
   };
 
   const gotoPage = (page: number) => {
     if (!pageData) return;
     if (page >= 1 && page <= pageData.last_page) {
       setFilters((f) => ({ ...f, page }));
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      globalThis.scrollTo?.({ top: 0, behavior: "smooth" });
     }
   };
 
   const debounceRef = useRef<number | null>(null);
   const setPerPage = (per_page: number) => setFilters((f) => ({ ...f, per_page, page: 1 }));
+
   const applyFilters = (patch: Partial<LimpiezaFilters>, debounceMs = 250) => {
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    debounceRef.current = window.setTimeout(() => {
+    if (debounceRef.current) globalThis.clearTimeout(debounceRef.current);
+    debounceRef.current = globalThis.setTimeout(() => {
       setFilters((f) => ({ ...f, ...patch, page: 1 }));
     }, debounceMs);
   };
 
   const handleSort = (_key: SortKey) => setSort({ key: "habitacion", dir: "asc" });
 
+  // ✅ FIX S7744: evitar spread sobre {} con ?? {}
   const patchItemOptimistic = useCallback((idAny: number, patch: Partial<any>) => {
     setPageData((prev) => {
       if (!prev) return prev;
+
       const data = prev.data.map((it) => {
         const itId = getId(it);
         if (itId !== idAny) return it;
-        const newEstadoId = patch.id_estado_hab ?? (patch.fecha_final ? ESTADO_HAB.LIMPIA : ESTADO_HAB.SUCIA);
+
+        const newEstadoId =
+          patch.id_estado_hab ?? (patch.fecha_final ? ESTADO_HAB.LIMPIA : ESTADO_HAB.SUCIA);
         const newEstadoNombre = newEstadoId === ESTADO_HAB.LIMPIA ? "Limpia" : "Sucia";
+
+        const prevEstado = it.estado;
+        const nextEstado = prevEstado
+          ? { ...prevEstado, id: newEstadoId, nombre: newEstadoNombre }
+          : { id: newEstadoId, nombre: newEstadoNombre };
+
         return {
           ...it,
           ...patch,
-          estado: { ...(it.estado ?? {}), id: newEstadoId, nombre: newEstadoNombre },
+          estado: nextEstado,
         };
       });
+
       return { ...prev, data };
     });
   }, []);
 
-  const finalizarLimpieza = async (idAny: number, payload: { fecha_final: string; notas: string | null }) => {
+  const finalizarLimpieza = async (
+    idAny: number,
+    payload: { fecha_final: string; notas: string | null },
+  ) => {
     const snapshot = pageData;
-    patchItemOptimistic(idAny, { id_estado_hab: ESTADO_HAB.LIMPIA, fecha_final: payload.fecha_final, notas: payload.notas ?? null });
+    patchItemOptimistic(idAny, {
+      id_estado_hab: ESTADO_HAB.LIMPIA,
+      fecha_final: payload.fecha_final,
+      notas: payload.notas ?? null,
+    });
     try {
-      await limpiezaService.finalizarLimpieza(idAny, { fecha_final: payload.fecha_final, notas: payload.notas ?? null });
+      await limpiezaService.finalizarLimpieza(idAny, {
+        fecha_final: payload.fecha_final,
+        notas: payload.notas ?? null,
+      });
     } catch (e: any) {
       setPageData(snapshot ?? null);
       setError(e?.message ?? "No se pudo marcar como LIMPIA");
@@ -236,6 +270,6 @@ export function useLimpiezasTable({ initialFilters }: Readonly<UseLimpiezasTable
     isFirstLoad,
     isRevalidating,
     showInitialSkeleton,
-    hasPageData: Boolean(pageData), // 👈 importante para distinguir boot vs revalidación
+    hasPageData: Boolean(pageData),
   };
 }

@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import { RoomCard } from './RoomCard';
 import { roomService } from '../../reservations/services/roomService';
 import type { Room } from '../../../types/core';
+import { formatCurrency } from '../utils/currency';
 
 interface RoomsSectionProps {
   readonly title?: string;
@@ -155,7 +156,7 @@ export function RoomsSection({
               {stats.roomTypeCount} tipos diferentes
             </span>
             <span className="bg-una-bg-200 px-3 py-1 rounded-full">
-              Desde ₡{stats.priceRange.min.toLocaleString()}/noche
+              Desde {formatCurrency(stats.priceRange.min)}/noche
             </span>
           </div>
         </div>

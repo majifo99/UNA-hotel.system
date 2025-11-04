@@ -8,6 +8,8 @@ import type {
 
 // =================== STORAGE UTILITIES ===================
 
+// Keys for localStorage - these are NOT secrets, just storage key names
+// nosemgrep: javascript.lang.security.audit.hardcoded-token.hardcoded-token
 const AUTH_TOKEN_KEY = 'authToken';
 const AUTH_USER_KEY = 'authUser';
 

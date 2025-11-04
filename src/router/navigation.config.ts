@@ -33,7 +33,7 @@ import {
   BarChart3,
   FileText,
   Settings,
-  CheckSquare,
+  History,
   LogIn,
   LogOut,
   ArrowLeftRight,
@@ -71,6 +71,8 @@ export interface NavigationItem {
   children?: NavigationItem[];
   /** Badge text (e.g., "New", "Beta") */
   badge?: string;
+  /** If true, this item is only a container and should not be selectable/highlighted */
+  isContainer?: boolean;
 }
 
 /**
@@ -149,6 +151,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
     description: 'Operaciones de recepción',
     category: 'operations',
     shortcut: [2], // ALT+2
+    isContainer: true, // This is only a container, children are the actual navigable items
     children: [
       {
         id: 'frontdesk-checkin',
@@ -223,6 +226,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
     description: 'Sistema de reservaciones',
     category: 'operations',
     shortcut: [3], // ALT+3
+    isContainer: true, // This is only a container, children are the actual navigable items
     children: [
       {
         id: 'reservations-new',
@@ -236,7 +240,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
       {
         id: 'reservations-search',
         label: 'Buscar Reservaciones',
-        path: ROUTES.RESERVATIONS.BASE,
+        path: ROUTES.RESERVATIONS.LIST,
         icon: Clock,
         description: 'Buscar y gestionar reservaciones',
         category: 'operations',
@@ -263,6 +267,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
     description: 'Gestión de habitaciones',
     category: 'management',
     shortcut: [4], // ALT+4
+    isContainer: true, // This is only a container, children are the actual navigable items
     children: [
       {
         id: 'rooms-management',
@@ -301,6 +306,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
     description: 'Gestión de huéspedes',
     category: 'management',
     shortcut: [5], // ALT+5
+    isContainer: true, // This is only a container, children are the actual navigable items
     children: [
       {
         id: 'guests-management',
@@ -339,6 +345,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
     description: 'Sistema de facturación y pagos',
     category: 'management',
     shortcut: [6], // ALT+6
+    isContainer: true, // This is only a container, children are the actual navigable items
     children: [
       {
         id: 'billing-payments',
@@ -386,6 +393,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
     description: 'Limpieza y mantenimiento',
     category: 'management',
     shortcut: [7], // ALT+7
+    isContainer: true, // This is only a container, children are the actual navigable items
     children: [
       {
         id: 'housekeeping-dashboard',
@@ -396,24 +404,16 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
         category: 'management',
         shortcut: [7, 1], // ALT+7, luego 1
       },
+      
       {
-        id: 'housekeeping-tasks',
-        label: 'Tareas Diarias',
-        path: ROUTES.HOUSEKEEPING.TASKS,
-        icon: CheckSquare,
-        description: 'Tareas de limpieza del día',
-        category: 'management',
-        shortcut: [7, 2], // ALT+7, luego 2
-      },
-      {
-        id: 'housekeeping-reports',
-        label: 'Reportes Housekeeping',
-        path: ROUTES.HOUSEKEEPING.REPORTS,
-        icon: BarChart3,
-        description: 'Reportes de limpieza y mantenimiento',
-        category: 'management',
-        shortcut: [7, 3], // ALT+7, luego 3
-      },
+      id: 'housekeeping-historiales',
+      label: 'Historiales',
+      path: ROUTES.HOUSEKEEPING.HISTORIALES,
+      icon: History,
+      description: 'Eventos y cambios de limpieza',
+      category: 'management',
+      shortcut: [7, 4], // ALT+7 luego 4
+    },
     ],
   },
   {
@@ -424,6 +424,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
     description: 'Gestión y control de mantenimientos',
     category: 'management',
     shortcut: [8], // ALT+8 (ajustando para mantener orden)
+    isContainer: true, // This is only a container, children are the actual navigable items
     children: [
       {
         id: 'maintenance-requests',
@@ -435,23 +436,16 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
         shortcut: [8, 1], // ALT+8, luego 1
       },
       {
-        id: 'maintenance-preventive',
-        label: 'Preventivo',
-        path: ROUTES.MANTENIMIENTO.PREVENTIVO,
-        icon: Clock,
-        description: 'Mantenimiento preventivo programado',
+        id: 'maintenance-history',
+        label: 'Historiales',
+        path: ROUTES.MANTENIMIENTO.HISTORIALES,
+        icon: History,                 
+        description: 'Eventos y cambios de mantenimiento',
         category: 'management',
-        shortcut: [8, 2], // ALT+8, luego 2
+        shortcut: [8, 2],              
       },
-      {
-        id: 'maintenance-reports',
-        label: 'Reportes Mantenimiento',
-        path: ROUTES.MANTENIMIENTO.REPORTS,
-        icon: BarChart3,
-        description: 'Reportes de mantenimiento',
-        category: 'management',
-        shortcut: [8, 3], // ALT+8, luego 3
-      },
+
+     
     ],
   },
 
@@ -464,6 +458,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
     description: 'Centro de reportes y analytics',
     category: 'reports',
     shortcut: [9], // ALT+9 (ajustado)
+    isContainer: true, // This is only a container, children are the actual navigable items
     children: [
       {
         id: 'reports-occupancy',
@@ -513,6 +508,7 @@ export const NAVIGATION_CONFIG: NavigationItem[] = [
     description: 'Configuración del sistema',
     category: 'system',
     // Sin shortcut para evitar conflictos
+    isContainer: true, // This is only a container, children are the actual navigable items
     children: [
       {
         id: 'settings-hotel',

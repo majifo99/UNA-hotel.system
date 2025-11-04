@@ -131,7 +131,6 @@ export default function NotificationBell({
       {open && (
         <div
           ref={panelRef}
-         
           aria-label="Notificaciones"
           className="absolute right-0 mt-2 w-[380px] max-h-[70vh] rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden"
         >
@@ -177,7 +176,8 @@ export default function NotificationBell({
                   key={n.id}
                   className={[
                     "w-full text-left px-4 py-3 group",
-                    !n.read ? "bg-indigo-50/40" : "bg-white",
+                    // ✅ Ajuste Sonar: condición afirmativa (sin negación)
+                    n.read ? "bg-white" : "bg-indigo-50/40",
                     "hover:bg-slate-50",
                   ].join(" ")}
                 >

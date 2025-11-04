@@ -6,6 +6,7 @@
 
 import { Link } from 'react-router-dom';
 import type { Room } from '../../../types/core';
+import { formatCurrency } from '../utils/currency';
 
 interface RoomCardProps {
   readonly room: Room;
@@ -34,15 +35,6 @@ export function RoomCard({
       default:
         return 'from-gray-200 to-gray-300';
     }
-  };
-
-  // Función para formatear el precio
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-CR', {
-      style: 'currency',
-      currency: 'CRC',
-      minimumFractionDigits: 0
-    }).format(price);
   };
 
   // Función para obtener el ícono según el tipo de habitación
@@ -122,32 +114,51 @@ export function RoomCard({
           </div>
         </div>
 
-        {/* Price and Action */}
-        <div className="flex justify-between items-center">
-          <div>
-            <span className="text-2xl font-bold text-gray-900">
-              {formatPrice(room.pricePerNight)}
-            </span>
-            <span className="text-sm text-gray-500">/noche</span>
+        {/* Price and Actions */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <div>
+              <span className="text-2xl font-bold text-gray-900">
+                {formatCurrency(room.pricePerNight)}
+              </span>
+              <span className="text-sm text-gray-500">/noche</span>
+            </div>
           </div>
-          
-          {showReserveButton && room.isAvailable && (
+
+          {/* Action buttons */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Ver disponibilidad button */}
             <Link
-              to={`/reservar?room=${room.id}`}
-              className="px-4 py-2 text-white rounded-md hover:opacity-90 transition-opacity font-medium"
-              style={{ backgroundColor: 'var(--color-darkGreen1)' }}
+              to={`/habitacion/${room.id}`}
+              className="px-4 py-2 border-2 border-una-primary-600 text-una-primary-600 rounded-md hover:bg-una-primary-50 transition-colors font-medium text-center flex items-center justify-center gap-2"
             >
-              Reservar
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Ver disponibilidad
             </Link>
-          )}
-          
-          {!room.isAvailable && (
-            <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded-md font-medium cursor-not-allowed">
-              No disponible
-            </span>
-          )}
+
+            {/* Reservar button */}
+            {showReserveButton && room.isAvailable && (
+              <Link
+                to={`/reservar?room=${room.id}`}
+                className="px-4 py-2 text-white rounded-md hover:opacity-90 transition-opacity font-medium text-center"
+                style={{ backgroundColor: 'var(--color-darkGreen1)' }}
+              >
+                Reservar
+              </Link>
+            )}
+            
+            {!room.isAvailable && (
+              <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded-md font-medium cursor-not-allowed text-center">
+                No disponible
+              </span>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Calendar modal is no longer used - we navigate to room detail page */}
     </div>
   );
 }

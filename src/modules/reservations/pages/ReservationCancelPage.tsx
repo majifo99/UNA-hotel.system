@@ -18,26 +18,34 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { ReservationDetailSkeleton } from '../components/ui/Skeleton';
 import type { Reservation } from '../types';
 import { useCancelReservation } from '../hooks/useReservationQueries';
 import { reservationService } from '../services/reservationService';
 import { Alert } from '../../../components/ui/Alert';
 
 /**
- * Reglas de penalización por cancelación según días de anticipación
+ * Reglas de penalización por cancelación según políticas del Hotel Lanaku
+ * 
+ * POLÍTICA ESTÁNDAR:
+ * - 72 horas (3 días) antes: Sin cargo
+ * - Menos de 72 horas: 100% primera noche
+ * 
+ * POLÍTICA TEMPORADA ALTA:
+ * - 15 días antes: Sin cargo
+ * - Menos de 15 días: 100% primera noche
+ * 
+ * POLÍTICA NO REEMBOLSABLE:
+ * - Cualquier momento: 100% total (pago anticipado)
+ * 
+ * NO-SHOW:
+ * - No presentación: 100% estancia completa
  */
-const PENALTY_RULES = [
-  { daysBeforeCheckIn: 30, penaltyPercent: 0, label: 'Sin penalización' },
-  { daysBeforeCheckIn: 15, penaltyPercent: 25, label: '25% del total' },
-  { daysBeforeCheckIn: 7, penaltyPercent: 50, label: '50% del total' },
-  { daysBeforeCheckIn: 3, penaltyPercent: 75, label: '75% del total' },
-  { daysBeforeCheckIn: 0, penaltyPercent: 100, label: '100% del total' },
-];
 
 /**
- * Calcula penalización basada en días de anticipación
+ * Calcula penalización basada en días de anticipación y políticas del Hotel Lanaku
  */
-const calculatePenalty = (checkInDate: string): { percent: number; label: string } => {
+const calculatePenalty = (checkInDate: string, isHighSeason = false): { percent: number; label: string } => {
   const checkIn = new Date(checkInDate);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -46,13 +54,25 @@ const calculatePenalty = (checkInDate: string): { percent: number; label: string
   const diffTime = checkIn.getTime() - today.getTime();
   const daysUntilCheckIn = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  for (const rule of PENALTY_RULES) {
-    if (daysUntilCheckIn >= rule.daysBeforeCheckIn) {
-      return { percent: rule.penaltyPercent, label: rule.label };
-    }
+  // Política diferenciada según temporada
+  const minDaysForFree = isHighSeason ? 15 : 3;
+  
+  if (daysUntilCheckIn >= minDaysForFree) {
+    return { 
+      percent: 0, 
+      label: isHighSeason 
+        ? 'Sin penalización (Temporada alta: 15 días de anticipación)' 
+        : 'Sin penalización (Estándar: 72 horas de anticipación)' 
+    };
   }
 
-  return { percent: 100, label: '100% del total' };
+  // Menos del plazo requerido: penalización del 100% de la primera noche
+  return { 
+    percent: 100, 
+    label: isHighSeason
+      ? '100% primera noche (cancelación con menos de 15 días)'
+      : '100% primera noche (cancelación con menos de 72 horas)'
+  };
 };
 
 /**
@@ -122,13 +142,7 @@ export const ReservationCancelPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-slate-50 px-4 py-8">
         <div className="mx-auto max-w-3xl">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="h-10 w-32 animate-pulse rounded-lg bg-slate-200" />
-          </div>
-          <div className="space-y-6 rounded-2xl bg-white p-6 shadow-sm">
-            <div className="h-8 w-48 animate-pulse rounded bg-slate-200" />
-            <div className="h-32 animate-pulse rounded-lg bg-slate-200" />
-          </div>
+          <ReservationDetailSkeleton />
         </div>
       </div>
     );

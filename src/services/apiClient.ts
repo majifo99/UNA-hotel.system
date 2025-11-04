@@ -1,83 +1,21 @@
+/**
+ * API Client - Legacy exports
+ * 
+ * @deprecated Import from '@core/http/httpClient' for new code
+ * This file provides backwards compatibility with existing code.
+ */
 
-import axios from 'axios';
+import { httpClient, httpClientExtended } from '../core/http/httpClient';
 
 /**
- * Cliente API configurado para UNA Hotel System
+ * Default API client
+ * @deprecated Use `http` helper from '@core/http/httpClient'
  */
-const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
-  timeout: 30000, // Aumentado a 30 segundos para resolver timeouts
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+export default httpClient;
 
-// Interceptor para requests
-apiClient.interceptors.request.use(
-  (config) => {
-    // Agregar token de autenticación si existe
-    // Prioridad: adminAuthToken > authToken (web)
-    const adminToken = localStorage.getItem('adminAuthToken');
-    const webToken = localStorage.getItem('authToken');
-    const token = adminToken || webToken;
-    
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    
-    console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
-    return config;
-  },
-  (error) => {
-    console.error('[API] Request Error:', error);
-    return Promise.reject(error);
-  }
-);
+/**
+ * Extended API client for heavy operations (reports, exports)
+ * @deprecated Use `httpExtended` helper from '@core/http/httpClient'
+ */
+export const apiClientExtended = httpClientExtended;
 
-// Interceptor para responses
-apiClient.interceptors.response.use(
-  (response) => {
-    console.log(`[API] Response ${response.status}: ${response.config.url}`);
-    return response;
-  },
-  (error) => {
-    if (error.response) {
-      // El servidor respondió con un código de estado que no está en el rango 2xx
-      console.error(`[API] Error ${error.response.status}: ${error.response.data?.message || error.message}`);
-      
-      // Manejar errores de autenticación - solo para endpoints específicos
-      if (error.response.status === 401) {
-        const url = error.config?.url || '';
-        
-        // Solo limpiar sesión si es un endpoint de autenticación
-        if (url.includes('/auth/') || url.includes('/user') || url.includes('/profile')) {
-          const hasAdminToken = localStorage.getItem('adminAuthToken');
-          const hasWebToken = localStorage.getItem('authToken');
-          
-          if (hasAdminToken) {
-            // Sesión de admin
-            console.log('[API] Token de admin inválido, redirigiendo a login');
-            localStorage.removeItem('adminAuthToken');
-            localStorage.removeItem('adminAuthUser');
-            globalThis.location.href = '/admin/login';
-          } else if (hasWebToken) {
-            // Sesión de web
-            console.log('[API] Token web inválido, redirigiendo a login');
-            localStorage.removeItem('authToken');
-            globalThis.location.href = '/login';
-          }
-        }
-      }
-    } else if (error.request) {
-      // La petición fue hecha pero no se recibió respuesta
-      console.error('[API] Network Error:', error.message);
-    } else {
-      // Algo pasó al configurar la petición
-      console.error('[API] Error:', error.message);
-    }
-    
-    return Promise.reject(error);
-  }
-);
-
-export default apiClient;
