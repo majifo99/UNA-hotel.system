@@ -118,36 +118,39 @@ function normalizeError(error: unknown): HttpError {
     };
   }
   
+  // At this point, TypeScript knows error is AxiosError
+  const axiosError = error;
+  
   // Handle cancelled requests
-  if (axios.isCancel(error)) {
+  if (axios.isCancel(axiosError)) {
     return {
       code: 'CANCELLED',
       status: 0,
       message: 'Request was cancelled',
-      originalError: error,
+      originalError: axiosError,
     };
   }
   
   // Server responded with error status
-  if (error.response) {
-    const status = error.response.status;
-    const message = (error.response.data as { message?: string })?.message || error.message;
+  if (axiosError.response) {
+    const status = axiosError.response.status;
+    const message = (axiosError.response.data as { message?: string })?.message || axiosError.message;
     
     return {
       code: `HTTP_${status}`,
       status,
       message,
-      originalError: error,
+      originalError: axiosError,
     };
   }
   
   // No response received (network error, timeout)
-  if (error.request) {
+  if (axiosError.request) {
     return {
-      code: error.code || 'NETWORK_ERROR',
+      code: axiosError.code || 'NETWORK_ERROR',
       status: 0,
-      message: error.message || 'Error de red. Verifique su conexión.',
-      originalError: error,
+      message: axiosError.message || 'Error de red. Verifique su conexión.',
+      originalError: axiosError,
     };
   }
   
@@ -155,8 +158,8 @@ function normalizeError(error: unknown): HttpError {
   return {
     code: 'REQUEST_ERROR',
     status: 0,
-    message: error.message || 'Error al configurar la solicitud',
-    originalError: error,
+    message: axiosError.message || 'Error al configurar la solicitud',
+    originalError: axiosError,
   };
 }
 
