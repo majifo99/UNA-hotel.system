@@ -16,6 +16,10 @@ import { RegisterPage } from '../modules/web/pages/RegisterPage';
 import { LoginPageTest } from '../modules/web/pages/LoginPage.test';
 import { AboutPage } from '../modules/web/pages/AboutPage';
 import { WebReservationPage } from '../modules/web/pages/WebReservationPage';
+import { RoomDetailPage } from '../modules/web/pages/RoomDetailPage';
+import { RoomsPage } from '../modules/web/pages/RoomsPage';
+import { ReservationConfirmationPage } from '../modules/web/pages/ReservationConfirmationPage';
+import { MyReservationsPage } from '../modules/web/features/my-reservations';
 
 // =================== ERROR BOUNDARY ===================
 
@@ -36,7 +40,7 @@ function ErrorBoundary() {
           Revisa la consola del navegador para más detalles
         </p>
         <button 
-          onClick={() => window.location.href = '/'} 
+          onClick={() => { globalThis.location.href = '/'; }} 
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
         >
           Volver al inicio
@@ -77,15 +81,6 @@ function WebRootLayout() {
 
 // =================== PLACEHOLDER PAGES ===================
 
-function RoomsPage() {
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <h1 className="text-3xl font-bold text-primary-900 mb-8">Habitaciones</h1>
-      <p className="text-neutral-600">Página de habitaciones en desarrollo...</p>
-    </div>
-  );
-}
-
 function ServicesPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -119,17 +114,6 @@ function ProfilePage() {
   );
 }
 
-function MyReservationsPage() {
-  return (
-    <ProtectedRoute>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h1 className="text-3xl font-bold text-primary-900 mb-8">Mis Reservas</h1>
-        <p className="text-neutral-600">Historial de reservas en desarrollo...</p>
-      </div>
-    </ProtectedRoute>
-  );
-}
-
 // =================== ROUTER CONFIGURATION ===================
 
 const webRouter = createBrowserRouter([
@@ -150,6 +134,10 @@ const webRouter = createBrowserRouter([
       {
         path: 'habitaciones',
         element: <RoomsPage />,
+      },
+      {
+        path: 'habitacion/:id',
+        element: <RoomDetailPage />,
       },
       {
         path: 'servicios',
@@ -180,12 +168,20 @@ const webRouter = createBrowserRouter([
         element: <ReservationPage />,
       },
       {
+        path: 'confirmation',
+        element: <ReservationConfirmationPage />,
+      },
+      {
         path: 'perfil',
         element: <ProfilePage />,
       },
       {
         path: 'mis-reservas',
-        element: <MyReservationsPage />,
+        element: (
+          <ProtectedRoute>
+            <MyReservationsPage />
+          </ProtectedRoute>
+        ),
       },
       
       // =================== CATCH ALL ===================

@@ -1,9 +1,9 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAdminAuth } from '../auth/useAdminAuth';
+import { useAdminAuth } from '../auth/useAdminAuthHook';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  readonly children: React.ReactNode;
 }
 
 /**
@@ -22,24 +22,32 @@ interface ProtectedRouteProps {
  * ```
  */
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, isLoading } = useAdminAuth();
+  const { user, isLoading, isAuthenticated } = useAdminAuth();
   const location = useLocation();
+
+  console.log('[ProtectedRoute] Estado:', { user: user?.email, isLoading, isAuthenticated });
 
   // Show loading spinner while checking auth status
   if (isLoading) {
+    console.log('[ProtectedRoute] Mostrando spinner de carga');
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <LoadingSpinner size="lg" />
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <LoadingSpinner size="lg" />
+          <p className="mt-4 text-gray-600">Verificando sesión...</p>
+        </div>
       </div>
     );
   }
 
   // Redirect to login if not authenticated
   // Save the attempted location to redirect back after login
-  if (!user) {
+  if (!user && !isAuthenticated) {
+    console.log('[ProtectedRoute] Usuario no autenticado, redirigiendo a login');
     return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 
   // User is authenticated, render the protected content
+  console.log('[ProtectedRoute] Usuario autenticado, renderizando contenido');
   return <>{children}</>;
 }

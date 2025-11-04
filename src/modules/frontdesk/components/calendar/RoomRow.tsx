@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { User, Bed } from 'lucide-react';
 import type { FrontdeskRoom, FrontdeskRoomStatus } from '../../types';
+import type { CalendarReservation } from '../../services/frontdeskReservationService';
 
 interface CalendarDay {
   date: Date;
@@ -13,7 +14,7 @@ interface RoomReservation {
   guestName: string;
   startDate: Date;
   endDate: Date;
-  status: FrontdeskRoomStatus;
+  status: 'pending' | 'confirmed' | 'cancelled';
   position: number;
   width: number;
 }
@@ -21,18 +22,16 @@ interface RoomReservation {
 interface RoomRowProps {
   room: FrontdeskRoom;
   calendarDays: CalendarDay[];
+  reservations: CalendarReservation[];
   onRoomClick: (room: FrontdeskRoom) => void;
+  onReservationClick: (reservation: CalendarReservation) => void;
 }
 
 // Room status colors
-const ROOM_STATUS_COLORS: Record<FrontdeskRoomStatus, string> = {
-  available: '#10B981',
-  occupied: '#EF4444',
-  reserved: '#8B5CF6',
-  'checked-in': '#EF4444', 
-  'checked-out': '#F97316',
-  maintenance: '#F59E0B',
-  cleaning: '#A855F7'
+const RESERVATION_STATUS_COLORS: Record<'pending' | 'confirmed' | 'cancelled', string> = {
+  pending: '#F59E0B',     // Amarillo para pendiente
+  confirmed: '#10B981',   // Verde para confirmada
+  cancelled: '#EF4444'    // Rojo para cancelada
 };
 
 // Room status translations for accessibility
@@ -46,7 +45,7 @@ const ROOM_STATUS_LABELS: Record<FrontdeskRoomStatus, string> = {
   cleaning: 'en limpieza'
 };
 
-const RoomRow: React.FC<RoomRowProps> = ({ room, calendarDays, onRoomClick }) => {
+const RoomRow: React.FC<RoomRowProps> = ({ room, calendarDays, reservations, onRoomClick, onReservationClick }) => {
   // Helper function to get room status styling
   const getRoomStatusStyling = (status: FrontdeskRoomStatus): string => {
     switch (status) {
@@ -61,77 +60,68 @@ const RoomRow: React.FC<RoomRowProps> = ({ room, calendarDays, onRoomClick }) =>
     }
   };
 
-  const reservations = useMemo(() => {
+  // Helper para obtener el texto del estado de reserva
+  const getReservationStatusText = (status: 'pending' | 'confirmed' | 'cancelled'): string => {
+    if (status === 'confirmed') return 'Confirmada';
+    if (status === 'pending') return 'Pendiente';
+    return 'Cancelada';
+  };
+
+  // Helper para obtener el icono del estado
+  const getReservationStatusIcon = (status: 'pending' | 'confirmed' | 'cancelled'): string => {
+    if (status === 'confirmed') return '✓';
+    if (status === 'pending') return '⏳';
+    return '✗';
+  };
+
+  const roomReservations = useMemo(() => {
     const result: RoomReservation[] = [];
     
-    // Use the mock data from the room
-    if (room.currentGuest && room.checkIn && room.checkOut) {
-      const startDate = new Date(room.checkIn);
-      const endDate = new Date(room.checkOut);
-      
-      // Calculate position and width based on calendar days
-      const startDay = calendarDays.findIndex(day => 
-        day.date.toDateString() === startDate.toDateString()
-      );
-      
-      if (startDay >= 0) {
-        const endDay = calendarDays.findIndex(day => 
-          day.date.toDateString() === endDate.toDateString()
-        );
-        
-        const width = endDay >= 0 ? endDay - startDay + 1 : 
-                     Math.min(3, calendarDays.length - startDay); // Default to 3 days or remaining days
-        
-        result.push({
-          id: room.id,
-          guestName: room.currentGuest.name,
-          startDate: startDate,
-          endDate: endDate,
-          status: room.status,
-          position: startDay,
-          width: width
-        });
-      }
-    }
+    // Filtrar reservas para esta habitación específica
+    const roomRes = reservations.filter(res => res.roomId === Number(room.id));
     
-    // Handle future reservations for available rooms
-    if (room.status === 'available' && room.guestName?.startsWith('Reserva:') && room.checkIn && room.checkOut) {
-      const startDate = new Date(room.checkIn);
-      const endDate = new Date(room.checkOut);
-      
-      const startDay = calendarDays.findIndex(day => 
-        day.date.toDateString() === startDate.toDateString()
-      );
+    roomRes.forEach(reservation => {
+      // Encontrar la posición inicial en el calendario
+      const startDay = calendarDays.findIndex(day => {
+        const dayStr = day.date.toISOString().split('T')[0];
+        const resStr = reservation.startDate.toISOString().split('T')[0];
+        return dayStr === resStr;
+      });
       
       if (startDay >= 0) {
-        const endDay = calendarDays.findIndex(day => 
-          day.date.toDateString() === endDate.toDateString()
-        );
+        // Encontrar la posición final
+        const endDay = calendarDays.findIndex(day => {
+          const dayStr = day.date.toISOString().split('T')[0];
+          const resStr = reservation.endDate.toISOString().split('T')[0];
+          return dayStr === resStr;
+        });
         
-        const width = endDay >= 0 ? endDay - startDay + 1 : 
-                     Math.min(2, calendarDays.length - startDay);
+        // Calcular el ancho (número de días)
+        const width = endDay >= 0 
+          ? endDay - startDay + 1 
+          : Math.min(3, calendarDays.length - startDay);
         
         result.push({
-          id: `${room.id}-reservation`,
-          guestName: room.guestName.replace('Reserva: ', ''),
-          startDate: startDate,
-          endDate: endDate,
-          status: 'reserved',
+          id: reservation.id,
+          guestName: reservation.guestName,
+          startDate: reservation.startDate,
+          endDate: reservation.endDate,
+          status: reservation.status,
           position: startDay,
           width: width
         });
       }
-    }
-
+    });
+    
     return result;
-  }, [room, calendarDays]);
+  }, [room.id, reservations, calendarDays]);
 
   return (
-    <div className="flex border-b border-gray-200 hover:bg-gray-50/80 transition-colors">
-      {/* Room Info Column */}
+    <div className="flex border-b border-gray-200 hover:bg-gray-50/80 transition-colors group">
+      {/* Room Info Column - Fixed width matching header */}
       <button
-        className="flex items-center p-4 bg-white sticky left-0 z-10 border-r border-gray-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset transition-colors"
-        style={{ minWidth: '220px' }}
+        className="flex items-center p-4 bg-white border-r border-gray-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset transition-colors flex-shrink-0"
+        style={{ minWidth: '220px', width: '220px' }}
         onClick={() => onRoomClick(room)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -142,62 +132,82 @@ const RoomRow: React.FC<RoomRowProps> = ({ room, calendarDays, onRoomClick }) =>
         aria-label={`Seleccionar habitación ${room.roomNumber || room.number}, tipo ${room.type}, estado ${ROOM_STATUS_LABELS[room.status]}`}
         type="button"
       >
-        <div className={`p-2 rounded-lg mr-3 ${getRoomStatusStyling(room.status)}`}>
+        <div className={`p-2 rounded-lg mr-3 flex-shrink-0 ${getRoomStatusStyling(room.status)}`}>
           <Bed className="w-4 h-4" />
         </div>
-        <div className="text-left">
+        <div className="text-left min-w-0 flex-1">
           <div className="font-semibold text-gray-900 text-base">
             {room.roomNumber || room.number}
           </div>
-          <div className="text-sm text-gray-500">{room.type}</div>
-          {room.currentGuest && (
-            <div className="text-xs text-gray-600 mt-1">
-              {room.currentGuest.name}
+          <div className="text-xs text-gray-500 truncate">{room.type}</div>
+          {roomReservations.length > 0 && (
+            <div className="text-xs text-blue-600 mt-1 truncate">
+              <User className="w-3 h-3 inline mr-1" />
+              {roomReservations.length} reserva{roomReservations.length > 1 ? 's' : ''}
             </div>
           )}
         </div>
       </button>
 
-      {/* Calendar Days */}
-      <div className="flex flex-1 relative">
-        {calendarDays.map((day, index) => (
-          <div
-            key={`${day.date.toISOString()}-${index}`}
-            className={`border-r border-gray-100 flex-shrink-0 relative ${
-              day.isToday ? 'bg-blue-50/70' : 'bg-white'
-            } ${day.isWeekend ? 'bg-gray-50/50' : ''}`}
-            style={{ width: 120, height: 70 }}
-          >
-          </div>
-        ))}
+      {/* Calendar Days - Scrollable container */}
+      <div className="flex-1 relative overflow-x-auto">
+        <div className="flex" style={{ minWidth: `${calendarDays.length * 120}px` }}>
+          {calendarDays.map((day, index) => (
+            <div
+              key={`${day.date.toISOString()}-${index}`}
+              className={`border-r border-gray-100 flex-shrink-0 relative ${
+                day.isToday ? 'bg-blue-50/70' : 'bg-white'
+              } ${day.isWeekend ? 'bg-gray-50/50' : ''}`}
+              style={{ width: '120px', height: '70px' }}
+            >
+            </div>
+          ))}
+        </div>
 
         {/* Reservations */}
-        {reservations.map((reservation) => (
-          <div
-            key={reservation.id}
-            className="absolute top-3 rounded-lg px-3 py-2 text-xs text-white font-medium shadow-md border border-white/20 backdrop-blur-sm"
-            style={{
-              left: reservation.position * 120 + 6,
-              width: reservation.width * 120 - 12,
-              backgroundColor: ROOM_STATUS_COLORS[reservation.status],
-              minWidth: 100
-            }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center min-w-0">
-                <User className="w-3 h-3 mr-1 flex-shrink-0" />
-                <span className="truncate font-medium">{reservation.guestName}</span>
+        {roomReservations.map((reservation) => {
+          // Encontrar la reserva completa del calendario
+          const fullReservation = reservations.find(r => r.id === reservation.id);
+          
+          return (
+            <div
+              key={reservation.id}
+              className="absolute top-3 rounded-lg px-3 py-2 text-xs text-white font-medium shadow-md border border-white/20 backdrop-blur-sm hover:shadow-xl transition-all cursor-pointer hover:scale-105"
+              style={{
+                left: `${reservation.position * 120 + 6}px`,
+                width: `${reservation.width * 120 - 12}px`,
+                backgroundColor: RESERVATION_STATUS_COLORS[reservation.status],
+                minWidth: '100px',
+                maxHeight: '64px',
+                overflow: 'hidden'
+              }}
+              title={`${reservation.guestName} - ${reservation.startDate.toLocaleDateString('es-ES')} al ${reservation.endDate.toLocaleDateString('es-ES')} - ${getReservationStatusText(reservation.status)}`}
+              onClick={() => fullReservation && onReservationClick(fullReservation)}
+              onKeyDown={(e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && fullReservation) {
+                  e.preventDefault();
+                  onReservationClick(fullReservation);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center min-w-0 flex-1">
+                  <User className="w-3 h-3 mr-1 flex-shrink-0" />
+                  <span className="truncate font-medium">{reservation.guestName}</span>
+                </div>
+                <span className="ml-2 text-xs opacity-90 flex-shrink-0">
+                  {getReservationStatusIcon(reservation.status)}
+                </span>
               </div>
-              {reservation.status === 'reserved' && (
-                <span className="ml-2 text-xs opacity-90">Reserva</span>
-              )}
+              <div className="text-xs opacity-80 mt-1 truncate">
+                {reservation.startDate.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })} - 
+                {reservation.endDate.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })}
+              </div>
             </div>
-            <div className="text-xs opacity-80 mt-1">
-              {reservation.startDate.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })} - 
-              {reservation.endDate.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

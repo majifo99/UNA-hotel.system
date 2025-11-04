@@ -92,6 +92,13 @@ export interface ApiReservaHabitacion {
   pax_total: number;
   created_at?: string;
   updated_at?: string;
+  // Información anidada de la habitación (cuando viene del endpoint GET /reservas)
+  habitacion?: {
+    id_habitacion: number;
+    nombre: string;
+    numero: string;
+    piso: number;
+  };
 }
 
 /**

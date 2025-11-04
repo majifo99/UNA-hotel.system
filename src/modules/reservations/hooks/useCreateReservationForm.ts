@@ -203,6 +203,20 @@ export const useCreateReservationForm = () => {
     setIsSubmitting(true);
 
     try {
+      // Verificar autenticación antes de proceder
+      const adminToken = localStorage.getItem('adminAuthToken');
+      const webToken = localStorage.getItem('authToken');
+      
+      if (!adminToken && !webToken) {
+        toast.error('Debe iniciar sesión para crear una reserva', {
+          description: 'Por favor inicie sesión e intente nuevamente.'
+        });
+        console.error('[AUTH] No authentication token found');
+        return false;
+      }
+
+      console.debug('[AUTH] Token found:', adminToken ? 'admin' : 'web', 'token will be sent automatically by axios interceptor');
+
       // Get the selected rooms
       const selectedRooms = availableRooms.filter(room => data.roomIds.includes(room.id));
       if (selectedRooms.length === 0) {

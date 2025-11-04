@@ -1,5 +1,6 @@
 // Tipos para información de habitaciones
 export interface RoomInfo {
+  id: number | string; // ID de la habitación en la base de datos
   number: string;
   type: string;
   capacity: {

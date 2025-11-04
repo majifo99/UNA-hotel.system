@@ -16,6 +16,14 @@
     "jsx": "react-jsx",
     "resolveJsonModule": true,
 
+    /* Path aliases for cleaner imports */
+    "baseUrl": ".",
+    "paths": {
+      "@core/*": ["src/core/*"],
+      "@shared/*": ["src/shared/*"],
+      "@modules/*": ["src/modules/*"]
+    },
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,

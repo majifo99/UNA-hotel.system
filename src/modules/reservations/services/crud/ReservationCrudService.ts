@@ -171,6 +171,124 @@ export class ReservationCrudService {
   }
 
   /**
+   * Obtiene una reserva por código de reserva (codigo_reserva)
+   * GET /reservas?codigo_reserva={code}
+   * 
+   * IMPORTANTE: El backend acepta el código con o sin guión
+   * Ejemplos válidos: "V48FQ5YX", "V48F-Q5YX"
+   */
+  async getByCode(code: string): Promise<Reservation | null> {
+    try {
+      // Normalizar el código removiendo guiones para la búsqueda
+      const normalizedCode = code.replace(/-/g, '').toUpperCase();
+      
+      console.log('🔍 [API] Searching reservation by code:', normalizedCode);
+      console.log('🔍 [API] Original code input:', code);
+      
+      const res = await apiClient.get('/reservas', { 
+        params: { codigo_reserva: normalizedCode } 
+      });
+      
+      console.log('📡 [API] Raw response from /reservas:', {
+        status: res.status,
+        data: res.data,
+        dataType: typeof res.data,
+        hasData: 'data' in (res.data || {}),
+      });
+      
+      // Extract data from response - backend wraps in data property with pagination
+      const responseData = res.data as { data?: ApiReservaFull[] };
+      const reservations = responseData.data || [];
+      
+      console.log('📋 [API] Extracted reservations array:', {
+        count: reservations.length,
+        reservations: reservations.map(r => ({
+          id_reserva: r.id_reserva,
+          codigo_reserva: r.codigo_reserva,
+          codigo_formateado: r.codigo_formateado,
+          cliente_id: r.id_cliente,
+          cliente_nombre: r.cliente?.nombre,
+          cliente_apellido: r.cliente?.apellido1,
+          cliente_completo: r.cliente?.nombre_completo,
+        }))
+      });
+      
+      if (!reservations || reservations.length === 0) {
+        console.log('❌ [API] No reservation found with code:', normalizedCode);
+        return null;
+      }
+      
+      // Buscar la reserva que coincida exactamente con el código
+      // Intentar primero con codigo_reserva, luego con codigo_formateado
+      let apiReserva = reservations.find(r => 
+        r.codigo_reserva?.toUpperCase() === normalizedCode ||
+        r.codigo_formateado?.replace(/-/g, '').toUpperCase() === normalizedCode
+      );
+      
+      // Si no se encuentra por código exacto, usar la primera
+      if (!apiReserva) {
+        console.warn('⚠️ [API] No exact match found, using first result');
+        apiReserva = reservations[0];
+      }
+      
+      if (!apiReserva?.id_reserva) {
+        console.error('❌ Invalid API response structure:', res.data);
+        return null;
+      }
+
+      console.log('✅ [API] Found reservation:', {
+        id_reserva: apiReserva.id_reserva,
+        codigo_reserva: apiReserva.codigo_reserva,
+        codigo_formateado: apiReserva.codigo_formateado,
+        cliente: {
+          id_cliente: apiReserva.cliente.id_cliente,
+          nombre_completo: apiReserva.cliente.nombre_completo,
+          nombre: apiReserva.cliente.nombre,
+          apellido1: apiReserva.cliente.apellido1,
+          apellido2: apiReserva.cliente.apellido2,
+          email: apiReserva.cliente.email,
+        },
+        habitaciones: apiReserva.habitaciones.map(h => ({
+          id: h.id_reserva_hab,
+          habitacion_numero: h.habitacion.numero,
+          habitacion_nombre: h.habitacion.nombre,
+        })),
+      });
+      
+      const reservation = mapApiReservaFullToReservation(apiReserva);
+      
+      console.log('🔄 [API] Mapped reservation:', {
+        id: reservation.id,
+        confirmationNumber: reservation.confirmationNumber,
+        guest: {
+          id: reservation.guest?.id,
+          firstName: reservation.guest?.firstName,
+          firstLastName: reservation.guest?.firstLastName,
+          secondLastName: reservation.guest?.secondLastName,
+          email: reservation.guest?.email,
+        },
+        room: {
+          id: reservation.room?.id,
+          number: reservation.room?.number,
+          name: reservation.room?.name,
+        },
+      });
+
+      return reservation;
+    } catch (error) {
+      console.error('❌ [API] Error fetching reservation by code:', error);
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { status?: number; data?: unknown } };
+        console.error('❌ [API] Error response:', {
+          status: axiosError.response?.status,
+          data: axiosError.response?.data,
+        });
+      }
+      return null;
+    }
+  }
+
+  /**
    * Obtiene una reserva por número de confirmación
    * GET /reservas?confirmationNumber={number}
    */

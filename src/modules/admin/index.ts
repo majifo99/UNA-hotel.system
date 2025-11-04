@@ -5,7 +5,8 @@
 // Auth
 export * from './auth/types';
 export { AdminAuthService } from './auth/adminAuthService';
-export { useAdminAuth, AdminAuthProvider } from './auth/useAdminAuth';
+export { AdminAuthProvider } from './auth/useAdminAuth';
+export { useAdminAuth } from './auth/useAdminAuthHook';
 export { adminLoginSchema, adminRegisterSchema } from './auth/schemas';
 export type { AdminLoginFormData, AdminRegisterFormData } from './auth/schemas';
 

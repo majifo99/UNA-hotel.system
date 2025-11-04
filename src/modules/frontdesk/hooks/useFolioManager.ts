@@ -201,7 +201,10 @@ export const useFolioManager = (folioId: number) => {
       setIsClosing(true);
       setError(null);
       
-      await folioService.cerrarFolio(folioId);
+      await folioService.cerrarFolio(folioId, {
+        operacion_uid: `cierre-${Date.now()}`,
+        id_cliente_titular: 1
+      });
       await loadFolio(); // Refresh data
       
       return true;

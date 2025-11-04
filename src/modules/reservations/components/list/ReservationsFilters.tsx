@@ -43,9 +43,10 @@ export const ReservationsFilters: React.FC<ReservationsFiltersProps> = ({ filter
   };
 
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:items-end">
-      <div className="flex-1">
-        <label htmlFor="reservation-search" className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+      {/* Campo de búsqueda - Ocupa más espacio */}
+      <div className="md:col-span-5">
+        <label htmlFor="reservation-search" className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-600">
           Buscar
         </label>
         <div className="relative">
@@ -61,23 +62,24 @@ export const ReservationsFilters: React.FC<ReservationsFiltersProps> = ({ filter
             value={filters.query}
             onChange={(event) => handleFieldChange('query', event.target.value)}
             placeholder="Huésped, correo, confirmación..."
-            className="block w-full rounded-2xl border border-slate-200 py-2 pl-10 pr-3 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+            className="block w-full h-10 rounded-lg border border-slate-300 py-2 pl-10 pr-3 text-sm placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 transition-colors"
           />
         </div>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1.5 text-xs text-slate-500">
           Filtra por nombre, correo, número de confirmación o notas.
         </p>
       </div>
 
-      <div className="w-full md:w-40">
-        <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500" htmlFor="reservation-status">
+      {/* Estado */}
+      <div className="md:col-span-2">
+        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-600" htmlFor="reservation-status">
           Estado
         </label>
         <select
           id="reservation-status"
           value={filters.status}
           onChange={(event) => handleFieldChange('status', event.target.value)}
-          className="block w-full rounded-2xl border border-slate-200 py-2 px-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+          className="block w-full h-10 rounded-lg border border-slate-300 py-2 px-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 transition-colors"
         >
           {statusOptions.map((option) => (
             <option key={option.value} value={option.value}>
@@ -87,8 +89,9 @@ export const ReservationsFilters: React.FC<ReservationsFiltersProps> = ({ filter
         </select>
       </div>
 
-      <div className="w-full md:w-44">
-        <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500" htmlFor="reservation-start">
+      {/* Desde */}
+      <div className="md:col-span-2">
+        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-600" htmlFor="reservation-start">
           Desde
         </label>
         <input
@@ -97,12 +100,13 @@ export const ReservationsFilters: React.FC<ReservationsFiltersProps> = ({ filter
           value={filters.startDate ?? ''}
           max={filters.endDate ?? undefined}
           onChange={(event) => handleFieldChange('startDate', event.target.value)}
-          className="block w-full rounded-2xl border border-slate-200 py-2 px-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+          className="block w-full h-10 rounded-lg border border-slate-300 py-2 px-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 transition-colors"
         />
       </div>
 
-      <div className="w-full md:w-44">
-        <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500" htmlFor="reservation-end">
+      {/* Hasta */}
+      <div className="md:col-span-2">
+        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-600" htmlFor="reservation-end">
           Hasta
         </label>
         <input
@@ -111,15 +115,17 @@ export const ReservationsFilters: React.FC<ReservationsFiltersProps> = ({ filter
           value={filters.endDate ?? ''}
           min={filters.startDate ?? undefined}
           onChange={(event) => handleFieldChange('endDate', event.target.value)}
-          className="block w-full rounded-2xl border border-slate-200 py-2 px-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+          className="block w-full h-10 rounded-lg border border-slate-300 py-2 px-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 transition-colors"
         />
       </div>
 
-      <div className="flex gap-2">
+      {/* Botón limpiar */}
+      <div className="md:col-span-1">
         <button
           type="button"
           onClick={onReset}
-          className="h-10 rounded-2xl border border-slate-200 px-4 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+          className="w-full h-10 rounded-lg bg-slate-100 hover:bg-slate-200 px-4 text-sm font-medium text-slate-700 transition-colors shadow-sm"
+          title="Limpiar filtros"
         >
           Limpiar
         </button>

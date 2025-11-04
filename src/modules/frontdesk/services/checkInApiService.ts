@@ -13,7 +13,8 @@ import type {
 export class CheckInApiService extends BaseApiService {
   private static readonly ENDPOINTS = {
     // Endpoint ÚNICO según especificación: POST /api/frontdesk/reserva/{reserva}/checkin
-    CHECKIN: (reservaId: number) => `/frontdesk/reserva/${reservaId}/checkin`,
+    // reservaId puede ser numérico o alfanumérico
+    CHECKIN: (reservaId: string | number) => `/frontdesk/reserva/${reservaId}/checkin`,
   } as const;
 
   /**
@@ -89,7 +90,7 @@ export class CheckInApiService extends BaseApiService {
   /**
    * Método de debugging mejorado para verificar endpoints y datos
    */
-  async debugEndpoints(reservaId: number, roomNumber: string): Promise<void> {
+  async debugEndpoints(reservaId: string | number, roomNumber: string): Promise<void> {
     console.log('🔍 Debugging endpoints y validación de datos:');
     
     // Primero verificar qué rutas están disponibles
@@ -157,7 +158,7 @@ export class CheckInApiService extends BaseApiService {
    * NOTA: No hace GET de la reserva porque ese endpoint no existe en el backend.
    * Solo valida formato de datos localmente y deja que el backend maneje la validación real.
    */
-  async validateCheckInData(reservaId: number, roomNumber: string, checkInDate?: string, checkOutDate?: string): Promise<{
+  async validateCheckInData(reservaId: string | number, roomNumber: string, checkInDate?: string, checkOutDate?: string): Promise<{
     isValid: boolean;
     errors: string[];
     warnings: string[];
@@ -181,7 +182,7 @@ export class CheckInApiService extends BaseApiService {
     
     try {
       // 1. Validaciones locales básicas
-      if (!reservaId || reservaId <= 0) {
+      if (!reservaId || (typeof reservaId === 'number' && reservaId <= 0) || (typeof reservaId === 'string' && reservaId.trim() === '')) {
         errors.push('ID de reserva inválido');
       }
       
@@ -399,7 +400,7 @@ export class CheckInApiService extends BaseApiService {
    * NOTA: Como no existe GET de reserva, retornamos valores por defecto
    * y dejamos que el backend maneje la validación en el POST del check-in
    */
-  async getReservationData(reservaId: number): Promise<{
+  async getReservationData(reservaId: string | number): Promise<{
     clienteId: number;
     fechas: { llegada: string; salida: string };
     huespedes: { adultos: number; ninos: number; bebes: number };
@@ -413,7 +414,7 @@ export class CheckInApiService extends BaseApiService {
     return null;
   }
 
-  async getClienteFromReserva(reservaId: number): Promise<number> {
+  async getClienteFromReserva(reservaId: string | number): Promise<number> {
     // Como no podemos obtener datos de la reserva, usamos valor por defecto
     // El backend resolverá el cliente real desde la reserva en el POST
     console.log(`🔄 Usando cliente por defecto para reserva ${reservaId}`);
@@ -472,11 +473,11 @@ export class CheckInApiService extends BaseApiService {
       errors.push('El número de niños no puede ser negativo');
     }
 
-    if (payload.bebes < 0) {
+    if (payload.bebes !== undefined && payload.bebes < 0) {
       errors.push('El número de bebés no puede ser negativo');
     }
 
-    if (payload.adultos === 0 && payload.ninos === 0 && payload.bebes === 0) {
+    if (payload.adultos === 0 && payload.ninos === 0 && (payload.bebes === undefined || payload.bebes === 0)) {
       errors.push('Debe haber al menos un huésped (adulto, niño o bebé)');
     }
 
@@ -491,7 +492,7 @@ export class CheckInApiService extends BaseApiService {
    * Útil para testing y casos específicos
    */
   async performCheckInWithExactData(
-    reservaId: number,
+    reservaId: string | number,
     checkInData: CheckInRequestDTO
   ): Promise<CheckInResponse> {
     try {
@@ -529,7 +530,7 @@ export class CheckInApiService extends BaseApiService {
    * Usa datos reales de la reserva cuando están disponibles
    */
   async performExactCheckIn(
-    reservaId: number,
+    reservaId: string | number,
     frontendData: {
       roomNumber: string;
       checkInDate: string;
@@ -673,7 +674,7 @@ bebes: number;
    * Versión simplificada para testing - usa valores conocidos que funcionen
    */
   async performSimpleCheckIn(
-    reservaId: number,
+    reservaId: string | number,
     frontendData: {
       roomNumber: string;
       checkInDate: string;
@@ -728,7 +729,7 @@ bebes: number;
    * El backend debe manejar internamente la asociación del cliente
    */
   async performDirectCheckIn(
-    reservaId: number,
+    reservaId: string | number,
     frontendData: {
       reservationId: string;
       roomNumber: string;

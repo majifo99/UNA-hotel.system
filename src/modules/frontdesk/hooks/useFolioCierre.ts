@@ -17,7 +17,10 @@ export function useFolioCierre({ folioId, onError, onSuccess }: UseFolioCierrePa
       setProcesando(true);
       setError(null);
 
-      const resultado = await folioService.cerrarFolio(folioId);
+      const resultado = await folioService.cerrarFolio(folioId, {
+        operacion_uid: `cierre-${Date.now()}`,
+        id_cliente_titular: 1
+      });
       
       setCerrado(true);
       

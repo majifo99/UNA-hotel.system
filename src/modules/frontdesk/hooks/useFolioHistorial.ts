@@ -1,25 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
-import { folioService } from '../services/folioService';
+import { folioService, type HistorialItem, type HistorialResponse } from '../services/folioService';
 
 type TipoEvento = 'pago' | 'distribucion' | 'cierre' | null;
-
-interface EventoHistorial {
-  id: string;
-  tipo: TipoEvento;
-  fecha: string;
-  descripcion: string;
-  usuario?: string;
-  detalles: any;
-  summary: string;
-}
-
-interface HistorialResponse {
-  eventos: EventoHistorial[];
-  has_more: boolean;
-  total: number;
-  page: number;
-  per_page: number;
-}
 
 interface UseFolioHistorialParams {
   folioId: number;
@@ -28,7 +10,7 @@ interface UseFolioHistorialParams {
 }
 
 export function useFolioHistorial({ folioId, autoLoad = true, onError }: UseFolioHistorialParams) {
-  const [eventos, setEventos] = useState<EventoHistorial[]>([]);
+  const [eventos, setEventos] = useState<HistorialItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<TipoEvento>(null);
@@ -56,14 +38,14 @@ export function useFolioHistorial({ folioId, autoLoad = true, onError }: UseFoli
       );
       
       if (reset || pageNumber === 1) {
-        setEventos(data.eventos || []);
+        setEventos(data.data || []);
         setPage(2);
       } else {
-        setEventos(prev => [...prev, ...(data.eventos || [])]);
+        setEventos(prev => [...prev, ...(data.data || [])]);
         setPage(prev => prev + 1);
       }
       
-      setHasMore(data.has_more || false);
+      setHasMore(data.current_page < data.last_page);
       setTotal(data.total || 0);
       
       return data;
