@@ -108,9 +108,20 @@ function handleUnauthorized(): void {
 /**
  * Normalize error to HttpError structure
  */
-function normalizeError(error: unknown): HttpError {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeError(error: any): HttpError {
+  // Handle cancelled requests
+  if (axios.isCancel(error)) {
+    return {
+      code: 'CANCELLED',
+      status: 0,
+      message: 'Request was cancelled',
+      originalError: error,
+    };
+  }
+  
   // Handle non-Axios errors
-  if (!axios.isAxiosError(error)) {
+  if (!error.isAxiosError && !error.response && !error.request) {
     return {
       code: 'UNKNOWN_ERROR',
       status: 0,
@@ -118,39 +129,26 @@ function normalizeError(error: unknown): HttpError {
     };
   }
   
-  // At this point, TypeScript knows error is AxiosError
-  const axiosError = error;
-  
-  // Handle cancelled requests
-  if (axios.isCancel(axiosError)) {
-    return {
-      code: 'CANCELLED',
-      status: 0,
-      message: 'Request was cancelled',
-      originalError: axiosError,
-    };
-  }
-  
   // Server responded with error status
-  if (axiosError.response) {
-    const status = axiosError.response.status;
-    const message = (axiosError.response.data as { message?: string })?.message || axiosError.message;
+  if (error.response) {
+    const status = error.response.status;
+    const message = error.response.data?.message || error.message || 'Error del servidor';
     
     return {
       code: `HTTP_${status}`,
       status,
       message,
-      originalError: axiosError,
+      originalError: error,
     };
   }
   
   // No response received (network error, timeout)
-  if (axiosError.request) {
+  if (error.request) {
     return {
-      code: axiosError.code || 'NETWORK_ERROR',
+      code: error.code || 'NETWORK_ERROR',
       status: 0,
-      message: axiosError.message || 'Error de red. Verifique su conexión.',
-      originalError: axiosError,
+      message: error.message || 'Error de red. Verifique su conexión.',
+      originalError: error,
     };
   }
   
@@ -158,8 +156,8 @@ function normalizeError(error: unknown): HttpError {
   return {
     code: 'REQUEST_ERROR',
     status: 0,
-    message: axiosError.message || 'Error al configurar la solicitud',
-    originalError: axiosError,
+    message: error.message || 'Error al configurar la solicitud',
+    originalError: error,
   };
 }
 
@@ -209,7 +207,8 @@ function setupInterceptors(
       }
       return response;
     },
-    (error: unknown) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (error: any) => {
       // Don't log cancelled requests
       if (axios.isCancel(error)) {
         return Promise.reject(error);
