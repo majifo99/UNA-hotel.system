@@ -5,7 +5,7 @@ import axios from 'axios';
  * Cliente API configurado para UNA Hotel System
  */
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+  baseURL: import.meta.env.VITE_API_URL,
   timeout: 10000, // Default timeout: 10s
   headers: {
     'Content-Type': 'application/json',
@@ -19,8 +19,8 @@ const apiClient = axios.create({
  * Uses longer timeout to prevent failures on large date ranges
  */
 export const apiClientExtended = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
-  timeout: 60000, // Extended timeout: 60s for reports
+  baseURL: import.meta.env.VITE_API_URL,
+  timeout: 600000000000, // Extended timeout: 60s for reports
   headers: {
     'Content-Type': 'application/json',
   },

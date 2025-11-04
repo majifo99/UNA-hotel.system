@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { Home, Calendar, Users } from 'lucide-react';
-import type { Reservation } from '../../types';
+import type { Reservation } from '../../../types';
 
 interface ReservationRoomsListProps {
   reservation: Reservation;

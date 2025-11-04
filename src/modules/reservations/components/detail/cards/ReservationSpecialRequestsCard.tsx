@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { FileText } from 'lucide-react';
-import type { Reservation } from '../../types';
+import type { Reservation } from '../../../types';
 
 interface ReservationSpecialRequestsCardProps {
   reservation: Reservation;
@@ -20,7 +20,7 @@ export const ReservationSpecialRequestsCard: React.FC<ReservationSpecialRequests
         <FileText className="h-4 w-4" />
         Solicitudes especiales
       </h3>
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
         <p className="text-sm text-amber-900">{reservation.specialRequests}</p>
       </div>
     </section>

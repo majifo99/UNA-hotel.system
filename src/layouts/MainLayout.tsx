@@ -48,19 +48,18 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   }, []);
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: 'var(--color-darkGreen1)' }}>
+    <div className="flex min-h-screen bg-gray-50">
       {/* Navigation Sidebar */}
       <Sidebar />
       
       {/* Main Content Area - responsive to sidebar state */}
       <main 
-        className={`flex-1 overflow-auto transition-all duration-300 ${
+        className={`flex-1 overflow-auto transition-all duration-300 bg-gray-50 ${
           sidebarCollapsed ? 'ml-20' : 'ml-72'
-        }`} 
-        style={{ backgroundColor: 'var(--color-darkGreen1)' }}
+        }`}
       >
-        {/* Content container */}
-        <div className="min-h-full">
+        {/* Content container with padding */}
+        <div className="min-h-full p-6">
           {children}
         </div>
       </main>

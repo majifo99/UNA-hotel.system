@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Calendar } from 'lucide-react';
-import type { Reservation } from '../../types';
+import type { Reservation } from '../../../types';
 
 interface ReservationDatesCardProps {
   reservation: Reservation;
@@ -24,13 +24,13 @@ export const ReservationDatesCard: React.FC<ReservationDatesCardProps> = ({ rese
         Fechas de estadía
       </h3>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Check-in</p>
           <p className="mt-1 font-semibold text-slate-900">
             {reservation.checkInDate ? dateFormatter.format(new Date(reservation.checkInDate)) : '—'}
           </p>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Check-out</p>
           <p className="mt-1 font-semibold text-slate-900">
             {reservation.checkOutDate ? dateFormatter.format(new Date(reservation.checkOutDate)) : '—'}

@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { FileText } from 'lucide-react';
-import type { Reservation } from '../../types';
+import type { Reservation } from '../../../types';
 
 interface ReservationNotesCardProps {
   reservation: Reservation;

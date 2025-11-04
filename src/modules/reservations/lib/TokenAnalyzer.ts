@@ -28,10 +28,14 @@ export class TokenAnalyzer {
   
   /**
    * Analiza el token actual y determina la estrategia
+   * 
+   * Según documentación del backend (SISTEMA_RESERVAS_SEPARACION.md):
+   * - Admin token (/api/reservas): Requiere token + id_cliente explícito
+   * - Cliente token (/api/reservas-web): Requiere token, id_cliente auto-detectado
    */
   static analyzeCurrentToken(): TokenAnalysis {
     const adminToken = localStorage.getItem('adminAuthToken');
-    const clienteToken = localStorage.getItem('authToken'); // ✅ CORREGIDO: El web auth usa 'authToken'
+    const clienteToken = localStorage.getItem('authToken');
     
     console.log('[TOKEN ANALYSIS] Checking available tokens:', {
       hasAdminToken: !!adminToken,
@@ -40,28 +44,33 @@ export class TokenAnalyzer {
       clienteTokenPreview: clienteToken?.substring(0, 20) + '...'
     });
     
-    // Prioridad: Cliente token > No token (con id_cliente) > Admin token (problemático)
+    // Prioridad: Admin token > Cliente token
+    // Admin token se usa para endpoint /api/reservas (personal del hotel)
+    // Cliente token se usaría para endpoint /api/reservas-web (clientes finales)
+    
+    if (adminToken) {
+      // Admin token: Enviar token + id_cliente explícito (según documentación backend)
+      return {
+        type: 'admin',
+        token: adminToken,
+        shouldSendToken: true, // ✅ SÍ enviar token admin
+        shouldIncludeClientId: true, // ✅ SÍ incluir id_cliente explícito
+        reason: 'Admin token - using /api/reservas endpoint with explicit id_cliente'
+      };
+    }
+    
     if (clienteToken) {
+      // Cliente token: Enviar token, id_cliente se detecta automáticamente
       return {
         type: 'cliente',
         token: clienteToken,
         shouldSendToken: true,
         shouldIncludeClientId: false, // El backend lo detecta del token
-        reason: 'Cliente token available - backend will auto-detect id_cliente'
+        reason: 'Cliente token - using /api/reservas-web endpoint, id_cliente auto-detected'
       };
     }
     
-    if (adminToken) {
-      // Admin token causa el problema según tu diagnóstico
-      return {
-        type: 'admin',
-        token: adminToken,
-        shouldSendToken: false, // NO enviar token admin para reservas
-        shouldIncludeClientId: true, // Enviar id_cliente explícito
-        reason: 'Admin token detected but causes auth conflict - sending without token'
-      };
-    }
-    
+    // Sin token: Enviar id_cliente explícito
     return {
       type: 'none',
       shouldSendToken: false,

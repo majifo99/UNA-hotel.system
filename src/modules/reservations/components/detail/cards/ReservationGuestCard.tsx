@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Users } from 'lucide-react';
-import type { Reservation } from '../../types';
+import type { Reservation } from '../../../types';
 
 interface ReservationGuestCardProps {
   reservation: Reservation;
@@ -22,7 +22,7 @@ export const ReservationGuestCard: React.FC<ReservationGuestCardProps> = ({ rese
         <Users className="h-4 w-4" />
         Huésped
       </h3>
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
         <p className="font-semibold text-slate-900">{guestName}</p>
         {reservation.guest?.email && (
           <p className="mt-1 text-sm text-slate-600">

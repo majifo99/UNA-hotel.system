@@ -1,11 +1,11 @@
 /**
  * Componente compartido: ReservationRoomCard
- * Muestra información de la habitación y cantidad de huéspedes
+ * Muestra información de la habitación de una reserva
  */
 
 import React from 'react';
 import { Home } from 'lucide-react';
-import type { Reservation } from '../../types';
+import type { Reservation } from '../../../types';
 
 interface ReservationRoomCardProps {
   reservation: Reservation;
@@ -18,7 +18,7 @@ export const ReservationRoomCard: React.FC<ReservationRoomCardProps> = ({ reserv
         <Home className="h-4 w-4" />
         Habitación
       </h3>
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="font-semibold text-slate-900">

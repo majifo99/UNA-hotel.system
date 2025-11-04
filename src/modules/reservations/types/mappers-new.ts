@@ -142,7 +142,7 @@ export function mapApiReservaFullToReservation(api: ApiReservaFull): Reservation
 
   return {
     id: api.id_reserva.toString(),
-    confirmationNumber: api.id_reserva.toString(),
+    confirmationNumber: api.codigo_reserva || api.id_reserva.toString(), // Usar codigo_reserva si existe
     
     // Guest
     guestId: api.cliente.id_cliente.toString(),
@@ -176,6 +176,7 @@ export function mapApiReservaFullToReservation(api: ApiReservaFull): Reservation
     
     // Status & Meta
     status: mapEstadoNombreToStatus(api.estado.nombre),
+    source: api.fuente?.nombre || undefined,
     specialRequests: api.notas || undefined,
     additionalServices: [],
     createdAt: api.created_at,

@@ -108,6 +108,7 @@ export interface ApiReservaHabitacion {
  */
 export interface ApiReservaFull {
   id_reserva: number;
+  codigo_reserva: string; // Código único de la reserva (ej: "UPUNG4HK")
   id_cliente: number;
   id_estado_reserva: number;
   fecha_creacion: string;

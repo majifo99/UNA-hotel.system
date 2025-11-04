@@ -13,7 +13,7 @@ import { KpiCard } from '../components/KpiCard';
 import { TimeSeriesChart } from '../components/TimeSeriesChart';
 import { DistributionChart } from '../components/DistributionChart';
 import { ReportsTable } from '../components/ReportsTable';
-import { Alert } from '../../../../../components/ui/Alert';
+import { Alert, PageHeader, ContentContainer } from '../../../../../components/ui';
 import { ReportsDashboardSkeleton } from '../../../components/ui/Skeleton';
 import type { ChartMetric, ExportFormat, ReservationReportFilters } from '../types/reports';
 
@@ -115,21 +115,13 @@ export const ReservationReportsPage: React.FC = () => {
   }, [exportData]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <ContentContainer>
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-neutral-900">
-              Reportes de Reservaciones
-            </h1>
-            <p className="mt-2 text-sm text-neutral-600">
-              Análisis y métricas de desempeño del sistema de reservaciones
-            </p>
-          </div>
-          
-          {/* Export buttons */}
-          <div className="flex items-center space-x-3">
+      <PageHeader
+        title="Reportes de Reservaciones"
+        subtitle="Análisis y métricas de desempeño del sistema de reservaciones"
+        actions={
+          <>
             <button
               type="button"
               onClick={() => handleExport('csv')}
@@ -150,9 +142,9 @@ export const ReservationReportsPage: React.FC = () => {
               <Download className="w-4 h-4 mr-2" />
               {exportStatus.isExporting ? 'Generando...' : 'Exportar PDF'}
             </button>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Filters */}
       <ReportFilters
@@ -280,6 +272,6 @@ export const ReservationReportsPage: React.FC = () => {
         data={data?.rows || []}
         isLoading={isLoading}
       />
-    </div>
+    </ContentContainer>
   );
 };
