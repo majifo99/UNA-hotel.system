@@ -13,7 +13,7 @@
 
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, Ban, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Edit, Ban, AlertCircle, Copy, Check } from 'lucide-react';
 import { useReservationById } from '../hooks/useReservationQueries';
 import { ReservationStatusBadge } from '../components/ReservationStatusBadge';
 import {
@@ -24,22 +24,33 @@ import {
   ReservationSourceCard,
   ReservationNotesCard,
 } from '../components/detail';
+import { ReservationDetailSkeleton } from '../components/ui/ReservationDetailSkeleton';
+import { toast } from 'sonner';
 
 export const ReservationDetailFullPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: reservation, isLoading, isError, error } = useReservationById(id || '');
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopyCode = async () => {
+    if (!reservation) return;
+    
+    try {
+      await navigator.clipboard.writeText(reservation.confirmationNumber);
+      setCopied(true);
+      toast.success('Código copiado', {
+        description: `${reservation.confirmationNumber} copiado al portapapeles`
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Error al copiar');
+    }
+  };
 
   // Loading state
   if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
-          <p className="text-slate-600">Cargando detalles de la reserva...</p>
-        </div>
-      </div>
-    );
+    return <ReservationDetailSkeleton />;
   }
 
   // Error state
@@ -67,23 +78,40 @@ export const ReservationDetailFullPage: React.FC = () => {
   const canEdit = reservation.status !== 'cancelled' && reservation.status !== 'no_show';
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-12">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 pb-12">
       {/* Header fijo */}
-      <div className="sticky top-0 z-20 border-b border-slate-200 bg-white shadow-sm">
+      <div className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur-sm shadow-sm">
         <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <button
                 onClick={() => navigate('/reservations')}
-                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
                 aria-label="Volver"
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
               <div>
-                <h1 className="text-xl font-bold text-slate-900">Detalle de reserva</h1>
-                <p className="mt-0.5 text-sm text-slate-500">
-                  ID: <span className="font-mono font-medium">#{reservation.confirmationNumber}</span>
+                <div className="flex items-center gap-3 mb-1">
+                  <h1 className="text-xl font-bold text-slate-900">Detalle de reserva</h1>
+                  <div className="inline-flex items-center gap-2 bg-[#304D3C] text-white px-3 py-1 rounded-lg">
+                    <span className="font-mono font-bold text-sm tracking-wide">{reservation.confirmationNumber}</span>
+                    <button
+                      type="button"
+                      onClick={handleCopyCode}
+                      className="inline-flex items-center justify-center w-5 h-5 rounded hover:bg-white/20 transition-colors"
+                      title="Copiar código"
+                    >
+                      {copied ? (
+                        <Check className="h-3.5 w-3.5" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-500">
+                  ID Interno: <span className="font-mono font-medium">#{reservation.id}</span>
                 </p>
               </div>
             </div>
@@ -91,14 +119,14 @@ export const ReservationDetailFullPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => navigate(`/reservations/${reservation.id}/edit`)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-100 hover:bg-emerald-200 px-4 py-2 text-sm font-semibold text-emerald-700 transition-colors shadow-sm"
                 >
                   <Edit className="h-4 w-4" />
                   <span className="hidden sm:inline">Editar</span>
                 </button>
                 <button
                   onClick={() => navigate(`/reservations/${reservation.id}/cancel`)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                  className="inline-flex items-center gap-2 rounded-lg bg-rose-100 hover:bg-rose-200 px-4 py-2 text-sm font-semibold text-rose-700 transition-colors shadow-sm"
                 >
                   <Ban className="h-4 w-4" />
                   <span className="hidden sm:inline">Cancelar</span>
@@ -111,21 +139,33 @@ export const ReservationDetailFullPage: React.FC = () => {
 
       {/* Content */}
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="rounded-2xl bg-white p-6 shadow-sm">
-          {/* Estado de la reserva */}
-          <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-4">
-            <ReservationStatusBadge status={reservation.status} />
-          </div>
+        {/* Estado de la reserva */}
+        <div className="mb-6 flex items-center justify-between">
+          <ReservationStatusBadge status={reservation.status} />
+          <p className="text-sm text-slate-500">
+            Última actualización: {new Date(reservation.updatedAt).toLocaleString('es-CR', {
+              dateStyle: 'medium',
+              timeStyle: 'short'
+            })}
+          </p>
+        </div>
 
-          {/* Grid de contenido */}
-          <div className="space-y-6">
-            <ReservationGuestCard reservation={reservation} />
-            <ReservationSourceCard reservation={reservation} />
-            <ReservationRoomsList reservation={reservation} />
-            <ReservationNotesCard reservation={reservation} />
-            <ReservationFinancialCard reservation={reservation} />
-            <ReservationMetadataCard reservation={reservation} />
-          </div>
+        {/* Grid de contenido */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <ReservationGuestCard reservation={reservation} />
+          <ReservationFinancialCard reservation={reservation} />
+          <ReservationSourceCard reservation={reservation} />
+          <ReservationNotesCard reservation={reservation} />
+        </div>
+
+        {/* Habitaciones - Full width */}
+        <div className="mt-6">
+          <ReservationRoomsList reservation={reservation} />
+        </div>
+
+        {/* Metadata - Full width */}
+        <div className="mt-6">
+          <ReservationMetadataCard reservation={reservation} />
         </div>
       </div>
     </div>

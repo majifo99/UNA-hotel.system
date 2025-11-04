@@ -418,15 +418,21 @@ class RoomService extends BaseApiService {
         
         // Filter reservations for this specific room
         const roomReservations = allReservations.filter(reservation => {
-          // Check if this reservation is for our room
-          const matchesById = reservation.roomId === roomId;
-          const matchesByNumber = reservation.room?.number === roomId;
+          // Convert roomId to number for comparison (same logic as frontdesk dashboard)
+          const searchRoomId = Number(roomId);
+          const reservationRoomId = Number(reservation.roomId);
+          const reservationRoomNumber = reservation.room?.number;
+          
+          // Check if this reservation is for our room (by ID or by room number)
+          const matchesById = reservationRoomId === searchRoomId;
+          const matchesByNumber = reservationRoomNumber === String(searchRoomId) || reservationRoomNumber === roomId;
           const hasRoom = matchesById || matchesByNumber;
           
-          console.log(`[RoomService] 🔍 Checking reservation #${reservation.id}: roomId="${reservation.roomId}" vs "${roomId}" | roomNumber="${reservation.room?.number}" | matches=${hasRoom}`);
+          console.log(`[RoomService] 🔍 Checking reservation #${reservation.id}: roomId=${reservationRoomId} vs ${searchRoomId} | roomNumber="${reservationRoomNumber}" | matches=${hasRoom}`);
           
           if (hasRoom) {
             console.log(`[RoomService] ✅ Found reservation #${reservation.id} for room ${roomId}`);
+            console.log(`[RoomService]    - Guest: ${reservation.guest?.firstName || 'N/A'} ${reservation.guest?.firstLastName || ''}`);
             console.log(`[RoomService]    - Check-in: ${reservation.checkInDate}`);
             console.log(`[RoomService]    - Check-out: ${reservation.checkOutDate}`);
             console.log(`[RoomService]    - Status: ${reservation.status}`);

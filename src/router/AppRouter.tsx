@@ -28,7 +28,7 @@ import HistorialMantenimientosPage from '../modules/Mantenimiento/pages/Historia
 
 
 import { AdminLoginPage, AdminAuthProvider, ProtectedRoute } from '../modules/admin';
-import { ReservationReportsPage } from '../modules/reservations/pages/ReservationReportsPage';
+import { ReservationReportsPage } from '../modules/reservations/features/reports';
 
 
 

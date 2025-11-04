@@ -174,20 +174,101 @@ export function ReservationTableSkeleton({ rows = 10 }: Readonly<ReservationTabl
 
 export function KPICardSkeleton() {
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 space-y-3">
+    <div className="bg-white rounded-lg shadow-md p-6 space-y-3">
       <div className="flex items-center justify-between">
         <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-8 w-8 rounded-full" />
+        <Skeleton className="h-10 w-10 rounded-full" />
       </div>
-      <Skeleton className="h-8 w-24" />
+      <Skeleton className="h-8 w-28" />
       <Skeleton className="h-3 w-40" />
+    </div>
+  );
+}
+
+export function ChartSkeleton() {
+  // Pre-defined heights for chart bars (deterministic, not random)
+  const barHeights = [60, 45, 80, 55, 70, 90, 65, 75, 50, 85, 60, 70];
+  
+  return (
+    <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-4 w-20" />
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-end space-x-2 h-48">
+          {barHeights.map((height, i) => (
+            <div key={`bar-${i + 1}`} className="flex-1 bg-gray-200 rounded-t animate-pulse" style={{ height: `${height}%` }} />
+          ))}
+        </div>
+        <div className="flex justify-between px-2">
+          <Skeleton className="h-3 w-12" />
+          <Skeleton className="h-3 w-12" />
+          <Skeleton className="h-3 w-12" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function ReportsTableSkeleton() {
+  return (
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-neutral-200">
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-4 w-32 mt-2" />
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-neutral-200">
+          <thead className="bg-neutral-50">
+            <tr>
+              <th className="px-6 py-3"><Skeleton className="h-4 w-20" /></th>
+              <th className="px-6 py-3"><Skeleton className="h-4 w-24" /></th>
+              <th className="px-6 py-3"><Skeleton className="h-4 w-28" /></th>
+              <th className="px-6 py-3"><Skeleton className="h-4 w-20" /></th>
+              <th className="px-6 py-3"><Skeleton className="h-4 w-20" /></th>
+              <th className="px-6 py-3"><Skeleton className="h-4 w-16" /></th>
+              <th className="px-6 py-3"><Skeleton className="h-4 w-20" /></th>
+              <th className="px-6 py-3"><Skeleton className="h-4 w-16" /></th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-neutral-200">
+            {Array.from({ length: 8 }, (_, i) => (
+              <tr key={`skeleton-row-${i + 1}`}>
+                <td className="px-6 py-4"><Skeleton className="h-4 w-16" /></td>
+                <td className="px-6 py-4"><Skeleton className="h-4 w-full" /></td>
+                <td className="px-6 py-4"><Skeleton className="h-4 w-24" /></td>
+                <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+                <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+                <td className="px-6 py-4"><Skeleton className="h-4 w-10" /></td>
+                <td className="px-6 py-4"><Skeleton className="h-6 w-20 rounded-full" /></td>
+                <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
 export function ReportsDashboardSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-pulse">
+      {/* Metric selector skeleton */}
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-40" />
+        <div className="flex space-x-2">
+          <Skeleton className="h-10 w-24 rounded-md" />
+          <Skeleton className="h-10 w-24 rounded-md" />
+          <Skeleton className="h-10 w-28 rounded-md" />
+          <Skeleton className="h-10 w-32 rounded-md" />
+        </div>
+      </div>
+
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KPICardSkeleton />
@@ -198,18 +279,18 @@ export function ReportsDashboardSkeleton() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-sm p-6 space-y-4">
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-64 w-full" />
-        </div>
-        <div className="bg-white rounded-lg shadow-sm p-6 space-y-4">
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-64 w-full" />
-        </div>
+        <ChartSkeleton />
+        <ChartSkeleton />
+      </div>
+
+      {/* Additional charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ChartSkeleton />
+        <ChartSkeleton />
       </div>
 
       {/* Table */}
-      <ReservationTableSkeleton rows={5} />
+      <ReportsTableSkeleton />
     </div>
   );
 }
