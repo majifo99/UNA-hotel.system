@@ -114,17 +114,50 @@ export class ModificacionReservaService {
     data: CambiarHabitacionRequest
   ): Promise<CambiarHabitacionResponse> {
     try {
-      console.log('🔄 Cambiando habitación:', { idReserva, data });
+      console.log('🔄 Cambiando habitación:', { 
+        idReserva, 
+        data,
+        dataTypes: {
+          id_reserva_habitacion: typeof data.id_reserva_habitacion,
+          id_habitacion_nueva: typeof data.id_habitacion_nueva,
+          motivo: typeof data.motivo
+        },
+        valores: {
+          id_reserva_habitacion: data.id_reserva_habitacion,
+          id_habitacion_nueva: data.id_habitacion_nueva,
+          motivo: data.motivo
+        }
+      });
       
-      const response = await apiClient.post<CambiarHabitacionResponse>(
-        `/reservas/${idReserva}/modificar/cambiar-habitacion`,
-        data
-      );
-      
-      console.log('✅ Habitación cambiada exitosamente:', response.data);
-      return response.data;
+      const response = await apiClient.post(`/reservas/${idReserva}/modificar/cambiar-habitacion`, data);
+
+      console.log('✅ Raw response cambiarHabitacion:', response.data);
+
+      // Desanidar de forma robusta: el backend puede devolver { success, message, data } o varias capas.
+      let payload: any = response.data;
+      // Evitar bucles infinitos si por alguna razón data referencia al mismo objeto
+      while (payload && typeof payload === 'object' && 'data' in payload && payload.data !== payload) {
+        payload = payload.data;
+      }
+
+      console.log('📦 Payload final (desanidado) cambiarHabitacion:', payload);
+
+      // Validar que la payload tenga los campos esperados para evitar que el UI intente acceder a undefined
+      if (!payload || typeof payload !== 'object' || !('habitacion_nueva' in payload) || !('habitacion_antigua' in payload)) {
+        console.error('❌ Respuesta inesperada al cambiar habitación:', { raw: response.data, payload });
+        // Lanzamos para que la mutation capture el error y el hook gestione el mensaje en UI
+        throw new Error(response.data?.message || 'Respuesta inesperada del servidor al cambiar la habitación');
+      }
+
+      return payload as CambiarHabitacionResponse;
     } catch (error: any) {
       console.error('❌ Error al cambiar habitación:', error);
+      console.error('❌ Detalles del error:', {
+        message: error.response?.data?.message,
+        errors: error.response?.data?.errors,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message);
@@ -148,15 +181,31 @@ export class ModificacionReservaService {
     try {
       console.log('📅 Modificando fechas:', { idReserva, data });
       
-      const response = await apiClient.post<ModificarFechasResponse>(
-        `/reservas/${idReserva}/modificar/cambiar-fechas`,
-        data
-      );
-      
-      console.log('✅ Fechas modificadas exitosamente:', response.data);
-      return response.data;
+      const response = await apiClient.post(`/reservas/${idReserva}/modificar/cambiar-fechas`, data);
+
+      console.log('✅ Raw response modificarFechas:', response.data);
+
+      let payload: any = response.data;
+      while (payload && typeof payload === 'object' && 'data' in payload && payload.data !== payload) {
+        payload = payload.data;
+      }
+
+      console.log('📦 Payload final (desanidado) modificarFechas:', payload);
+
+      if (!payload || typeof payload !== 'object' || !('fechas_nuevas' in payload) || !('fechas_originales' in payload)) {
+        console.error('❌ Respuesta inesperada al modificar fechas:', { raw: response.data, payload });
+        throw new Error(response.data?.message || 'Respuesta inesperada del servidor al modificar fechas');
+      }
+
+      return payload as ModificarFechasResponse;
     } catch (error: any) {
       console.error('❌ Error al modificar fechas:', error);
+      console.error('❌ Detalles del error:', {
+        message: error.response?.data?.message,
+        errors: error.response?.data?.errors,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message);
@@ -180,15 +229,31 @@ export class ModificacionReservaService {
     try {
       console.log('⏰ Reduciendo estadía:', { idReserva, data });
       
-      const response = await apiClient.post<ReducirEstadiaResponse>(
-        `/reservas/${idReserva}/modificar/reducir-estadia`,
-        data
-      );
-      
-      console.log('✅ Estadía reducida exitosamente:', response.data);
-      return response.data;
+      const response = await apiClient.post(`/reservas/${idReserva}/modificar/reducir-estadia`, data);
+
+      console.log('✅ Raw response reducirEstadia:', response.data);
+
+      let payload: any = response.data;
+      while (payload && typeof payload === 'object' && 'data' in payload && payload.data !== payload) {
+        payload = payload.data;
+      }
+
+      console.log('📦 Payload final (desanidado) reducirEstadia:', payload);
+
+      if (!payload || typeof payload !== 'object' || !('reduccion' in payload) || !('montos' in payload)) {
+        console.error('❌ Respuesta inesperada al reducir estadía:', { raw: response.data, payload });
+        throw new Error(response.data?.message || 'Respuesta inesperada del servidor al reducir la estadía');
+      }
+
+      return payload as ReducirEstadiaResponse;
     } catch (error: any) {
       console.error('❌ Error al reducir estadía:', error);
+      console.error('❌ Detalles del error:', {
+        message: error.response?.data?.message,
+        errors: error.response?.data?.errors,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message);

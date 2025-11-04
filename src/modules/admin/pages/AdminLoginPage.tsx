@@ -7,7 +7,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { adminLoginSchema, type AdminLoginFormData } from '../auth/schemas';
-import { useAdminAuth } from '../auth/useAdminAuth';
+import { useAdminAuth } from '../auth/useAdminAuthHook';
 
 export function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);

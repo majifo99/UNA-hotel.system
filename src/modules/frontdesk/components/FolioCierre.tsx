@@ -30,7 +30,10 @@ export const FolioCierre: React.FC<FolioCierreProps> = ({
       setError(null);
       setExito(null);
 
-      const resultado = await folioService.cerrarFolio(folioId);
+      const resultado = await folioService.cerrarFolio(folioId, {
+        operacion_uid: `cierre-${Date.now()}`,
+        id_cliente_titular: 1
+      });
       
       setExito('Folio cerrado exitosamente. Todos los cargos y saldos pendientes han sido reclasificados al titular.');
       setConfirmacion(false);

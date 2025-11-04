@@ -2,7 +2,7 @@
  * Admin Authentication Context & Hook
  */
 
-import { createContext, useContext, useReducer, useEffect, useMemo, useCallback } from 'react';
+import { createContext, useReducer, useEffect, useMemo, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import type { 
   AdminAuthContextType, 
@@ -88,6 +88,8 @@ const initialState: AdminAuthState = {
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
 
+export { AdminAuthContext };
+
 // =================== PROVIDER ===================
 
 interface AdminAuthProviderProps {
@@ -96,6 +98,89 @@ interface AdminAuthProviderProps {
 
 export function AdminAuthProvider({ children }: AdminAuthProviderProps) {
   const [state, dispatch] = useReducer(adminAuthReducer, initialState);
+
+  // =================== SESSION SYNC ===================
+
+  // Listener para cambios en localStorage desde otras pestañas
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'adminAuthToken' || event.key === 'adminAuthUser') {
+        // La sesión cambió en otra pestaña, verificar estado actual
+        const checkSession = async () => {
+          try {
+            const user = await AdminAuthService.getCurrentUser();
+            if (user) {
+              dispatch({ type: 'AUTH_SUCCESS', payload: user });
+            } else {
+              dispatch({ type: 'AUTH_LOGOUT' });
+            }
+          } catch (error) {
+            console.error('[AdminAuth] Error verificando sesión tras cambio:', error);
+            dispatch({ type: 'AUTH_LOGOUT' });
+          }
+        };
+        
+        checkSession();
+      }
+    };
+
+    globalThis.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      globalThis.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  // Verificación de sesión cuando la pestaña se vuelve visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && state.isAuthenticated) {
+        // La pestaña se volvió visible, verificar que la sesión siga válida
+        const checkSession = async () => {
+          try {
+            const user = await AdminAuthService.getCurrentUser();
+            if (!user) {
+              dispatch({ type: 'AUTH_LOGOUT' });
+            }
+          } catch (error) {
+            console.error('[AdminAuth] Error verificando sesión al volver visible:', error);
+          }
+        };
+        
+        checkSession();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [state.isAuthenticated]);
+
+  // Verificación periódica de sesión
+  useEffect(() => {
+    if (!state.isAuthenticated) return;
+
+    const checkSessionPeriodically = async () => {
+      try {
+        const isValid = await AdminAuthService.isAuthenticated();
+        if (!isValid) {
+          console.log('[AdminAuth] Sesión expirada, cerrando sesión');
+          dispatch({ type: 'AUTH_LOGOUT' });
+        }
+      } catch (error) {
+        console.error('[AdminAuth] Error en verificación periódica:', error);
+      }
+    };
+
+    // Verificar cada 5 minutos
+    const interval = setInterval(checkSessionPeriodically, 5 * 60 * 1000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [state.isAuthenticated]);
 
   // =================== ACTIONS ===================
 
@@ -147,25 +232,59 @@ export function AdminAuthProvider({ children }: AdminAuthProviderProps) {
   // =================== INITIALIZATION ===================
 
   useEffect(() => {
+    let isMounted = true;
+
+    const validateStoredSession = async (): Promise<boolean> => {
+      try {
+        const isValid = await AdminAuthService.isAuthenticated();
+        return isValid;
+      } catch (error) {
+        console.warn('[AdminAuth] Error validando token:', error);
+        return true; // Asumir válido si hay error de red
+      }
+    };
+
     const initializeAuth = async () => {
       try {
-        // Intentar obtener el usuario del localStorage primero
+        console.log('[AdminAuth] Iniciando verificación de sesión...');
+        
         const user = await AdminAuthService.getCurrentUser();
+        
+        if (!isMounted) return;
         
         if (user) {
           console.log('[AdminAuth] Usuario encontrado en localStorage:', user.email);
-          dispatch({ type: 'AUTH_SUCCESS', payload: user });
+          
+          const isValid = await validateStoredSession();
+          
+          if (!isMounted) return;
+          
+          if (isValid) {
+            dispatch({ type: 'AUTH_SUCCESS', payload: user });
+            console.log('[AdminAuth] Sesión válida restaurada');
+          } else {
+            console.log('[AdminAuth] Token inválido, limpiando sesión');
+            await AdminAuthService.logout();
+            dispatch({ type: 'AUTH_SET_LOADING', payload: false });
+          }
         } else {
           console.log('[AdminAuth] No se encontró usuario en localStorage');
           dispatch({ type: 'AUTH_SET_LOADING', payload: false });
         }
       } catch (error) {
         console.error('[AdminAuth] Error al inicializar autenticación:', error);
-        dispatch({ type: 'AUTH_SET_LOADING', payload: false });
+        if (isMounted) {
+          dispatch({ type: 'AUTH_SET_LOADING', payload: false });
+        }
       }
     };
 
-    initializeAuth();
+    const timeoutId = setTimeout(initializeAuth, 100);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   // =================== CONTEXT VALUE ===================
@@ -176,23 +295,11 @@ export function AdminAuthProvider({ children }: AdminAuthProviderProps) {
     logout,
     clearError,
     refreshUser,
-  }), [state]);
+  }), [state, login, logout, clearError, refreshUser]);
 
   return (
     <AdminAuthContext.Provider value={contextValue}>
       {children}
     </AdminAuthContext.Provider>
   );
-}
-
-// =================== HOOK ===================
-
-export function useAdminAuth(): AdminAuthContextType {
-  const context = useContext(AdminAuthContext);
-  
-  if (context === undefined) {
-    throw new Error('useAdminAuth must be used within an AdminAuthProvider');
-  }
-  
-  return context;
 }

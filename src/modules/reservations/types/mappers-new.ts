@@ -11,6 +11,15 @@ import type { ApiReservaFull, ApiCliente, ApiReservaHabitacion } from './api';
  * Map ApiCliente to Guest
  */
 export function mapApiClienteToGuest(cliente: ApiCliente): Guest {
+  console.log('👤 Mapping ApiCliente to Guest:', {
+    id_cliente: cliente.id_cliente,
+    nombre: cliente.nombre,
+    apellido1: cliente.apellido1,
+    apellido2: cliente.apellido2,
+    nombre_completo: cliente.nombre_completo,
+    email: cliente.email,
+  });
+
   return {
     id: cliente.id_cliente.toString(),
     firstName: cliente.nombre,
@@ -31,14 +40,21 @@ export function mapApiClienteToGuest(cliente: ApiCliente): Guest {
  * Map ApiReservaHabitacion to Room (single room from assignment)
  */
 export function mapApiHabitacionToRoom(habitacion: ApiReservaHabitacion): Room {
-  const precioBase = parseFloat(habitacion.habitacion.precio_base);
+  const precioBase = Number.parseFloat(habitacion.habitacion.precio_base);
+  
+  console.log('🏨 Mapping habitacion to Room:', {
+    id_habitacion: habitacion.habitacion.id_habitacion,
+    nombre: habitacion.habitacion.nombre,
+    numero: habitacion.habitacion.numero,
+    piso: habitacion.habitacion.piso,
+  });
   
   return {
     id: habitacion.habitacion.id_habitacion.toString(),
     name: habitacion.habitacion.nombre,
     type: 'single', // Default type
     floor: habitacion.habitacion.piso,
-    number: habitacion.habitacion.numero,
+    number: habitacion.habitacion.numero, // Este es el número que se usa en CheckIn
     capacity: habitacion.habitacion.capacidad,
     description: habitacion.habitacion.descripcion || '',
     basePrice: precioBase,
@@ -132,6 +148,17 @@ function getCheckInOutDates(habitaciones: ApiReservaHabitacion[]): {
  * Main mapper: ApiReservaFull → Reservation
  */
 export function mapApiReservaFullToReservation(api: ApiReservaFull): Reservation {
+  console.log('🔄 Mapping ApiReservaFull to Reservation:', {
+    id_reserva: api.id_reserva,
+    codigo_reserva: api.codigo_reserva,
+    habitaciones_count: api.habitaciones?.length || 0,
+    first_room: api.habitaciones?.[0] ? {
+      id_habitacion: api.habitaciones[0].habitacion.id_habitacion,
+      numero: api.habitaciones[0].habitacion.numero,
+      nombre: api.habitaciones[0].habitacion.nombre,
+    } : null,
+  });
+
   const guestTotals = calculateTotalGuests(api.habitaciones);
   const { checkInDate, checkOutDate } = getCheckInOutDates(api.habitaciones);
   const nights = calculateTotalNights(api.habitaciones);
@@ -140,9 +167,16 @@ export function mapApiReservaFullToReservation(api: ApiReservaFull): Reservation
   const firstRoom = api.habitaciones[0];
   const room = firstRoom ? mapApiHabitacionToRoom(firstRoom) : undefined;
 
+  console.log('🏨 Mapped room object:', {
+    room_id: room?.id,
+    room_number: room?.number,
+    room_name: room?.name,
+  });
+
   return {
     id: api.id_reserva.toString(),
-    confirmationNumber: api.codigo_reserva || api.id_reserva.toString(), // Usar codigo_reserva si existe
+    // Use codigo_reserva if available, otherwise fall back to id_reserva
+    confirmationNumber: api.codigo_reserva || api.id_reserva.toString(),
     
     // Guest
     guestId: api.cliente.id_cliente.toString(),

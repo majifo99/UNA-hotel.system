@@ -37,7 +37,7 @@ export interface ApiCliente {
  * Estado de reserva en la nueva API.
  */
 export interface ApiEstadoReserva {
-  id_estado_reserva: number;
+  id_estado_res: number; // Corregido para coincidir con la respuesta real del backend
   nombre: string;
   created_at: string;
   updated_at: string;
@@ -108,15 +108,31 @@ export interface ApiReservaHabitacion {
  */
 export interface ApiReservaFull {
   id_reserva: number;
-  codigo_reserva: string; // Código único de la reserva (ej: "UPUNG4HK")
+  codigo_reserva?: string; // Código de 8 caracteres (e.g., "V48FQ5YX")
   id_cliente: number;
-  id_estado_reserva: number;
+  id_estado_res: number; // Corregido para coincidir con la respuesta real del backend
   fecha_creacion: string;
   total_monto_reserva: number;
+  monto_pagado?: number;
+  monto_pendiente?: number;
+  porcentaje_minimo_pago?: number;
+  pago_completo?: boolean;
   notas: string | null;
   id_fuente: number | null;
   created_at: string;
   updated_at: string;
+  porcentaje_pagado?: number;
+  resumen_pagos?: {
+    total_reserva: number;
+    monto_pagado: number;
+    monto_pendiente: number;
+    porcentaje_pagado: number;
+    porcentaje_minimo_requerido: number;
+    alcanzo_minimo: boolean;
+    pago_completo: boolean;
+    puede_confirmar: boolean;
+  };
+  codigo_formateado?: string; // Código con guión (e.g., "V48F-Q5YX")
   
   // Relaciones pobladas
   cliente: ApiCliente;

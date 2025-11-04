@@ -71,7 +71,7 @@ interface LaravelAdminLoginResponse {
     apellido2: string;
     email: string;
     rol: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -111,8 +111,10 @@ export class AdminAuthService {
           expiresIn: 3600,
         }
       };
-    } catch (error: any) {
-      const message = error.response?.data?.message || 'Error al iniciar sesión';
+    } catch (error) {
+      const message = error instanceof Error 
+        ? error.message 
+        : (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al iniciar sesión';
       throw new Error(message);
     }
   }
@@ -164,8 +166,10 @@ export class AdminAuthService {
 
       saveAdminUser(adminUser);
       return adminUser;
-    } catch (error: any) {
-      const message = error.response?.data?.message || 'Error al actualizar usuario';
+    } catch (error) {
+      const message = error instanceof Error 
+        ? error.message 
+        : (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al actualizar usuario';
       throw new Error(message);
     }
   }
@@ -174,7 +178,30 @@ export class AdminAuthService {
    * Check if admin user is authenticated
    */
   static async isAuthenticated(): Promise<boolean> {
-    const user = await this.getCurrentUser();
-    return user !== null;
+    const token = getStoredAdminToken();
+    const user = getStoredAdminUser();
+    
+    if (!token || !user) {
+      return false;
+    }
+
+    try {
+      // Intentar hacer una llamada simple para validar el token
+      await apiClient.get('/auth/check');
+      return true;
+    } catch (error) {
+      // Si el token no es válido, limpiar datos
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { status?: number } };
+        if (axiosError.response?.status === 401) {
+          clearAdminAuthData();
+          return false;
+        }
+      }
+      // En caso de error de red, asumir que el token es válido
+      const message = error instanceof Error ? error.message : 'Error desconocido';
+      console.warn('[AdminAuth] Error de red al verificar token, asumiendo válido:', message);
+      return true;
+    }
   }
 }

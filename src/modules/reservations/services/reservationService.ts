@@ -75,6 +75,14 @@ class ReservationService {
   }
 
   /**
+   * Obtiene una reserva por código de reserva
+   * GET /reservas?codigo_reserva={code}
+   */
+  async getReservationByCode(code: string): Promise<Reservation | null> {
+    return reservationCrudService.getByCode(code);
+  }
+
+  /**
    * Obtiene una reserva por número de confirmación
    * GET /reservas?confirmationNumber={number}
    */
