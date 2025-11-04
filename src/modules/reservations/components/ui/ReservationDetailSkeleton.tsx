@@ -1,9 +1,11 @@
 /**
  * Skeleton component for ReservationDetailFullPage
+ * Refactored to use shared Skeleton primitives
  */
 
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { Skeleton } from '../../../../shared/ui/Skeleton';
 
 export const ReservationDetailSkeleton: React.FC = () => {
   return (
@@ -17,13 +19,13 @@ export const ReservationDetailSkeleton: React.FC = () => {
                 <ArrowLeft className="h-5 w-5 text-slate-300" />
               </div>
               <div>
-                <div className="h-7 w-48 bg-slate-200 rounded animate-pulse"></div>
-                <div className="h-4 w-32 bg-slate-100 rounded animate-pulse mt-2"></div>
+                <Skeleton.Text width="48" height="lg" className="mb-2" />
+                <Skeleton.Text width="32" height="sm" />
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-10 w-24 bg-slate-200 rounded-lg animate-pulse"></div>
-              <div className="h-10 w-24 bg-slate-200 rounded-lg animate-pulse"></div>
+              <Skeleton.Button width="24" />
+              <Skeleton.Button width="24" />
             </div>
           </div>
         </div>
@@ -34,73 +36,40 @@ export const ReservationDetailSkeleton: React.FC = () => {
         <div className="space-y-8">
           {/* Estado */}
           <div className="flex items-center justify-between">
-            <div className="h-8 w-32 bg-slate-200 rounded-full animate-pulse"></div>
-            <div className="h-6 w-48 bg-slate-200 rounded animate-pulse"></div>
+            <Skeleton.Text width="32" height="lg" className="rounded-full" />
+            <Skeleton.Text width="48" />
           </div>
 
           {/* Grid de cards */}
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* Card skeleton 1 */}
-            <div className="bg-white border-2 border-slate-200 rounded-2xl p-6 shadow-sm">
-              <div className="h-5 w-40 bg-slate-200 rounded animate-pulse mb-4"></div>
-              <div className="space-y-3">
-                <div className="h-4 w-full bg-slate-100 rounded animate-pulse"></div>
-                <div className="h-4 w-3/4 bg-slate-100 rounded animate-pulse"></div>
-                <div className="h-4 w-5/6 bg-slate-100 rounded animate-pulse"></div>
-              </div>
-            </div>
-
-            {/* Card skeleton 2 */}
-            <div className="bg-white border-2 border-slate-200 rounded-2xl p-6 shadow-sm">
-              <div className="h-5 w-40 bg-slate-200 rounded animate-pulse mb-4"></div>
-              <div className="space-y-3">
-                <div className="h-4 w-full bg-slate-100 rounded animate-pulse"></div>
-                <div className="h-4 w-3/4 bg-slate-100 rounded animate-pulse"></div>
-                <div className="h-4 w-5/6 bg-slate-100 rounded animate-pulse"></div>
-              </div>
-            </div>
-
-            {/* Card skeleton 3 */}
-            <div className="bg-white border-2 border-slate-200 rounded-2xl p-6 shadow-sm">
-              <div className="h-5 w-40 bg-slate-200 rounded animate-pulse mb-4"></div>
-              <div className="space-y-3">
-                <div className="h-4 w-full bg-slate-100 rounded animate-pulse"></div>
-                <div className="h-4 w-3/4 bg-slate-100 rounded animate-pulse"></div>
-              </div>
-            </div>
-
-            {/* Card skeleton 4 */}
-            <div className="bg-white border-2 border-slate-200 rounded-2xl p-6 shadow-sm">
-              <div className="h-5 w-40 bg-slate-200 rounded animate-pulse mb-4"></div>
-              <div className="space-y-3">
-                <div className="h-4 w-full bg-slate-100 rounded animate-pulse"></div>
-                <div className="h-4 w-3/4 bg-slate-100 rounded animate-pulse"></div>
-              </div>
-            </div>
+            <Skeleton.Card header lines={3} />
+            <Skeleton.Card header lines={3} />
+            <Skeleton.Card header lines={2} />
+            <Skeleton.Card header lines={2} />
           </div>
 
           {/* Habitaciones skeleton */}
-          <div className="bg-white border-2 border-slate-200 rounded-2xl p-6 shadow-sm">
-            <div className="h-5 w-48 bg-slate-200 rounded animate-pulse mb-4"></div>
+          <Skeleton.Card header>
             <div className="space-y-4">
-              <div className="h-24 w-full bg-slate-100 rounded-xl animate-pulse"></div>
-              <div className="h-24 w-full bg-slate-100 rounded-xl animate-pulse"></div>
+              <Skeleton.Text width="full" height="xl" className="rounded-xl" />
+              <Skeleton.Text width="full" height="xl" className="rounded-xl" />
             </div>
-          </div>
+          </Skeleton.Card>
 
           {/* Metadata skeleton */}
-          <div className="bg-white border-2 border-slate-200 rounded-2xl p-6 shadow-sm">
-            <div className="h-5 w-56 bg-slate-200 rounded animate-pulse mb-4"></div>
+          <Skeleton.Card header>
             <div className="space-y-3">
-              <div className="h-20 w-full bg-gradient-to-r from-slate-100 to-slate-50 rounded-xl animate-pulse"></div>
+              <Skeleton.Text width="full" height="xl" className="rounded-xl bg-gradient-to-r from-slate-100 to-slate-50" />
               <div className="grid grid-cols-2 gap-4">
-                <div className="h-16 bg-slate-100 rounded-lg animate-pulse"></div>
-                <div className="h-16 bg-slate-100 rounded-lg animate-pulse"></div>
+                <Skeleton.Text width="full" height="lg" className="rounded-lg" />
+                <Skeleton.Text width="full" height="lg" className="rounded-lg" />
               </div>
             </div>
-          </div>
+          </Skeleton.Card>
         </div>
       </div>
     </div>
   );
 };
+
+export default ReservationDetailSkeleton;
