@@ -289,7 +289,50 @@ export const folioService = {
   },
 
   // --------------------------------------------------------------------------
-  // 6. UTILIDADES: Generadores de IDs únicos
+  // 6. WORKAROUND: Agregar cargo inicial usando distribución
+  // --------------------------------------------------------------------------
+
+  /**
+   * WORKAROUND: Agrega un cargo inicial al folio usando el endpoint de distribución
+   * Esto es temporal hasta que el backend implemente la creación automática de cargos
+   */
+  agregarCargoInicial: async (
+    folioId: number,
+    cargoData: {
+      descripcion: string;
+      monto: number;
+      id_cliente_titular: number;
+    }
+  ): Promise<FolioResumen> => {
+    // Usar distribución con estrategia 'single' para asignar todo al titular
+    const distribucionData: DistribucionRequest = {
+      operacion_uid: folioService.generarOperacionUID('dist'),
+      strategy: 'single',
+      responsables: [
+        {
+          id_cliente: cargoData.id_cliente_titular,
+          amount: cargoData.monto
+        }
+      ]
+    };
+
+    console.log("🔧 WORKAROUND: Agregando cargo inicial via distribución:", {
+      folioId,
+      descripcion: cargoData.descripcion,
+      monto: cargoData.monto,
+      distribucionData
+    });
+
+    const response = await apiClient.post<FolioResumen>(
+      `/folios/${folioId}/distribuir`,
+      distribucionData
+    );
+    
+    return response.data;
+  },
+
+  // --------------------------------------------------------------------------
+  // 7. UTILIDADES: Generadores de IDs únicos
   // --------------------------------------------------------------------------
 
   /**
@@ -301,3 +344,5 @@ export const folioService = {
     return `${tipo}-${timestamp}-${random}`;
   },
 };
+
+export default folioService;

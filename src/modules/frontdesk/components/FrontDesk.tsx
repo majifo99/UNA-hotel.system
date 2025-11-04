@@ -9,6 +9,7 @@ import {
 import type { Room } from '../../../types/core/domain';
 import type { FrontdeskRoom, RoomFilters, FrontdeskRoomStatus, FrontdeskRoomType } from '../types';
 import CalendarView from './CalendarView';
+import { FrontDeskStats } from './FrontDeskStats';
 import {
   generateMockGuestName,
   generateMockCheckIn,
@@ -31,9 +32,9 @@ const adaptRoomToFrontdesk = (room: Room): FrontdeskRoom => ({
 const mapRoomStatusToFrontdesk = (status: Room['status']): FrontdeskRoomStatus => {
   const statusMap: Record<NonNullable<Room['status']>, FrontdeskRoomStatus> = {
     'available': 'available',
-    'occupied': 'checked-in',
+    'occupied': 'occupied',
     'maintenance': 'maintenance',
-    'cleaning': 'checked-out',
+    'cleaning': 'cleaning',
   };
   return status ? statusMap[status] : 'available';
 };
@@ -303,6 +304,9 @@ const FrontDesk: React.FC = () => {
                 />
               </div>
             )}
+
+            {/* Estadísticas Detalladas del Front Desk */}
+            <FrontDeskStats rooms={filteredRooms.map(adaptRoomToFrontdesk)} />
 
             {/* Content Based on Active View */}
             {activeView === 'calendar' ? (

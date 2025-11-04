@@ -16,6 +16,11 @@ export { FolioHistorial } from './FolioHistorial';
 export { DepositoResumen } from './DepositoResumen';
 export { FacturacionResumen } from './FacturacionResumen';
 
-// 🔄 Integration Components
+// 📊 Statistics Components
+export { FrontDeskStats } from './FrontDeskStats';
+export { DashboardWithStats } from './DashboardWithStats';
+
+// � Integration Components
 export { CheckInFlow } from './CheckInFlow';
 export { FolioManagerPage } from './FolioManagerPage';
+

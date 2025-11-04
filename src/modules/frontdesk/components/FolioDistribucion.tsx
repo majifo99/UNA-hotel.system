@@ -41,6 +41,22 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
   tiposCargo
 }) => {
   // ========================================
+  // 🔧 UTILIDADES
+  // ========================================
+  
+  /**
+   * Convierte un valor a número de forma segura
+   */
+  const toNumber = (value: unknown): number => {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  };
+
+  // ========================================
   // 🎯 Estados Locales del Componente
   // ========================================
   const [strategy, setStrategy] = useState<EstrategiaDistribucion>('equal');
@@ -369,15 +385,15 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
                     <>
                       <div>
                         <span className="block">Ya asignado:</span>
-                        <span className="font-medium">${folioData.personas.find((p: any) => p.id_cliente === persona.id_cliente)?.asignado.toFixed(2)}</span>
+                        <span className="font-medium">${toNumber(folioData.personas.find((p: any) => p.id_cliente === persona.id_cliente)?.asignado).toFixed(2)}</span>
                       </div>
                       <div>
                         <span className="block">Pagos:</span>
-                        <span className="font-medium">${folioData.personas.find((p: any) => p.id_cliente === persona.id_cliente)?.pagos.toFixed(2)}</span>
+                        <span className="font-medium">${toNumber(folioData.personas.find((p: any) => p.id_cliente === persona.id_cliente)?.pagos).toFixed(2)}</span>
                       </div>
                       <div>
                         <span className="block">Saldo:</span>
-                        <span className="font-medium">${folioData.personas.find((p: any) => p.id_cliente === persona.id_cliente)?.saldo.toFixed(2)}</span>
+                        <span className="font-medium">${toNumber(folioData.personas.find((p: any) => p.id_cliente === persona.id_cliente)?.saldo).toFixed(2)}</span>
                       </div>
                     </>
                   )}
@@ -495,8 +511,8 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
             </div>
             <div className="bg-white p-3 rounded-lg border">
               <span className="block text-xs text-gray-500 uppercase font-medium">Saldo Global</span>
-              <span className={`text-lg font-bold ${folioData.totales.saldo_global > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                ${folioData.totales.saldo_global.toFixed(2)}
+              <span className={`text-lg font-bold ${toNumber(folioData.totales.saldo_global) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                ${toNumber(folioData.totales.saldo_global).toFixed(2)}
               </span>
             </div>
           </div>
@@ -506,15 +522,15 @@ export const FolioDistribucion: React.FC<FolioDistribucionProps> = ({
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
               {/* Información adicional */}
-                <span className="ml-2 font-medium">${folioData.totales.pagos_por_persona_total.toFixed(2)}</span>
+                <span className="ml-2 font-medium">${toNumber(folioData.totales.pagos_por_persona_total).toFixed(2)}</span>
               </div>
               <div>
                 <span className="text-gray-500">Pagos Generales:</span>
-                <span className="ml-2 font-medium">${folioData.totales.pagos_generales.toFixed(2)}</span>
+                <span className="ml-2 font-medium">${toNumber(folioData.totales.pagos_generales).toFixed(2)}</span>
               </div>
               <div>
                 <span className="text-gray-500">Total Pagos:</span>
-                <span className="ml-2 font-medium">${folioData.totales.pagos_totales.toFixed(2)}</span>
+                <span className="ml-2 font-medium">${toNumber(folioData.totales.pagos_totales).toFixed(2)}</span>
               </div>
             </div>
           </div>

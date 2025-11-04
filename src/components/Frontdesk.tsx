@@ -6,12 +6,25 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import type { ColumnDef } from '@tanstack/react-table';
+import { FrontDeskStats } from '../modules/frontdesk/components/FrontDeskStats';
+import { mapLocalRoomsToFrontdeskRooms } from './localRoomMapping';
 
 /* ===========================
    Tipos y datos mock
 =========================== */
-type RoomStatus = 'available' | 'reserved' | 'checked-in' | 'checked-out' | 'maintenance';
+type RoomStatus = 'available' | 'reserved' | 'occupied' | 'cleaning' | 'maintenance' | 'checked-out';
 type RoomType = 'Deluxe' | 'Standard' | 'Suite';
+
+// Estados de Reservas (separado del estado de habitaciones)
+type ReservationStatus = 
+  | 'pending'      // Pendiente
+  | 'cancelled'    // Cancelada  
+  | 'confirmed'    // Confirmada
+  | 'checked-in'   // Check-in
+  | 'checked-out'  // Check-out
+  | 'no-show'      // No show
+  | 'waiting'      // En espera
+  | 'completed';   // Finalizada
 
 type Room = {
   id: string;
@@ -21,15 +34,17 @@ type Room = {
   checkIn: string | null;
   checkOut: string | null;
   status: RoomStatus;
+  reservationStatus?: ReservationStatus; // Estado de la reserva asociada
 };
 
 const seedRooms: Room[] = [
-  { id: 'r301', roomNumber: '301', type: 'Deluxe',   guestName: 'Ana Rodriguez',   checkIn: '2025-08-21', checkOut: '2025-08-24', status: 'reserved' },
+  { id: 'r301', roomNumber: '301', type: 'Deluxe',   guestName: 'Ana Rodriguez',   checkIn: '2025-08-21', checkOut: '2025-08-24', status: 'reserved', reservationStatus: 'confirmed' },
   { id: 'r302', roomNumber: '302', type: 'Standard', guestName: null,               checkIn: null,         checkOut: null,         status: 'available' },
-  { id: 'r303', roomNumber: '303', type: 'Suite',    guestName: 'Luis Fernández',   checkIn: '2025-08-18', checkOut: '2025-08-20', status: 'checked-in' },
+  { id: 'r303', roomNumber: '303', type: 'Suite',    guestName: 'Luis Fernández',   checkIn: '2025-08-18', checkOut: '2025-08-20', status: 'occupied', reservationStatus: 'checked-in' },
   { id: 'r304', roomNumber: '304', type: 'Standard', guestName: null,               checkIn: null,         checkOut: null,         status: 'maintenance' },
-  { id: 'r305', roomNumber: '305', type: 'Deluxe',   guestName: 'María López',      checkIn: '2025-08-19', checkOut: '2025-08-22', status: 'checked-in' },
-  { id: 'r306', roomNumber: '306', type: 'Suite',    guestName: null,               checkIn: null,         checkOut: null,         status: 'available' },
+  { id: 'r305', roomNumber: '305', type: 'Deluxe',   guestName: 'María López',      checkIn: '2025-08-19', checkOut: '2025-08-22', status: 'occupied', reservationStatus: 'checked-in' },
+  { id: 'r306', roomNumber: '306', type: 'Suite',    guestName: 'Carlos Pérez',     checkIn: '2025-11-01', checkOut: '2025-11-03', status: 'checked-out', reservationStatus: 'checked-out' },
+  { id: 'r307', roomNumber: '307', type: 'Standard', guestName: null,               checkIn: null,         checkOut: null,         status: 'cleaning' },
 ];
 
 /* ===========================
@@ -38,16 +53,18 @@ const seedRooms: Room[] = [
 const STATUS_LABEL: Record<RoomStatus, string> = {
   available: 'Disponible',
   reserved: 'Reservada',
-  'checked-in': 'Check-in',
+  occupied: 'Ocupada',
+  cleaning: 'En Limpieza',
   'checked-out': 'Check-out',
   maintenance: 'Mantenimiento',
 };
 const STATUS_CLASS: Record<RoomStatus, string> = {
   available: 'bg-green-100 text-green-800',
-  reserved: 'bg-yellow-100 text-yellow-800',
-  'checked-in': 'bg-blue-100 text-blue-800',
-  'checked-out': 'bg-gray-100 text-gray-800',
-  maintenance: 'bg-red-100 text-red-800',
+  reserved: 'bg-purple-100 text-purple-800',
+  occupied: 'bg-red-100 text-red-800',
+  cleaning: 'bg-blue-100 text-blue-800',
+  'checked-out': 'bg-orange-100 text-orange-800',
+  maintenance: 'bg-yellow-100 text-yellow-800',
 };
 
 /* ===========================
@@ -152,7 +169,7 @@ export default function Frontdesk() {
     setRooms((rs) =>
       rs.map((r) =>
         r.id === roomId
-          ? { ...r, status: 'checked-in', checkIn: r.checkIn ?? new Date().toISOString().slice(0, 10), guestName: r.guestName ?? '—' }
+          ? { ...r, status: 'occupied', checkIn: r.checkIn ?? new Date().toISOString().slice(0, 10), guestName: r.guestName ?? '—' }
           : r
       )
     );
@@ -160,10 +177,21 @@ export default function Frontdesk() {
   };
   const doCheckOut = (roomId: string) => {
     setRooms((rs) =>
-      rs.map((r) => (r.id === roomId ? { ...r, status: 'checked-out', checkOut: new Date().toISOString().slice(0, 10) } : r))
+      rs.map((r) => (r.id === roomId ? { ...r, status: 'cleaning', checkOut: new Date().toISOString().slice(0, 10) } : r))
     );
-    setToast({ text: 'Check‑out registrado ✔️', type: 'success' });
+    setToast({ text: 'Check‑out registrado ✔️ - Habitación enviada a limpieza', type: 'success' });
   };
+  const markClean = (roomId: string) => {
+    setRooms((rs) =>
+      rs.map((r) =>
+        r.id === roomId
+          ? { ...r, status: 'available', guestName: null, checkIn: null, checkOut: null }
+          : r
+      )
+    );
+    setToast({ text: 'Habitación limpia y disponible ✨', type: 'success' });
+  };
+
   const toggleMaint = (roomId: string) => {
     setRooms((rs) =>
       rs.map((r) =>
@@ -243,7 +271,7 @@ export default function Frontdesk() {
                 Confirmar Check‑in
               </button>
             )}
-            {r.status === 'checked-in' && (
+            {r.status === 'occupied' && (
               <button 
                 className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50" 
                 onClick={() => doCheckOut(r.id)}
@@ -256,6 +284,40 @@ export default function Frontdesk() {
                 aria-label={`Hacer check-out de ${r.guestName} en habitación ${r.roomNumber}`}
               >
                 Check‑out
+              </button>
+            )}
+            {r.status === 'cleaning' && (
+              <button 
+                className="inline-flex items-center rounded-md bg-green-600 text-white px-3 py-2 text-sm hover:bg-green-700" 
+                onClick={() => markClean(r.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    markClean(r.id);
+                  }
+                }}
+                aria-label={`Marcar habitación ${r.roomNumber} como limpia`}
+              >
+                Marcar Limpia
+              </button>
+            )}
+            {r.status === 'checked-out' && (
+              <button 
+                className="inline-flex items-center rounded-md bg-blue-600 text-white px-3 py-2 text-sm hover:bg-blue-700" 
+                onClick={() => {
+                  setRooms((rs) =>
+                    rs.map((room) => (room.id === r.id ? { ...room, status: 'cleaning' } : room))
+                  );
+                  setToast({ text: 'Habitación enviada a limpieza', type: 'info' });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                  }
+                }}
+                aria-label={`Enviar habitación ${r.roomNumber} a limpieza`}
+              >
+                Enviar a Limpieza
               </button>
             )}
             <button 
@@ -289,19 +351,26 @@ export default function Frontdesk() {
   /* ---- Stats simples ---- */
   const total = rooms.length;
   const available = rooms.filter(r => r.status === 'available').length;
-  const occupied = rooms.filter(r => r.status === 'checked-in').length;
+  const occupied = rooms.filter(r => r.status === 'occupied').length;
   const reserved = rooms.filter(r => r.status === 'reserved').length;
+  const cleaning = rooms.filter(r => r.status === 'cleaning').length;
+  const checkedOut = rooms.filter(r => r.status === 'checked-out').length;
   const maint = rooms.filter(r => r.status === 'maintenance').length;
 
   return (
     <div className="space-y-6">
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      {/* Estadísticas del Front Desk */}
+      <FrontDeskStats rooms={mapLocalRoomsToFrontdeskRooms(rooms)} />
+
+      {/* Stats originales - ahora resumidos */}
+      <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
         <div className="bg-white rounded-lg shadow p-4 flex items-center justify-between"><div className="text-slate-500">Total</div><div className="text-xl font-semibold">{total}</div></div>
         <div className="bg-white rounded-lg shadow p-4 flex items-center justify-between"><div className="text-slate-500">Disponibles</div><div className="text-xl font-semibold text-green-600">{available}</div></div>
-        <div className="bg-white rounded-lg shadow p-4 flex items-center justify-between"><div className="text-slate-500">Ocupadas</div><div className="text-xl font-semibold text-blue-600">{occupied}</div></div>
-        <div className="bg-white rounded-lg shadow p-4 flex items-center justify-between"><div className="text-slate-500">Reservadas</div><div className="text-xl font-semibold text-yellow-600">{reserved}</div></div>
-        <div className="bg-white rounded-lg shadow p-4 flex items-center justify-between"><div className="text-slate-500">Mantenimiento</div><div className="text-xl font-semibold text-red-600">{maint}</div></div>
+        <div className="bg-white rounded-lg shadow p-4 flex items-center justify-between"><div className="text-slate-500">Reservadas</div><div className="text-xl font-semibold text-purple-600">{reserved}</div></div>
+        <div className="bg-white rounded-lg shadow p-4 flex items-center justify-between"><div className="text-slate-500">Ocupadas</div><div className="text-xl font-semibold text-red-600">{occupied}</div></div>
+        <div className="bg-white rounded-lg shadow p-4 flex items-center justify-between"><div className="text-slate-500">En Limpieza</div><div className="text-xl font-semibold text-blue-600">{cleaning}</div></div>
+        <div className="bg-white rounded-lg shadow p-4 flex items-center justify-between"><div className="text-slate-500">Check-out</div><div className="text-xl font-semibold text-orange-600">{checkedOut}</div></div>
+        <div className="bg-white rounded-lg shadow p-4 flex items-center justify-between"><div className="text-slate-500">Mantenimiento</div><div className="text-xl font-semibold text-yellow-600">{maint}</div></div>
       </div>
 
       {/* Cards: Filtro + Leyenda */}
@@ -339,7 +408,8 @@ export default function Frontdesk() {
                   <option value="">Todos</option>
                   <option value="available">Disponible</option>
                   <option value="reserved">Reservada</option>
-                  <option value="checked-in">Check-in</option>
+                  <option value="occupied">Ocupada</option>
+                  <option value="cleaning">En Limpieza</option>
                   <option value="checked-out">Check-out</option>
                   <option value="maintenance">Mantenimiento</option>
                 </select>
@@ -412,17 +482,31 @@ export default function Frontdesk() {
             </button>
             <button 
               className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
-              onClick={() => { setFilterField('status'); applyFilter('status','checked-in'); }}
+              onClick={() => { setFilterField('status'); applyFilter('status','occupied'); }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   setFilterField('status');
-                  applyFilter('status','checked-in');
+                  applyFilter('status','occupied');
                 }
               }}
               aria-label="Filtrar por habitaciones ocupadas"
             >
               Ver ocupadas
+            </button>
+            <button 
+              className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
+              onClick={() => { setFilterField('status'); applyFilter('status','cleaning'); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setFilterField('status');
+                  applyFilter('status','cleaning');
+                }
+              }}
+              aria-label="Filtrar por habitaciones en limpieza"
+            >
+              Ver en limpieza
             </button>
             <button 
               className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
@@ -445,13 +529,14 @@ export default function Frontdesk() {
         <div className="bg-white rounded-lg shadow p-4">
           <h3 className="text-lg font-semibold mb-3">Estados de Habitación</h3>
           <div className="flex flex-wrap gap-x-6 gap-y-3">
-            {(['available','reserved','checked-in','checked-out','maintenance'] as RoomStatus[]).map((s) => (
+            {(['available','reserved','occupied','cleaning','checked-out','maintenance'] as RoomStatus[]).map((s) => (
               <div key={s} className="flex items-center gap-2">
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${STATUS_CLASS[s]}`}>{STATUS_LABEL[s]}</span>
                 <span className="text-sm text-slate-700">
                   {s === 'available' ? 'Habitación lista' :
                    s === 'reserved' ? 'Confirmada' :
-                   s === 'checked-in' ? 'Ocupada' :
+                   s === 'occupied' ? 'Con huésped' :
+                   s === 'cleaning' ? 'Requiere limpieza' :
                    s === 'checked-out' ? 'Liberada' : 'No disponible'}
                 </span>
               </div>

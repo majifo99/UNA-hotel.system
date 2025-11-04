@@ -28,6 +28,7 @@ import { useRoomSelection } from "../hooks/useRoomSelection";
 import { useInputValidation } from "../../../hooks/useInputValidation";
 import { useFolioFlow } from "../hooks/useFolioFlow";
 import { useReservationByCode } from "../../reservations/hooks/useReservationQueries";
+import { folioService } from "../services/folioService";
 import { ROUTES } from "../../../router/routes";
 import { DEFAULT_CURRENCY } from "../constants/currencies";
 import type { PaymentMethod, Currency } from "../types/checkin";
@@ -853,7 +854,19 @@ const CheckIn = () => {
         );
       }
 
-      // Preparar datos para crear el folio
+      // ============================================================================
+      // 🏨 PREPARAR DATOS PARA CHECK-IN
+      // ============================================================================
+      // Nota: El backend automáticamente calcula y asigna los cargos base de alojamiento
+      
+      console.log("🏨 Preparando datos para check-in en habitación:", formData.roomNumber);
+      console.log("� Fechas de estancia:", {
+        checkIn: formData.checkInDate,
+        checkOut: formData.checkOutDate,
+        huéspedes: `${formData.adultos} adultos, ${formData.ninos} niños`
+      });
+
+      // Preparar datos para crear el folio (el backend asigna cargos automáticamente)
       const checkInDataConFolio = {
         id_cliente_titular: Number.parseInt(formData.selectedGuestId || "1"),
         fecha_llegada: formData.checkInDate,
@@ -890,6 +903,67 @@ const CheckIn = () => {
 
       console.log("✅ Folio creado exitosamente:", nuevoFolioId);
 
+      // ============================================================================
+      // 🔧 WORKAROUND: Agregar cargo inicial usando distribución
+      // ============================================================================
+      
+      try {
+        console.log("🔧 Agregando cargo de alojamiento como workaround...");
+        
+        // Calcular cargo de alojamiento
+        const checkInDateObj = new Date(formData.checkInDate);
+        const checkOutDateObj = new Date(formData.checkOutDate);
+        const timeDiff = checkOutDateObj.getTime() - checkInDateObj.getTime();
+        const numberOfNights = Math.ceil(timeDiff / (1000 * 3600 * 24));
+        
+        // Obtener precio base de la habitación (con fallback a precio estándar)
+        const baseRoomPrice = roomInfo?.price?.base || 75; // Fallback a $75 si no hay precio
+        const totalRoomCost = numberOfNights * baseRoomPrice;
+        
+        console.log("💰 Calculando cargo inicial:", {
+          roomNumber: formData.roomNumber,
+          nights: numberOfNights,
+          basePrice: baseRoomPrice,
+          total: totalRoomCost
+        });
+        
+        if (totalRoomCost > 0) {
+          // Agregar cargo inicial usando distribución
+          const cargoData = {
+            descripcion: `Alojamiento habitación #${formData.roomNumber} (${numberOfNights} ${numberOfNights === 1 ? 'noche' : 'noches'})`,
+            monto: totalRoomCost,
+            id_cliente_titular: Number.parseInt(formData.selectedGuestId || "1", 10)
+          };
+          
+          const resultado = await folioService.agregarCargoInicial(nuevoFolioId, cargoData);
+          
+          console.log("✅ Cargo inicial agregado exitosamente:", resultado);
+          
+          // Mostrar mensaje de éxito con información del cargo
+          toast.success("Check-in completado exitosamente", {
+            description: `Folio #${nuevoFolioId} creado con cargo de $${totalRoomCost} por ${numberOfNights} ${numberOfNights === 1 ? 'noche' : 'noches'}.`,
+            duration: 5000,
+          });
+        } else {
+          console.warn("⚠️ No se agregó cargo inicial porque el monto es 0");
+          
+          // Mostrar mensaje básico sin cargo
+          toast.success("Check-in completado exitosamente", {
+            description: `Folio #${nuevoFolioId} creado. No se agregaron cargos automáticos.`,
+            duration: 5000,
+          });
+        }
+        
+      } catch (cargoError) {
+        console.error("❌ Error al agregar cargo inicial:", cargoError);
+        
+        // Mostrar advertencia pero no fallar el check-in
+        toast.warning("Advertencia", {
+          description: `Check-in completado, pero no se pudo agregar el cargo de alojamiento automáticamente. Folio #${nuevoFolioId} creado.`,
+          duration: 6000,
+        });
+      }
+
       // Guardar folioId para usar en check-out
       localStorage.setItem(`folio_${reservaId}`, nuevoFolioId.toString());
 
@@ -923,12 +997,6 @@ const CheckIn = () => {
         queryClient.invalidateQueries({ queryKey: ["estadias"] }),
         queryClient.invalidateQueries({ queryKey: ["folios"] }),
       ]);
-
-      // Mostrar mensaje de éxito con información del folio
-      toast.success("Check-in completado exitosamente", {
-        description: `Folio #${nuevoFolioId} creado. Reserva: ${reservaId}`,
-        duration: 5000,
-      });
 
       console.log("✅ Check-in exitoso, redirigiendo...");
       navigate(ROUTES.FRONTDESK.BASE);

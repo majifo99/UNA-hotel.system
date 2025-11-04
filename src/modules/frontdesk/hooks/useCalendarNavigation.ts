@@ -59,6 +59,11 @@ export const useCalendarNavigation = () => {
     setCurrentDate(new Date());
   };
 
+  const goToSpecificMonth = (year: number, month: number) => {
+    const newDate = new Date(year, month, 1);
+    setCurrentDate(newDate);
+  };
+
   const getCurrentMonthYear = () => {
     const months = [
       'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -75,6 +80,7 @@ export const useCalendarNavigation = () => {
     navigateWeek,
     navigateMonth,
     goToToday,
+    goToSpecificMonth,
     getCurrentMonthYear,
     dateRange
   };

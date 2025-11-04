@@ -6,7 +6,7 @@ import axios from 'axios';
  */
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
-  timeout: 10000,
+  timeout: 30000, // Aumentado a 30 segundos para resolver timeouts
   headers: {
     'Content-Type': 'application/json',
   },
@@ -45,21 +45,27 @@ apiClient.interceptors.response.use(
       // El servidor respondió con un código de estado que no está en el rango 2xx
       console.error(`[API] Error ${error.response.status}: ${error.response.data?.message || error.message}`);
       
-      // Manejar errores de autenticación
+      // Manejar errores de autenticación - solo para endpoints específicos
       if (error.response.status === 401) {
-        // Limpiar tokens según el tipo de sesión
-        const hasAdminToken = localStorage.getItem('adminAuthToken');
-        const hasWebToken = localStorage.getItem('authToken');
+        const url = error.config?.url || '';
         
-        if (hasAdminToken) {
-          // Sesión de admin
-          localStorage.removeItem('adminAuthToken');
-          localStorage.removeItem('adminAuthUser');
-          globalThis.location.href = '/admin/login';
-        } else if (hasWebToken) {
-          // Sesión de web
-          localStorage.removeItem('authToken');
-          globalThis.location.href = '/login';
+        // Solo limpiar sesión si es un endpoint de autenticación
+        if (url.includes('/auth/') || url.includes('/user') || url.includes('/profile')) {
+          const hasAdminToken = localStorage.getItem('adminAuthToken');
+          const hasWebToken = localStorage.getItem('authToken');
+          
+          if (hasAdminToken) {
+            // Sesión de admin
+            console.log('[API] Token de admin inválido, redirigiendo a login');
+            localStorage.removeItem('adminAuthToken');
+            localStorage.removeItem('adminAuthUser');
+            globalThis.location.href = '/admin/login';
+          } else if (hasWebToken) {
+            // Sesión de web
+            console.log('[API] Token web inválido, redirigiendo a login');
+            localStorage.removeItem('authToken');
+            globalThis.location.href = '/login';
+          }
         }
       }
     } else if (error.request) {

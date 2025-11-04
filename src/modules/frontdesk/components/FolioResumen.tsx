@@ -25,6 +25,18 @@ export const FolioResumen = ({
     exportarHistorial 
   } = useFolioFlow();
 
+  /**
+   * Convierte un valor a número de forma segura
+   */
+  const toNumber = (value: any): number => {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  };
+
   useEffect(() => {
     if (autoLoad && folioId) {
       obtenerResumen(folioId);
@@ -72,7 +84,8 @@ export const FolioResumen = ({
   }
 
   const { folio, resumen: resumenData, personas, totales } = resumen;
-  const saldoCero = totales.saldo_global === 0;
+  const saldoGlobalNumber = toNumber(totales.saldo_global);
+  const saldoCero = saldoGlobalNumber === 0;
 
   return (
     <div className="space-y-6">
@@ -150,7 +163,7 @@ export const FolioResumen = ({
           <p className={`text-2xl font-bold ${
             saldoCero ? 'text-green-700' : 'text-red-700'
           }`}>
-            ${totales.saldo_global.toFixed(2)}
+            ${saldoGlobalNumber.toFixed(2)}
           </p>
           {saldoCero && (
             <p className="text-xs text-green-600 mt-2">✓ Saldo liquidado</p>
@@ -190,7 +203,7 @@ export const FolioResumen = ({
             </thead>
             <tbody className="divide-y divide-gray-200">
               {personas.map((persona) => {
-                const saldoPersona = persona.saldo;
+                const saldoPersona = toNumber(persona.saldo);
                 const pagado = saldoPersona === 0;
 
                 return (
@@ -214,12 +227,12 @@ export const FolioResumen = ({
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <span className="text-gray-900 font-medium">
-                        ${persona.asignado.toFixed(2)}
+                        ${toNumber(persona.asignado).toFixed(2)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <span className="text-green-600 font-medium">
-                        ${persona.pagos.toFixed(2)}
+                        ${toNumber(persona.pagos).toFixed(2)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -258,21 +271,21 @@ export const FolioResumen = ({
           <div className="flex justify-between items-center py-2">
             <span className="text-gray-600">Pagos por Persona:</span>
             <span className="font-semibold text-gray-900">
-              ${totales.pagos_por_persona_total.toFixed(2)}
+              ${toNumber(totales.pagos_por_persona_total).toFixed(2)}
             </span>
           </div>
 
           <div className="flex justify-between items-center py-2">
             <span className="text-gray-600">Pagos Generales:</span>
             <span className="font-semibold text-gray-900">
-              ${totales.pagos_generales.toFixed(2)}
+              ${toNumber(totales.pagos_generales).toFixed(2)}
             </span>
           </div>
 
           <div className="flex justify-between items-center py-2 border-t border-gray-300 pt-3">
             <span className="text-gray-700 font-medium">Total Pagado:</span>
             <span className="font-bold text-lg text-green-600">
-              ${totales.pagos_totales.toFixed(2)}
+              ${toNumber(totales.pagos_totales).toFixed(2)}
             </span>
           </div>
 
@@ -281,16 +294,16 @@ export const FolioResumen = ({
             <span className={`font-bold text-lg ${
               saldoCero ? 'text-green-600' : 'text-red-600'
             }`}>
-              ${totales.saldo_global.toFixed(2)}
+              ${saldoGlobalNumber.toFixed(2)}
             </span>
           </div>
         </div>
 
         {/* Control Diff - Para debugging */}
-        {totales.control_diff !== 0 && (
+        {toNumber(totales.control_diff) !== 0 && (
           <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
             <p className="text-xs text-amber-700">
-              ⚠️ Diferencia de control: ${totales.control_diff.toFixed(2)}
+              ⚠️ Diferencia de control: ${toNumber(totales.control_diff).toFixed(2)}
             </p>
           </div>
         )}
@@ -316,7 +329,7 @@ export const FolioResumen = ({
             <div>
               <h3 className="font-semibold text-amber-900">Saldo Pendiente</h3>
               <p className="text-sm text-amber-700 mt-1">
-                Aún hay ${totales.saldo_global.toFixed(2)} pendientes de pago. 
+                Aún hay ${saldoGlobalNumber.toFixed(2)} pendientes de pago. 
                 Complete los pagos antes de cerrar el folio.
               </p>
             </div>

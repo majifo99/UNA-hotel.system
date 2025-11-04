@@ -46,7 +46,9 @@ const CalendarView: React.FC = () => {
     navigateWeek, 
     navigateMonth,
     goToToday,
+    goToSpecificMonth,
     getCurrentMonthYear,
+    currentDate,
     dateRange
   } = useCalendarNavigation();
 
@@ -74,9 +76,11 @@ const CalendarView: React.FC = () => {
         calendarDays={calendarDays}
         viewMode={viewMode}
         currentMonthYear={getCurrentMonthYear()}
+        currentDate={currentDate}
         onNavigateWeek={navigateWeek}
         onNavigateMonth={navigateMonth}
         onGoToToday={goToToday}
+        onGoToSpecificMonth={goToSpecificMonth}
         onViewModeChange={setViewMode}
         stats={stats}
       />

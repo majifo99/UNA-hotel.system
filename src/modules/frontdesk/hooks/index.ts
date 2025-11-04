@@ -27,6 +27,9 @@ export { useWalkIn } from './useWalkIn';
 export { useCheckout } from './useCheckout';
 export { useCheckoutRefactored } from './useCheckoutRefactored';
 
+// Checkout queries para estadía
+export { useEstadiaByReservaCode } from './useCheckoutQueries';
+
 // 🏨 Folio Management Hooks
 export { useDeposito } from './useDeposito';
 export { useDivisionCargos } from './useDivisionCargos';

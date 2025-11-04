@@ -58,7 +58,7 @@ import {
 
 // Hooks personalizados
 import { useCheckoutFolio } from '../hooks/useCheckoutFolio';
-import { useReservationByCode } from '../../reservations/hooks/useReservationQueries';
+import { useEstadiaByReservaCode } from '../hooks/useCheckoutQueries';
 
 // Componentes reutilizables
 import { FolioResumen } from './FolioResumen';
@@ -151,6 +151,22 @@ export const CheckOut: React.FC = () => {
   const [reservationSearchId, setReservationSearchId] = useState('');
   const [hasLoadedReservationData, setHasLoadedReservationData] = useState(false);
 
+  // ========================================
+  // UTILIDADES
+  // ========================================
+
+  /**
+   * Convierte un valor a número de forma segura
+   */
+  const toNumber = (value: unknown): number => {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  };
+
   // Estados de vista
   const [mostrarResumenFolio, setMostrarResumenFolio] = useState(false);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
@@ -163,12 +179,12 @@ export const CheckOut: React.FC = () => {
   // HOOKS PERSONALIZADOS
   // ========================================
 
-  // Hook para búsqueda de reservaciones
+  // Hook para búsqueda de reservaciones usando estadía
   const {
     data: foundReservation,
     isLoading: isLoadingReservation,
     error: reservationError
-  } = useReservationByCode(reservationSearchId);
+  } = useEstadiaByReservaCode(reservationSearchId);
 
   // Hook para checkout con folio
   const checkoutFolioHook = useCheckoutFolio({
@@ -377,7 +393,7 @@ export const CheckOut: React.FC = () => {
         actualizarPaso(3, 'current');
 
         toast.success('Folio validado', {
-          description: `Saldo pendiente: $${resumenFinal.totales.saldo_global.toFixed(2)}`
+          description: `Saldo pendiente: $${toNumber(resumenFinal.totales.saldo_global).toFixed(2)}`
         });
       } else {
         console.error('❌ No se obtuvo resumen del folio');
@@ -943,6 +959,44 @@ export const CheckOut: React.FC = () => {
               </div>
             </div>
 
+            {/* Información de Acompañantes */}
+            {foundReservation?.acompanantes && foundReservation.acompanantes.length > 0 && (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-blue-600" />
+                  Acompañantes ({foundReservation.acompanantes.length})
+                </h2>
+
+                <div className="space-y-3">
+                  {foundReservation.acompanantes.map((acompanante, index) => (
+                    <div key={acompanante.id_cliente} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 font-semibold text-sm">
+                            {acompanante.nombre ? acompanante.nombre.charAt(0).toUpperCase() : (index + 1)}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {acompanante.nombre} {acompanante.apellido1}
+                          </p>
+                          {acompanante.email && (
+                            <p className="text-sm text-gray-500">{acompanante.email}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs text-gray-500">ID: {acompanante.id_cliente}</span>
+                        {acompanante.folio_asociado && (
+                          <p className="text-xs text-blue-600">Folio: {acompanante.folio_asociado}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Información de Estadía */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -1025,18 +1079,38 @@ export const CheckOut: React.FC = () => {
                 <FolioResumen
                   folioId={folioId}
                 />
+                
+                {/* Botón para agregar consumos */}
+                <div className="mt-4">
+                  <button
+                    onClick={() => navigate(`/frontdesk/folio/${folioId}?action=add-charge`)}
+                    className="w-full py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                  >
+                    <DollarSign className="w-5 h-5" />
+                    Agregar Consumos / Cargos
+                  </button>
+                </div>
               </div>
             )}
 
             {/* Botón para mostrar/ocultar resumen */}
             {!mostrarResumenFolio && (
-              <div className="mb-6">
+              <div className="mb-6 space-y-3">
                 <button
                   onClick={() => setMostrarResumenFolio(true)}
                   className="w-full py-3 bg-blue-50 border-2 border-blue-200 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 text-blue-700 font-medium"
                 >
                   <Eye className="w-5 h-5" />
                   Ver Resumen del Folio
+                </button>
+                
+                {/* Botón para agregar consumos (acceso rápido) */}
+                <button
+                  onClick={() => navigate(`/frontdesk/folio/${folioId}?action=add-charge`)}
+                  className="w-full py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                >
+                  <DollarSign className="w-5 h-5" />
+                  Agregar Consumos / Cargos
                 </button>
               </div>
             )}
@@ -1055,7 +1129,7 @@ export const CheckOut: React.FC = () => {
                     <div>
                       <p className="font-semibold text-yellow-900">Saldo Pendiente</p>
                       <p className="text-3xl font-bold text-yellow-700 mt-1">
-                        ${checkoutFolioHook.resumenFolio.totales.saldo_global.toFixed(2)}
+                        ${toNumber(checkoutFolioHook.resumenFolio.totales.saldo_global).toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -1137,7 +1211,7 @@ export const CheckOut: React.FC = () => {
                             <span className="text-sm font-medium">{pago.metodo}</span>
                           </div>
                           <span className="text-sm font-bold text-green-600">
-                            ${pago.monto.toFixed(2)}
+                            ${toNumber(pago.monto).toFixed(2)}
                           </span>
                         </div>
                       ))}

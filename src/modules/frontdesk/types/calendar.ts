@@ -28,9 +28,11 @@ export interface CalendarHeaderProps {
   calendarDays: CalendarDay[];
   viewMode: 'week' | 'month';
   currentMonthYear: string;
+  currentDate: Date;
   onNavigateWeek: (direction: 'prev' | 'next') => void;
   onNavigateMonth: (direction: 'prev' | 'next') => void;
   onGoToToday: () => void;
+  onGoToSpecificMonth: (year: number, month: number) => void;
   onViewModeChange: (mode: 'week' | 'month') => void;
   stats?: {
     availableRooms: number;
