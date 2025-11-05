@@ -27,7 +27,7 @@
  * 7. Generar recibo → 8. Completar checkout
  */
 
-import React, { useState, useEffect, useCallback, Component, ErrorInfo } from 'react';
+import React, { useState, useEffect, useCallback, Component, type ErrorInfo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -1141,7 +1141,7 @@ export const CheckOut: React.FC = () => {
             {/* Resumen del Folio */}
             {mostrarResumenFolio && checkoutFolioHook.resumenFolio && (
               <div className="mb-6">
-                <ErrorBoundary fallback={<FolioResumenFallback />}>
+                <ErrorBoundary fallback={FolioResumenFallback}>
                   <FolioResumen
                     folioId={folioId}
                   />
