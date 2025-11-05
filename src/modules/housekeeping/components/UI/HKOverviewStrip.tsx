@@ -1,6 +1,6 @@
 // src/modules/housekeeping/components/UI/HKOverviewStrip.tsx
 import React, { useMemo } from "react";
-import type { LimpiezasTableController } from "../../hooks/useLimpiezasTable";
+import type { LimpiezasTableController } from "../../hooks/useLimpiezasQuery";
 import HKCounterCards from "./HKMetricCard"; // default export: acepta { sucias, limpias, total }
 
 type Props = {

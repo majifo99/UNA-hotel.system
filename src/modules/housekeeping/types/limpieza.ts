@@ -12,6 +12,8 @@ export type Usuario = {
   id?: number;           // compat/back simple
   name?: string;         // compat
   nombre?: string;       // back actual
+  apellido1?: string;
+  apellido2?: string;
   email?: string;
   telefono?: string;
 };

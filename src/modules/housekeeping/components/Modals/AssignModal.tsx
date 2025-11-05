@@ -1,6 +1,6 @@
 import { X, Save, BadgeCheck, Calendar, Clock, AlertCircle } from "lucide-react";
 import { PRIORIDADES, type Prioridad, type LimpiezaItem } from "../../types/limpieza";
-import { useAssignForm } from "../../hooks/useLimpieza";
+import { useLimpiezaMutation } from "../../hooks/useLimpiezaMutation";
 import type { SelectedRoom } from "../RoomsTable";
 import { useMemo } from "react";
 import { useUsers } from "../../hooks/useUsers";
@@ -29,6 +29,8 @@ export default function AssignModal({
   const habitacionId =
     selectedRoom?.id ?? (selectedRoomId ? Number(selectedRoomId) : null);
 
+  const { users, loading: loadingUsers } = useUsers();
+
   const {
     prioridad, setPrioridad,
     fecha, setFecha,
@@ -37,16 +39,15 @@ export default function AssignModal({
     asignadoA, setAsignadoA,
     errors, canSave, loading, toast,
     handleSave, reset,
-  } = useAssignForm({
+  } = useLimpiezaMutation({
     id_habitacion: habitacionId,
     editingId,
     initialItem,
     onSuccess: () => onSuccess?.(),
     onClose,
     onPatched,
+    users,
   });
-
-  const { users, loading: loadingUsers } = useUsers();
 
   const todayStr = useMemo(() => {
     const d = new Date();
@@ -244,16 +245,19 @@ export default function AssignModal({
         {/* Footer */}
         <div className="sticky bottom-0 bg-white px-6 py-4 flex items-center justify-end gap-2 border-t">
           <button
+            type="button"
             onClick={() => { reset(); onClose(); }}
-            className="rounded-xl px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            disabled={loading}
+            className="rounded-xl px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
+            type="button"
             onClick={handleSave}
             disabled={!canSaveLocal || loading}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white ${
-              canSaveLocal && !loading ? "bg-emerald-600 hover:bg-emerald-700" : "bg-slate-300"
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-colors ${
+              canSaveLocal && !loading ? "bg-emerald-600 hover:bg-emerald-700" : "bg-slate-300 cursor-not-allowed"
             }`}
             aria-busy={loading}
           >

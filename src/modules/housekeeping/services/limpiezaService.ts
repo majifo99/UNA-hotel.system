@@ -54,28 +54,30 @@ export const limpiezaService = {
   },
 
   async finalizarLimpieza(id: number, body: FinalizarLimpiezaDTO): Promise<{ data: LimpiezaItem }> {
-    try {
-      return await authenticatedRequest(`${API_URL}/limpiezas/${id}/finalizar`, {
-        method: "PATCH",
-        body: JSON.stringify(body),
-      });
-    } catch (e: any) {
-      const msg = String(e?.message ?? "");
-      if (msg.includes("404")) {
-        return await authenticatedRequest(`${API_URL}/limpiezas/${id}`, {
-          method: "PATCH",
-          body: JSON.stringify({
-            fecha_final: body.fecha_final,
-            notas: body.notas ?? null,
-            id_estado_hab: ESTADO_HAB.LIMPIA,
-          }),
-        });
-      }
-      throw e;
-    }
+    // Usar directamente el endpoint estándar PATCH en lugar de /finalizar
+    // para evitar el error 404 y la demora de dos peticiones
+    return await authenticatedRequest(`${API_URL}/limpiezas/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        fecha_final: body.fecha_final,
+        notas: body.notas ?? null,
+        id_estado_hab: ESTADO_HAB.LIMPIA,
+        id_usuario_asigna: null, // ✅ Limpiar usuario asignado al finalizar
+      }),
+    });
   },
 
   async deleteLimpieza(id: number): Promise<void> {
     await authenticatedRequest(`${API_URL}/limpiezas/${id}`, { method: "DELETE" });
+  },
+
+  // ✅ Obtener historial de limpiezas de una habitación (últimas 3)
+  async getHistorialLimpiezas(id_habitacion: number): Promise<{ data: LimpiezaItem[] }> {
+    const query = toQueryString({
+      id_habitacion,
+      per_page: 3,
+      // Ordenar por fecha_final desc para obtener las más recientes
+    });
+    return await authenticatedRequest(`${API_URL}/limpiezas${query}`);
   },
 };
