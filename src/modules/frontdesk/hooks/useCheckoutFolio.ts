@@ -23,6 +23,18 @@ import type {
   EstadoCheckout
 } from '../types/checkout-folio';
 
+/**
+ * Convierte un valor a número de forma segura
+ */
+const toNumber = (value: unknown): number => {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+};
+
 interface UseCheckoutFolioProps {
   /** ID del folio a procesar */
   folioId: number | null;
@@ -85,9 +97,9 @@ export const useCheckoutFolio = ({
       const resumen = await folioService.getResumen(folioId);
       setResumenFolio(resumen);
 
-      const saldoGlobal = resumen.totales.saldo_global;
+      const saldoGlobal = toNumber(resumen?.totales?.saldo_global);
       const tieneSaldo = saldoGlobal > 0.01; // Tolerancia de 1 centavo
-      const cargosDistribuidos = parseFloat(resumen.resumen.a_distribuir) === 0;
+      const cargosDistribuidos = toNumber(resumen?.resumen?.a_distribuir) === 0;
 
       const advertencias: string[] = [];
       const errores: string[] = [];

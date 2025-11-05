@@ -897,7 +897,7 @@ const CheckIn = () => {
 
       if (!nuevoFolioId) {
         throw new Error(
-          "No se pudo crear el folio. Revisa los datos e intenta nuevamente."
+          "No se pudo crear el folio. La reserva podría no existir o los datos podrían ser incorrectos. Verifica el código de reserva."
         );
       }
 

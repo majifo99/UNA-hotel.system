@@ -41,7 +41,7 @@ export const FolioResumen = ({
     if (autoLoad && folioId) {
       obtenerResumen(folioId);
     }
-  }, [folioId, autoLoad, obtenerResumen]);
+  }, [folioId, autoLoad]); // Removido obtenerResumen de las dependencias
 
   const handleExportHistorial = async () => {
     await exportarHistorial(folioId);
@@ -84,7 +84,20 @@ export const FolioResumen = ({
   }
 
   const { folio, resumen: resumenData, personas, totales } = resumen;
-  const saldoGlobalNumber = toNumber(totales.saldo_global);
+  
+  // Validaciones de seguridad
+  if (!resumenData || !totales) {
+    return (
+      <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <div className="flex items-center gap-3">
+          <AlertCircle className="w-6 h-6 text-yellow-600" />
+          <p className="text-yellow-800">Los datos del resumen están incompletos</p>
+        </div>
+      </div>
+    );
+  }
+  
+  const saldoGlobalNumber = toNumber(totales?.saldo_global);
   const saldoCero = saldoGlobalNumber === 0;
 
   return (
@@ -125,7 +138,7 @@ export const FolioResumen = ({
             <h3 className="font-semibold text-gray-700">A Distribuir</h3>
           </div>
           <p className="text-2xl font-bold text-gray-900">
-            ${parseFloat(resumenData.a_distribuir).toFixed(2)}
+            ${toNumber(resumenData?.a_distribuir).toFixed(2)}
           </p>
         </div>
 
@@ -138,7 +151,7 @@ export const FolioResumen = ({
             <h3 className="font-semibold text-gray-700">Distribuido</h3>
           </div>
           <p className="text-2xl font-bold text-gray-900">
-            ${parseFloat(resumenData.distribuido).toFixed(2)}
+            ${toNumber(resumenData?.distribuido).toFixed(2)}
           </p>
         </div>
 
@@ -202,8 +215,8 @@ export const FolioResumen = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {personas.map((persona) => {
-                const saldoPersona = toNumber(persona.saldo);
+              {(personas || []).map((persona) => {
+                const saldoPersona = toNumber(persona?.saldo);
                 const pagado = saldoPersona === 0;
 
                 return (
@@ -227,12 +240,12 @@ export const FolioResumen = ({
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <span className="text-gray-900 font-medium">
-                        ${toNumber(persona.asignado).toFixed(2)}
+                        ${toNumber(persona?.asignado).toFixed(2)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <span className="text-green-600 font-medium">
-                        ${toNumber(persona.pagos).toFixed(2)}
+                        ${toNumber(persona?.pagos).toFixed(2)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -271,21 +284,21 @@ export const FolioResumen = ({
           <div className="flex justify-between items-center py-2">
             <span className="text-gray-600">Pagos por Persona:</span>
             <span className="font-semibold text-gray-900">
-              ${toNumber(totales.pagos_por_persona_total).toFixed(2)}
+              ${toNumber(totales?.pagos_por_persona_total).toFixed(2)}
             </span>
           </div>
 
           <div className="flex justify-between items-center py-2">
             <span className="text-gray-600">Pagos Generales:</span>
             <span className="font-semibold text-gray-900">
-              ${toNumber(totales.pagos_generales).toFixed(2)}
+              ${toNumber(totales?.pagos_generales).toFixed(2)}
             </span>
           </div>
 
           <div className="flex justify-between items-center py-2 border-t border-gray-300 pt-3">
             <span className="text-gray-700 font-medium">Total Pagado:</span>
             <span className="font-bold text-lg text-green-600">
-              ${toNumber(totales.pagos_totales).toFixed(2)}
+              ${toNumber(totales?.pagos_totales).toFixed(2)}
             </span>
           </div>
 
@@ -300,10 +313,10 @@ export const FolioResumen = ({
         </div>
 
         {/* Control Diff - Para debugging */}
-        {toNumber(totales.control_diff) !== 0 && (
+        {toNumber(totales?.control_diff) !== 0 && (
           <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
             <p className="text-xs text-amber-700">
-              ⚠️ Diferencia de control: ${toNumber(totales.control_diff).toFixed(2)}
+              ⚠️ Diferencia de control: ${toNumber(totales?.control_diff).toFixed(2)}
             </p>
           </div>
         )}

@@ -59,6 +59,14 @@ export const useFolioFlow = () => {
     try {
       console.log('🏨 Iniciando check-in con folio...');
       
+      // ✅ 1. Log de información de la reserva
+      console.log('🔍 Procesando reserva:', reservaId);
+      console.log('� Datos del check-in:', {
+        titular: data.id_cliente_titular,
+        habitacion: data.id_hab,
+        fechas: `${data.fecha_llegada} - ${data.fecha_salida}`
+      });
+      
       const response = await folioService.realizarCheckIn(reservaId, data);
 
       console.log('📥 Respuesta del backend:', response);
