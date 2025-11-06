@@ -146,7 +146,11 @@ export class ReservationCrudService {
    */
   async getById(id: string): Promise<Reservation | null> {
     try {
-      const res = await apiClient.get<ApiReservaFull | { data: ApiReservaFull }>(`/reservas/${id}`);
+      const res = await apiClient.get<ApiReservaFull | { data: ApiReservaFull }>(`/reservas/${id}`, {
+        params: {
+          with: 'habitaciones' // ✅ Cargar relación de habitaciones
+        }
+      });
       
       // Extract data from response - backend may wrap in data property
       const responseData = res.data as { data?: ApiReservaFull } | ApiReservaFull;
@@ -186,7 +190,10 @@ export class ReservationCrudService {
       console.log('🔍 [API] Original code input:', code);
       
       const res = await apiClient.get('/reservas', { 
-        params: { codigo_reserva: normalizedCode } 
+        params: { 
+          codigo_reserva: normalizedCode,
+          with: 'habitaciones' // ✅ Cargar relación de habitaciones
+        } 
       });
       
       console.log('📡 [API] Raw response from /reservas:', {
@@ -241,19 +248,30 @@ export class ReservationCrudService {
         codigo_reserva: apiReserva.codigo_reserva,
         codigo_formateado: apiReserva.codigo_formateado,
         cliente: {
-          id_cliente: apiReserva.cliente.id_cliente,
-          nombre_completo: apiReserva.cliente.nombre_completo,
-          nombre: apiReserva.cliente.nombre,
-          apellido1: apiReserva.cliente.apellido1,
-          apellido2: apiReserva.cliente.apellido2,
-          email: apiReserva.cliente.email,
+          id_cliente: apiReserva.cliente?.id_cliente,
+          nombre_completo: apiReserva.cliente?.nombre_completo,
+          nombre: apiReserva.cliente?.nombre,
+          apellido1: apiReserva.cliente?.apellido1,
+          apellido2: apiReserva.cliente?.apellido2,
+          email: apiReserva.cliente?.email,
         },
-        habitaciones: apiReserva.habitaciones.map(h => ({
+        habitaciones_count: apiReserva.habitaciones?.length || 0,
+        habitaciones: apiReserva.habitaciones?.map(h => ({
           id: h.id_reserva_hab,
-          habitacion_numero: h.habitacion.numero,
-          habitacion_nombre: h.habitacion.nombre,
-        })),
+          habitacion_numero: h.habitacion?.numero,
+          habitacion_nombre: h.habitacion?.nombre,
+          fecha_llegada: h.fecha_llegada,
+          fecha_salida: h.fecha_salida,
+          adultos: h.adultos,
+          ninos: h.ninos,
+          bebes: h.bebes,
+        })) || [],
       });
+
+      // Verificar si tiene habitaciones asignadas
+      if (!apiReserva.habitaciones || apiReserva.habitaciones.length === 0) {
+        console.warn('⚠️ [API] Reservation has no rooms assigned');
+      }
       
       const reservation = mapApiReservaFullToReservation(apiReserva);
       
@@ -294,7 +312,12 @@ export class ReservationCrudService {
    */
   async getByConfirmation(confirmationNumber: string): Promise<Reservation | null> {
     try {
-      const res = await apiClient.get('/reservas', { params: { confirmationNumber } });
+      const res = await apiClient.get('/reservas', { 
+        params: { 
+          confirmationNumber,
+          with: 'habitaciones' // ✅ Cargar relación de habitaciones
+        } 
+      });
       const data: ApiReservation[] = res.data?.data || res.data || [];
       
       if (!data || data.length === 0) return null;
@@ -324,7 +347,11 @@ export class ReservationCrudService {
    */
   async getAll(): Promise<Reservation[]> {
     try {
-      const res = await apiClient.get('/reservas');
+      const res = await apiClient.get('/reservas', {
+        params: {
+          with: 'habitaciones' // ✅ Cargar relación de habitaciones
+        }
+      });
       const payload = res.data as { data?: ApiReservation[] } | ApiReservation[] | undefined;
       
       // Extract array from response
@@ -382,7 +409,11 @@ export class ReservationCrudService {
   async getByDateRange(startDate: string, endDate?: string): Promise<Reservation[]> {
     try {
       const res = await apiClient.get('/reservas', { 
-        params: { fecha_llegada: startDate, fecha_salida: endDate } 
+        params: { 
+          fecha_llegada: startDate, 
+          fecha_salida: endDate,
+          with: 'habitaciones' // ✅ Cargar relación de habitaciones
+        } 
       });
       
       const apiList = (res.data && (res.data.data ?? res.data)) as ApiReservation[] | undefined;
