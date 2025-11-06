@@ -12,4 +12,13 @@ export default defineConfig({
       '@modules': '/src/modules',
     },
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://backendhotelt.onrender.com',
+        changeOrigin: true,
+        secure: true,
+      },
+    },
+  },
 })
