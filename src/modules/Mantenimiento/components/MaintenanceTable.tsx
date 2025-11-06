@@ -7,10 +7,12 @@ import React, {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { Eye, Calendar } from "lucide-react";
+import { Eye, Pencil, UserRound, CheckCircle2, XCircle } from "lucide-react";
 import type { MantenimientoItem, Prioridad } from "../types/mantenimiento";
 import MantenimientoDetailModal from "../components/modals/MantenimientoDetailModal";
 import AssignMaintenanceModal from "../components/modals/AssignMantenimiento";
+import ReassignMaintenanceModal from "../components/modals/ReassignMantenimiento";
+import mantenimientoService from "../services/maintenanceService";
 
 /* ----------------------------- Tipado público ----------------------------- */
 
@@ -26,6 +28,7 @@ export type MaintenanceTableProps = Readonly<{
   onSelectionChange?: (count: number) => void;
   onRequestRefresh?: () => void; // refetch del hook principal
   onSuccess?: (message?: string) => void;
+  onUpdateOptimistic?: (id: number, updates: Partial<MantenimientoItem>) => void; // optimistic update
 }>;
 
 /* ---------------------------- Funciones auxiliares ---------------------------- */
@@ -42,23 +45,6 @@ function prioridadToLabel(
   };
   return map[p];
 }
-
-function getInitials(name?: string) {
-  if (!name) return "—";
-  const parts = name.trim().split(/\s+/).slice(0, 2);
-  return parts.map((p) => p[0]?.toUpperCase()).join("");
-}
-
-const fmtDate = (iso?: string | null) =>
-  iso
-    ? new Date(iso)
-        .toLocaleDateString("es-CR", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })
-        .replace(".", "")
-    : "—";
 
 function PriorityPill({
   label = "Media" as "Baja" | "Media" | "Alta" | "Urgente",
@@ -79,19 +65,30 @@ function PriorityPill({
 }
 
 const HEAD_BASE = "p-4 font-medium capitalize text-left";
+
+/* ✅ Ajuste: se agrega prop `title` opcional */
 function Th({
   children = null,
   className = "",
-}: Readonly<{ children?: React.ReactNode; className?: string }>) {
-  return <th className={`${HEAD_BASE} ${className}`}>{children}</th>;
+  title,
+}: Readonly<{ children?: React.ReactNode; className?: string; title?: string }>) {
+  return (
+    <th className={`${HEAD_BASE} ${className}`} title={title}>
+      {children}
+    </th>
+  );
 }
+
+/* ✅ Ajuste: se agrega prop `title` opcional */
 function Td({
   children = null,
   className = "",
-}: Readonly<{ children?: React.ReactNode; className?: string }>) {
+  title,
+}: Readonly<{ children?: React.ReactNode; className?: string; title?: string }>) {
   return (
     <td
       className={`px-5 py-5 align-top text-[14px] text-slate-700 ${className}`}
+      title={title}
     >
       {children}
     </td>
@@ -102,7 +99,7 @@ function Td({
 
 const MaintenanceTable = forwardRef<MaintenanceTableRef, MaintenanceTableProps>(
   function MaintenanceTable(
-    { items, loading = false, onSelectionChange, onRequestRefresh, onSuccess },
+    { items, loading = false, onSelectionChange, onRequestRefresh, onSuccess, onUpdateOptimistic },
     ref
   ) {
     const [selected, setSelected] = useState<Record<number, boolean>>({});
@@ -112,9 +109,13 @@ const MaintenanceTable = forwardRef<MaintenanceTableRef, MaintenanceTableProps>(
     const [assignOpen, setAssignOpen] = useState(false);
     const [assignItem, setAssignItem] = useState<MantenimientoItem | null>(null);
 
+    const [reassignOpen, setReassignOpen] = useState(false);
+    const [reassignItem, setReassignItem] = useState<MantenimientoItem | null>(null);
+
+    const [finalizingId, setFinalizingId] = useState<number | null>(null);
+
     /* --------------------------- Efectos de selección --------------------------- */
 
-    // Depura selección cuando cambian los items
     useEffect(() => {
       if (!items?.length) {
         if (Object.keys(selected).length) setSelected({});
@@ -136,7 +137,6 @@ const MaintenanceTable = forwardRef<MaintenanceTableRef, MaintenanceTableProps>(
       return items.every((i) => !!selected[i.id]);
     }, [items, selected]);
 
-    // Notificar cantidad seleccionada
     useEffect(() => {
       const count = Object.values(selected).filter(Boolean).length;
       onSelectionChange?.(count);
@@ -156,6 +156,64 @@ const MaintenanceTable = forwardRef<MaintenanceTableRef, MaintenanceTableProps>(
     const openDetail = (id: number) => {
       setDetailId(id);
       setDetailOpen(true);
+    };
+
+    const detailItem = useMemo(() => {
+      if (!detailId) return null;
+      return items.find((i) => i.id === detailId) ?? null;
+    }, [detailId, items]);
+
+    const handleFinalizar = async (id: number) => {
+      const now = new Date();
+      const fechaFinalISO = now.toISOString();
+
+      onUpdateOptimistic?.(id, {
+        fecha_final: fechaFinalISO,
+        usuario_asignado: undefined,
+        prioridad: null,
+        notas: null,
+      });
+
+      setFinalizingId(id);
+      try {
+        const body: any = {
+          fecha_final: fechaFinalISO,
+          id_usuario_asigna: null,
+          prioridad: null,
+          notas: null,
+        };
+
+        await mantenimientoService.updateMantenimiento(id, body);
+        onSuccess?.("Mantenimiento finalizado correctamente.");
+      } catch (err: unknown) {
+        console.error("[MaintenanceTable] handleFinalizar failed:", err);
+        alert(err instanceof Error ? err.message : "No se pudo finalizar el mantenimiento");
+        onRequestRefresh?.();
+      } finally {
+        setFinalizingId(null);
+      }
+    };
+
+    const handleReabrir = async (id: number) => {
+      onUpdateOptimistic?.(id, {
+        fecha_final: null,
+      });
+
+      setFinalizingId(id);
+      try {
+        const body: any = {
+          fecha_final: null,
+        };
+
+        await mantenimientoService.updateMantenimiento(id, body);
+        onSuccess?.("Mantenimiento reabierto correctamente.");
+      } catch (err: unknown) {
+        console.error("[MaintenanceTable] handleReabrir failed:", err);
+        alert(err instanceof Error ? err.message : "No se pudo reabrir el mantenimiento");
+        onRequestRefresh?.();
+      } finally {
+        setFinalizingId(null);
+      }
     };
 
     /* ----------------------------- Métodos del ref ----------------------------- */
@@ -188,7 +246,7 @@ const MaintenanceTable = forwardRef<MaintenanceTableRef, MaintenanceTableProps>(
       if (loading) {
         return (
           <tr>
-            <td colSpan={7} className="px-5 py-14 text-center text-slate-500">
+            <td colSpan={6} className="px-5 py-14 text-center text-slate-500">
               Cargando mantenimiento…
             </td>
           </tr>
@@ -198,7 +256,7 @@ const MaintenanceTable = forwardRef<MaintenanceTableRef, MaintenanceTableProps>(
       if (!items.length) {
         return (
           <tr>
-            <td colSpan={7} className="px-5 py-14 text-center text-slate-500">
+            <td colSpan={6} className="px-5 py-14 text-center text-slate-500">
               No hay resultados para los filtros aplicados.
             </td>
           </tr>
@@ -208,9 +266,10 @@ const MaintenanceTable = forwardRef<MaintenanceTableRef, MaintenanceTableProps>(
       return items.map((i) => {
         const metaCode = `MNT-${String(i.id).padStart(3, "0")}`;
         const roomNumber = i.habitacion?.numero ?? "—";
-        const prioridadLabel = prioridadToLabel(i.prioridad) ?? "Media";
-        const responsable =
-          i.usuario_asignado?.nombre ?? i.usuario_reporta?.nombre ?? null;
+        const prioridadLabel = i.prioridad ? prioridadToLabel(i.prioridad) : null;
+        const responsable = i.usuario_asignado?.nombre ?? null;
+        const isFinalizado = i.fecha_final !== null && i.fecha_final !== undefined;
+        const isBusy = finalizingId === i.id;
 
         return (
           <tr key={i.id} className="hover:bg-slate-50/50 transition-colors">
@@ -235,60 +294,62 @@ const MaintenanceTable = forwardRef<MaintenanceTableRef, MaintenanceTableProps>(
               </div>
             </Td>
 
-            <Td className="pl-2 pr-2">
-              <div className="font-semibold text-slate-900 leading-5">
-                Mantenimiento
-              </div>
-              <div className="mt-1 text-[12px]">
-                <button
-                  type="button"
-                  onClick={() => openDetail(i.id)}
-                  className="font-medium text-emerald-700 hover:underline"
-                  title="Ver detalle"
-                >
-                  {metaCode}
-                </button>
-              </div>
+            <Td className="align-middle">
+              {prioridadLabel ? <PriorityPill label={prioridadLabel} /> : <span className="text-slate-400 text-sm">—</span>}
             </Td>
 
             <Td>
-              <div className="flex items-center gap-2">
-                <div className="h-9 w-9 rounded-full bg-slate-600 text-white grid place-items-center font-semibold">
-                  {getInitials(responsable ?? undefined) || "P"}
+              {responsable ? (
+                <div className="flex items-center gap-2">
+                  <UserRound className="h-4 w-4 text-emerald-600" />
+                  <span className="text-sm font-medium text-slate-700">
+                    {responsable}
+                  </span>
                 </div>
-                <div className="text-slate-800 truncate">
-                  {responsable ?? (
-                    <span className="text-slate-400">Sin asignar</span>
-                  )}
-                </div>
-              </div>
+              ) : (
+                <span className="text-slate-400 text-sm">Sin asignar</span>
+              )}
             </Td>
 
-            <Td>
-              <div className="flex items-start gap-2">
-                <span className="mt-1 text-slate-500">
-                  <Calendar className="h-4 w-4" />
-                </span>
-                <div className="min-w-0">
-                  <div className="font-medium text-slate-800 whitespace-nowrap">
-                    {fmtDate(i.fecha_inicio)}
-                  </div>
-                </div>
-              </div>
+            <Td className="px-4 py-3 text-sm text-slate-700 truncate" title={i.notas ?? ""}>
+              {i.notas ?? <span className="text-slate-400">—</span>}
             </Td>
 
             <Td className="align-middle">
-              <PriorityPill label={prioridadLabel} />
-            </Td>
-
-            <Td className="align-middle">
-              <div className="flex items-center justify-end gap-3 text-slate-500">
+              <div className="flex items-center justify-end gap-2 text-slate-500">
                 <button
-                  title="Ver"
+                  title="Ver detalles"
                   className="hover:text-emerald-700 transition-colors"
                   onClick={() => openDetail(i.id)}
                 >
                   <Eye className="h-4 w-4" />
+                </button>
+                <button
+                  title="Editar / Reasignar"
+                  className="hover:text-blue-600 transition-colors"
+                  onClick={() => {
+                    setReassignItem(i);
+                    setReassignOpen(true);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  title={isFinalizado ? "Reabrir mantenimiento" : "Finalizar mantenimiento"}
+                  disabled={isBusy}
+                  onClick={() => isFinalizado ? handleReabrir(i.id) : handleFinalizar(i.id)}
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    isFinalizado
+                      ? "bg-rose-100 text-rose-600 hover:bg-rose-200"
+                      : "bg-emerald-100 text-emerald-600 hover:bg-emerald-200"
+                  } ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                  {isFinalizado ? (
+                    <XCircle className="h-4 w-4" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </Td>
@@ -305,13 +366,12 @@ const MaintenanceTable = forwardRef<MaintenanceTableRef, MaintenanceTableProps>(
           <div className="overflow-x-auto">
             <table className="w-full table-fixed">
               <colgroup>
-                <col className="w-10" />
-                <col className="w-[23%]" />
-                <col className="w-[25%]" />
-                <col className="w-[17%]" />
-                <col className="w-[14%]" />
+                <col className="w-12" />
+                <col className="w-[22%]" />
                 <col className="w-[12%]" />
-                <col className="w-[9%]" />
+                <col className="w-[22%]" />
+                <col className="w-[22%]" />
+                <col className="w-[110px]" />
               </colgroup>
 
               <thead className="bg-[#304D3C] text-white border-b border-slate-200">
@@ -326,11 +386,12 @@ const MaintenanceTable = forwardRef<MaintenanceTableRef, MaintenanceTableProps>(
                     />
                   </Th>
                   <Th className="text-white">Habitación</Th>
-                  <Th className="text-white">Tarea</Th>
-                  <Th className="text-white">Responsable</Th>
-                  <Th className="text-white">Programado</Th>
                   <Th className="text-white">Prioridad</Th>
-                  <Th className="text-right text-white">Acciones</Th>
+                  <Th className="text-white">Asignado</Th>
+                  <Th className="text-white">Notas</Th>
+                  <Th className="text-right text-white" title="Acciones">
+                    Acciones
+                  </Th>
                 </tr>
               </thead>
 
@@ -345,7 +406,9 @@ const MaintenanceTable = forwardRef<MaintenanceTableRef, MaintenanceTableProps>(
         <MantenimientoDetailModal
           open={detailOpen}
           mantenimientoId={detailId}
+          item={detailItem}
           onClose={() => setDetailOpen(false)}
+          onFinalized={() => onRequestRefresh?.()}
         />
 
         {/* Modal de asignación */}
@@ -356,16 +419,32 @@ const MaintenanceTable = forwardRef<MaintenanceTableRef, MaintenanceTableProps>(
             setAssignOpen(false);
             setAssignItem(null);
           }}
-          onSaved={(_updated) => {
-            // mostramos éxito (opcional)
+          onSaved={(updated) => {
             onSuccess?.("La tarea fue asignada correctamente al responsable.");
-            // limpiamos selección
+            if (updated) {
+              onUpdateOptimistic?.(updated.id, updated);
+            }
             setSelected({});
-            // cerramos modal
             setAssignOpen(false);
             setAssignItem(null);
-            // 🔄 refrescamos datos del hook padre
-            onRequestRefresh?.();
+          }}
+        />
+
+        {/* Modal de reasignación */}
+        <ReassignMaintenanceModal
+          isOpen={reassignOpen}
+          item={reassignItem}
+          onClose={() => {
+            setReassignOpen(false);
+            setReassignItem(null);
+          }}
+          onSaved={(updated) => {
+            onSuccess?.("La tarea fue reasignada correctamente.");
+            if (updated) {
+              onUpdateOptimistic?.(updated.id, updated);
+            }
+            setReassignOpen(false);
+            setReassignItem(null);
           }}
         />
       </>

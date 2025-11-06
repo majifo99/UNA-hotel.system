@@ -124,6 +124,25 @@ export function useHistorialBase<T>(
       ? prevTotalRef.current
       : total;
 
+  // ✨ Función para invalidar el caché y refrescar datos
+  const invalidateCache = () => {
+    cacheRef.current.clear();
+    setLoading(true);
+    const key = JSON.stringify(params);
+    fetchFn(params)
+      .then((res) => {
+        cacheRef.current.set(key, res);
+        setData(res.data || []);
+        setTotal(res.total ?? res.data?.length ?? 0);
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e : new Error(String(e)));
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
   return {
     data: uiData,
     total: uiTotal,
@@ -140,5 +159,6 @@ export function useHistorialBase<T>(
     loading,
     rawLoading: loading,
     error,
+    invalidateCache, // ✨ Para refrescar manualmente cuando sea necesario
   };
 }

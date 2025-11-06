@@ -1,8 +1,8 @@
-import { X, Save, BadgeCheck, Calendar, Clock, AlertCircle } from "lucide-react";
+import { X, Save, BadgeCheck, AlertCircle } from "lucide-react";
 import { PRIORIDADES, type Prioridad, type LimpiezaItem } from "../../types/limpieza";
 import { useLimpiezaMutation } from "../../hooks/useLimpiezaMutation";
 import type { SelectedRoom } from "../RoomsTable";
-import { useMemo } from "react";
+
 import { useUsers } from "../../hooks/useUsers";
 
 type Props = {
@@ -33,8 +33,6 @@ export default function AssignModal({
 
   const {
     prioridad, setPrioridad,
-    fecha, setFecha,
-    hora, setHora,
     notas, setNotas,
     asignadoA, setAsignadoA,
     errors, canSave, loading, toast,
@@ -49,21 +47,11 @@ export default function AssignModal({
     users,
   });
 
-  const todayStr = useMemo(() => {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  }, []);
-
   const canSaveLocal = canSave;
 
   const ids = {
     asignadoA: "assign-asignadoA",
     prioridad: "assign-prioridad",
-    fecha: "assign-fecha",
-    hora: "assign-hora",
     notas: "assign-notas",
     habitacion: "assign-habitacion",
   } as const;
@@ -180,47 +168,6 @@ export default function AssignModal({
               )}
             </div>
           </div>
-
-          {/* Reprogramación (opcional) */}
-          <fieldset className="mt-2">
-            <legend className="text-sm font-medium text-slate-800">Reprogramación (opcional)</legend>
-            <div className="mt-2 grid grid-cols-2 gap-3">
-              <div className="relative">
-                <label htmlFor={ids.fecha} className="sr-only">Fecha</label>
-                <input
-                  id={ids.fecha}
-                  type="date"
-                  value={fecha}
-                  onChange={(e) => setFecha(e.target.value)}
-                  min={todayStr}
-                  className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 ${
-                    errors.fecha ? "border-rose-300 focus:ring-rose-500" : "border-slate-200 focus:ring-emerald-500"
-                  }`}
-                  aria-invalid={!!errors.fecha}
-                />
-                <Calendar className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                {errors.fecha && (
-                  <p className="mt-1 text-xs text-rose-600">{errors.fecha}</p>
-                )}
-              </div>
-              <div className="relative">
-                <label htmlFor={ids.hora} className="sr-only">Hora</label>
-                <input
-                  id={ids.hora}
-                  type="time"
-                  value={hora}
-                  onChange={(e) => setHora(e.target.value)}
-                  className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 ${
-                    errors.hora ? "border-rose-300 focus:ring-rose-500" : "border-slate-200 focus:ring-emerald-500"
-                  }`}
-                  aria-invalid={!!errors.hora}
-                />
-                <Clock className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                {errors.hora && <p className="mt-1 text-xs text-rose-600">{errors.hora}</p>}
-              </div>
-            </div>
-            <p className="mt-1 text-xs text-slate-500">Para cambiar fecha, llena también la hora (y viceversa).</p>
-          </fieldset>
 
           {/* Notas */}
           <div>
