@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { CreditCard, FileText, RotateCcw, Coffee, FileX, Clock } from 'lucide-react';
+import { CreditCard, FileText, Coffee, FileX, Clock } from 'lucide-react';
 import { FolioDistribucion } from './FolioDistribucion';
 import { FolioPagos } from './FolioPagos';
 import { FolioCierre } from './FolioCierre';
 import { FolioHistorial } from './FolioHistorial';
+import { FolioResumen } from './FolioResumen';
 
 interface FolioManagerProps {
   folioId: number;
@@ -11,14 +12,14 @@ interface FolioManagerProps {
   className?: string;
 }
 
-type TabType = 'distribucion' | 'pagos' | 'cierre' | 'historial' | 'resumen';
+type TabType = 'resumen' | 'distribucion' | 'pagos' | 'cierre' | 'historial';
 
 export const FolioManager: React.FC<FolioManagerProps> = ({
   folioId,
   onComplete,
   className = ''
 }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('distribucion');
+  const [activeTab, setActiveTab] = useState<TabType>('resumen');
   const [folioData, setFolioData] = useState<any>(null);
 
   const handleDistributionComplete = (data: any) => {
@@ -38,6 +39,12 @@ export const FolioManager: React.FC<FolioManagerProps> = ({
   };
 
   const tabs = [
+    {
+      id: 'resumen' as TabType,
+      label: 'Resumen',
+      icon: FileText,
+      description: 'Ver resumen del folio'
+    },
     {
       id: 'distribucion' as TabType,
       label: 'Distribuir Servicios',
@@ -97,6 +104,25 @@ export const FolioManager: React.FC<FolioManagerProps> = ({
 
       {/* Contenido de pestañas */}
       <div className="p-6">
+        {activeTab === 'resumen' && (
+          <div>
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">Resumen del Folio</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Estado actual del folio y distribución de cargos
+              </p>
+            </div>
+            
+            {/* Contenido del resumen */}
+            <div className="space-y-6">
+              {/* Aquí irá el componente de resumen */}
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <p className="text-gray-500">Cargando resumen del folio...</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'distribucion' && (
           <div>
             <div className="mb-4">
@@ -178,108 +204,11 @@ export const FolioManager: React.FC<FolioManagerProps> = ({
         )}
 
         {activeTab === 'resumen' && (
-          <div>
-            <div className="mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">Resumen del Folio</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                Estado actual de la distribución y pagos
-              </p>
-            </div>
-            {folioData ? (
-              <div className="space-y-6">
-                {/* Resumen general */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Estado General</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">
-                        ${folioData.resumen?.a_distribuir || '0.00'}
-                      </div>
-                      <div className="text-sm text-gray-600">Total Servicios a Distribuir</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">
-                        ${folioData.resumen?.distribuido || '0.00'}
-                      </div>
-                      <div className="text-sm text-gray-600">Distribuido</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-amber-600">
-                        ${folioData.resumen?.cargos_sin_persona || '0.00'}
-                      </div>
-                      <div className="text-sm text-gray-600">Pendiente</div>
-                    </div>
-                    <div className="text-center">
-                      <div className={`text-2xl font-bold ${
-                        (folioData.totales?.saldo_global || 0) > 0 ? 'text-red-600' : 'text-green-600'
-                      }`}>
-                        ${folioData.totales?.saldo_global?.toFixed(2) || '0.00'}
-                      </div>
-                      <div className="text-sm text-gray-600">Saldo Global</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Detalle por cliente */}
-                {folioData.personas && folioData.personas.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Detalle por Cliente</h3>
-                    <div className="space-y-3">
-                      {folioData.personas.map((persona: any) => (
-                        <div key={persona.id_cliente} className="bg-gray-50 p-4 rounded-lg">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <div className="font-medium text-gray-900">
-                                Cliente #{persona.id_cliente}
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-3 gap-4 text-sm">
-                              <div className="text-center">
-                                <div className="font-medium">${persona.asignado?.toFixed(2) || '0.00'}</div>
-                                <div className="text-gray-500">Asignado</div>
-                              </div>
-                              <div className="text-center">
-                                <div className="font-medium">${persona.pagos?.toFixed(2) || '0.00'}</div>
-                                <div className="text-gray-500">Pagado</div>
-                              </div>
-                              <div className="text-center">
-                                <div className={`font-medium ${persona.saldo > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                  ${persona.saldo?.toFixed(2) || '0.00'}
-                                </div>
-                                <div className="text-gray-500">Saldo</div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Botón para actualizar */}
-                <div className="flex justify-center">
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center"
-                  >
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    Actualizar Datos
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>No hay datos de folio disponibles</p>
-                <button
-                  onClick={() => setActiveTab('distribucion')}
-                  className="mt-2 text-blue-600 hover:text-blue-800"
-                >
-                  Comenzar con Distribución
-                </button>
-              </div>
-            )}
-          </div>
+          <FolioResumen 
+            folioId={folioId}
+            autoLoad={true}
+            showActions={true}
+          />
         )}
       </div>
     </div>

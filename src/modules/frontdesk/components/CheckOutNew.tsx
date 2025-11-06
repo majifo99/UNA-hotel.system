@@ -27,7 +27,7 @@
  * 7. Generar recibo → 8. Completar checkout
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Component, type ErrorInfo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -68,6 +68,70 @@ import ReceiptModal from './ReceiptModal';
 // Tipos
 import type { CheckoutFormData, BillingItem, BillSplit, ReceiptData } from '../types/checkout';
 import type { FolioResumen as FolioResumenType } from '../services/folioService';
+
+// ============================================================================
+// ERROR BOUNDARY COMPONENTS
+// ============================================================================
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+class ErrorBoundary extends Component<
+  { children: React.ReactNode; fallback: React.ComponentType<any> },
+  ErrorBoundaryState
+> {
+  constructor(props: { children: React.ReactNode; fallback: React.ComponentType<any> }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      const FallbackComponent = this.props.fallback;
+      return <FallbackComponent error={this.state.error} />;
+    }
+
+    return this.props.children;
+  }
+}
+
+const FolioResumenFallback: React.FC<{ error?: Error }> = ({ error }) => (
+  <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
+    <div className="flex items-start gap-3">
+      <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+      <div className="flex-1">
+        <h3 className="font-semibold text-red-900">Error al cargar el resumen del folio</h3>
+        <p className="text-sm text-red-700 mt-1">
+          No se pudo cargar el resumen del folio. Puedes continuar con el checkout de forma manual.
+        </p>
+        {error && (
+          <details className="mt-2">
+            <summary className="text-xs text-red-600 cursor-pointer">Ver detalles técnicos</summary>
+            <pre className="text-xs text-red-600 mt-1 bg-red-100 p-2 rounded overflow-auto max-w-full">
+              {error.message}
+            </pre>
+          </details>
+        )}
+      </div>
+      <button
+        onClick={() => window.location.reload()}
+        className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+      >
+        Recargar
+      </button>
+    </div>
+  </div>
+);
 
 // ============================================================================
 // TIPOS LOCALES
@@ -410,7 +474,7 @@ export const CheckOut: React.FC = () => {
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkoutFolioHook, folioId, idClienteTitular]);
+  }, [folioId, idClienteTitular]); // Removido checkoutFolioHook para evitar recreaciones
 
   /**
    * Mapea los datos financieros del folio al formulario
@@ -574,7 +638,7 @@ export const CheckOut: React.FC = () => {
         await checkoutFolioHook.obtenerResumen();
         
         toast.success('Pago registrado', {
-          description: `$${paymentAmount.toFixed(2)} - ${methodName}`
+          description: `$${toNumber(paymentAmount).toFixed(2)} - ${methodName}`
         });
       } else {
         actualizarPaso(3, 'error');
@@ -734,14 +798,15 @@ export const CheckOut: React.FC = () => {
       console.log('🔍 Folio ID establecido, validando...', folioId);
       validarYCargarFolio(folioId);
     }
-  }, [folioId, hasLoadedReservationData, mostrarResumenFolio, validarYCargarFolio]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [folioId, hasLoadedReservationData, mostrarResumenFolio]); // Removido validarYCargarFolio
 
   /**
    * Efecto para actualizar monto de pago cuando cambia el saldo
    */
   useEffect(() => {
     if (checkoutFolioHook.resumenFolio) {
-      setPaymentAmount(checkoutFolioHook.resumenFolio.totales.saldo_global);
+      setPaymentAmount(toNumber(checkoutFolioHook.resumenFolio.totales.saldo_global));
     }
   }, [checkoutFolioHook.resumenFolio]);
 
@@ -1076,18 +1141,29 @@ export const CheckOut: React.FC = () => {
             {/* Resumen del Folio */}
             {mostrarResumenFolio && checkoutFolioHook.resumenFolio && (
               <div className="mb-6">
-                <FolioResumen
-                  folioId={folioId}
-                />
+                <ErrorBoundary fallback={FolioResumenFallback}>
+                  <FolioResumen
+                    folioId={folioId}
+                  />
+                </ErrorBoundary>
                 
                 {/* Botón para agregar consumos */}
-                <div className="mt-4">
+                <div className="mt-4 space-y-2">
                   <button
                     onClick={() => navigate(`/frontdesk/folio/${folioId}?action=add-charge`)}
                     className="w-full py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2 font-medium"
                   >
                     <DollarSign className="w-5 h-5" />
                     Agregar Consumos / Cargos
+                  </button>
+                  
+                  {/* Botón para ocultar resumen */}
+                  <button
+                    onClick={() => setMostrarResumenFolio(false)}
+                    className="w-full py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Eye className="w-4 h-4" />
+                    Ocultar Resumen del Folio
                   </button>
                 </div>
               </div>
@@ -1193,7 +1269,7 @@ export const CheckOut: React.FC = () => {
                     ) : (
                       <>
                         <CreditCard className="w-5 h-5" />
-                        Registrar Pago de ${paymentAmount.toFixed(2)}
+                        Registrar Pago de ${toNumber(paymentAmount).toFixed(2)}
                       </>
                     )}
                   </button>

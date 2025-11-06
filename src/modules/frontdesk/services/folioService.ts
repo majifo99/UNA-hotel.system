@@ -136,8 +136,49 @@ export const folioService = {
   // --------------------------------------------------------------------------
 
   /**
+   * Verifica si una reserva existe antes del check-in
+   * Intenta tanto con código como con ID numérico
+   */
+  verificarReserva: async (reservaId: string): Promise<boolean> => {
+    try {
+      // Intentar primero con el código tal como viene
+      let response = await apiClient.get(`/frontdesk/reserva/${reservaId}`);
+      if (response.status === 200) return true;
+    } catch (error) {
+      console.warn(`⚠️ No se encontró reserva con código ${reservaId}, intentando con ID...`);
+    }
+
+    try {
+      // Si es un código como YX3PU6KV, intentar buscar por endpoint de búsqueda
+      const reservas = await apiClient.get('/reservas', {
+        params: { codigo: reservaId }
+      });
+      return reservas.data.data && reservas.data.data.length > 0;
+    } catch (error) {
+      console.warn(`⚠️ Reserva ${reservaId} no encontrada en ningún endpoint:`, error);
+      return false;
+    }
+  },
+
+  /**
+   * Buscar reservas por criterios (como código o nombre)
+   */
+  buscarReservas: async (criterio: string): Promise<any[]> => {
+    try {
+      const response = await apiClient.get('/frontdesk/reservas/buscar', {
+        params: { q: criterio }
+      });
+      return response.data.data || [];
+    } catch (error) {
+      console.warn(`⚠️ Error al buscar reservas con criterio "${criterio}":`, error);
+      return [];
+    }
+  },
+
+  /**
    * Realiza el check-in y crea la estadía con su folio
    * Endpoint: POST /frontdesk/reserva/:id/checkin
+   * Nota: Convierte código de reserva a ID si es necesario
    */
   realizarCheckIn: async (
     reservaId: number | string,
@@ -159,8 +200,36 @@ export const folioService = {
       observacion_checkin?: string;
     }
   ): Promise<FolioApiResponse> => {
+    // Si recibimos un código de reserva (string), convertir a ID numérico
+    let idReserva = reservaId;
+    
+    if (typeof reservaId === 'string' && isNaN(Number(reservaId))) {
+      console.log(`🔄 Convirtiendo código de reserva "${reservaId}" a ID numérico...`);
+      
+      try {
+        // Buscar la reserva por código para obtener su ID
+        const reservas = await apiClient.get('/reservas', {
+          params: { codigo: reservaId }
+        });
+        
+        const reservaEncontrada = reservas.data.data?.find((r: any) => 
+          r.codigo_reserva === reservaId
+        );
+        
+        if (reservaEncontrada) {
+          idReserva = reservaEncontrada.id_reserva;
+          console.log(`✅ Código "${reservaId}" convertido a ID: ${idReserva}`);
+        } else {
+          throw new Error(`No se encontró reserva con código "${reservaId}"`);
+        }
+      } catch (error) {
+        console.error(`❌ Error al convertir código a ID:`, error);
+        throw new Error(`No se pudo encontrar la reserva "${reservaId}"`);
+      }
+    }
+
     const response = await apiClient.post(
-      `/frontdesk/reserva/${reservaId}/checkin`,
+      `/frontdesk/reserva/${idReserva}/checkin`,
       data
     );
     return response.data;

@@ -33,7 +33,7 @@ interface ClientConfig {
  * Default configuration
  */
 const DEFAULT_CONFIG: ClientConfig = {
-  timeout: 60000, // 60 seconds
+  timeout: 10000, // 10 seconds - matches legacy apiClient
   timeoutErrorMessage: 'La solicitud tardó demasiado tiempo. Por favor, intente nuevamente.',
 };
 
@@ -42,13 +42,13 @@ const DEFAULT_CONFIG: ClientConfig = {
  */
 function createAxiosInstance(config: ClientConfig = DEFAULT_CONFIG) {
   return axios.create({
-    baseURL: import.meta.env.VITE_API_URL,
+    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
     timeout: config.timeout,
     headers: {
       'Content-Type': 'application/json',
     },
-    withCredentials: true,
-    withXSRFToken: true,
+    // Note: withCredentials and withXSRFToken disabled to match working legacy config
+    // Enable only when Laravel backend is properly configured for CORS with credentials
   });
 }
 
@@ -71,21 +71,6 @@ const httpClientExtended = createAxiosInstance({
  */
 function getAuthToken(): string | null {
   return localStorage.getItem('adminAuthToken') || localStorage.getItem('authToken');
-}
-
-/**
- * Get CSRF token from meta tag or cookie
- */
-function getCsrfToken(): string | null {
-  const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-  if (metaToken) return metaToken;
-  
-  const cookieToken = document.cookie
-    .split('; ')
-    .find(row => row.startsWith('XSRF-TOKEN='))
-    ?.split('=')[1];
-  
-  return cookieToken ? decodeURIComponent(cookieToken) : null;
 }
 
 /**
@@ -172,7 +157,7 @@ function setupInterceptors(
   instance: ReturnType<typeof createAxiosInstance>,
   logPrefix: string
 ) {
-  // Request interceptor - Add auth and CSRF tokens
+  // Request interceptor - Add auth token (CSRF disabled to match legacy config)
   instance.interceptors.request.use(
     (config) => {
       // Add Bearer token
@@ -181,11 +166,8 @@ function setupInterceptors(
         config.headers.Authorization = `Bearer ${token}`;
       }
       
-      // Add CSRF token
-      const csrfToken = getCsrfToken();
-      if (csrfToken) {
-        config.headers['X-XSRF-TOKEN'] = csrfToken;
-      }
+      // Note: CSRF token handling disabled to match legacy config
+      // Enable when backend is properly configured for CSRF with credentials
       
       // Log only non-report requests to reduce noise
       const isReport = config.url?.includes('/reportes/');
