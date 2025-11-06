@@ -14,7 +14,7 @@ const ADMIN_USER_KEY = 'adminAuthUser';
 // =================== SESSION MANAGER ===================
 
 class SessionManager {
-  private checkInterval: number | null = null;
+  private checkInterval: ReturnType<typeof setInterval> | null = null;
   private listeners: (() => void)[] = [];
 
   /**
