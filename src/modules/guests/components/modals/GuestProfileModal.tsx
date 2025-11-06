@@ -1,6 +1,7 @@
-import React from 'react';
-import { User, Heart, Phone, Star } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Heart, Phone, Star, Edit2 } from 'lucide-react';
 import { Modal } from '../../../../components/ui/Modal';
+import { EditGuestModal } from './EditGuestModal';
 import type { Guest } from '../../types';
 
 interface GuestProfileModalProps {
@@ -14,7 +15,23 @@ export const GuestProfileModal: React.FC<GuestProfileModalProps> = ({
   onClose,
   guest
 }) => {
+  const [isEditing, setIsEditing] = useState(false);
+
   if (!guest) return null;
+
+  const handleEditClick = () => {
+    setIsEditing(true);
+  };
+
+  const handleEditClose = () => {
+    setIsEditing(false);
+  };
+
+  const handleGuestUpdated = (_updatedGuest: Guest) => {
+    // Aquí podrías actualizar el guest local si fuera necesario
+    // Por ahora solo cerramos el modal de edición
+    setIsEditing(false);
+  };
 
   const renderField = (label: string, value?: string | number | boolean) => (
     <div>
@@ -35,20 +52,37 @@ export const GuestProfileModal: React.FC<GuestProfileModalProps> = ({
   );
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Perfil del Huésped" size="lg">
-      <div className="space-y-8">
+    <>
+      <Modal isOpen={isOpen} onClose={onClose} title="Perfil del Huésped" size="lg">
+        {/* Header con botón de edición */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6 pb-4 border-b">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
+            {guest.firstName} {guest.firstLastName} {guest.secondLastName}
+          </h1>
+          <button
+            onClick={handleEditClick}
+            className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base self-start sm:self-auto"
+          >
+            <Edit2 size={16} />
+            <span className="hidden sm:inline">Editar</span>
+            <span className="sm:hidden">Editar</span>
+          </button>
+        </div>
+        
+        <div className="space-y-6 sm:space-y-8">
 
         {/* Información Básica */}
-        <section className="border-b pb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-blue-50 rounded-lg">
-              <User className="text-blue-600" size={24} />
+        <section className="border-b pb-4 sm:pb-6">
+          <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <div className="p-1.5 sm:p-2 bg-blue-50 rounded-lg">
+              <User className="text-blue-600" size={20} />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">Información Básica</h2>
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Información Básica</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {renderField('Nombre', guest.firstName)}
-            {renderField('Apellido', guest.lastName)}
+            {renderField('Primer Apellido', guest.firstLastName)}
+            {renderField('Segundo Apellido', guest.secondLastName)}
             {renderField('Email', guest.email)}
             {renderField('Teléfono', guest.phone)}
             {renderField('Fecha de Nacimiento', guest.dateOfBirth)}
@@ -60,9 +94,9 @@ export const GuestProfileModal: React.FC<GuestProfileModalProps> = ({
         </section>
 
         {/* Dirección */}
-        <section className="border-b pb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Dirección</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <section className="border-b pb-4 sm:pb-6">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Dirección</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {renderField('Calle', guest.address?.street)}
             {renderField('Ciudad', guest.address?.city)}
             {renderField('Provincia/Estado', guest.address?.state)}
@@ -72,14 +106,14 @@ export const GuestProfileModal: React.FC<GuestProfileModalProps> = ({
         </section>
 
         {/* Información Médica */}
-        <section className="border-b pb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-red-50 rounded-lg">
-              <Heart className="text-red-600" size={24} />
+        <section className="border-b pb-4 sm:pb-6">
+          <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <div className="p-1.5 sm:p-2 bg-red-50 rounded-lg">
+              <Heart className="text-red-600" size={20} />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">Información Médica</h2>
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Información Médica</h2>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {renderList('Alergias', guest.allergies)}
             {renderList('Restricciones Dietéticas', guest.dietaryRestrictions)}
             {renderField('Notas Médicas', guest.medicalNotes)}
@@ -87,14 +121,14 @@ export const GuestProfileModal: React.FC<GuestProfileModalProps> = ({
         </section>
 
         {/* Contacto de Emergencia */}
-        <section className="border-b pb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-orange-50 rounded-lg">
-              <Phone className="text-orange-600" size={24} />
+        <section className="border-b pb-4 sm:pb-6">
+          <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <div className="p-1.5 sm:p-2 bg-orange-50 rounded-lg">
+              <Phone className="text-orange-600" size={20} />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">Contacto de Emergencia</h2>
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Contacto de Emergencia</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {renderField('Nombre', guest.emergencyContact?.name)}
             {renderField('Relación', guest.emergencyContact?.relationship)}
             {renderField('Teléfono', guest.emergencyContact?.phone)}
@@ -104,13 +138,13 @@ export const GuestProfileModal: React.FC<GuestProfileModalProps> = ({
 
         {/* Preferencias y Notas */}
         <section>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-yellow-50 rounded-lg">
-              <Star className="text-yellow-600" size={24} />
+          <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <div className="p-1.5 sm:p-2 bg-yellow-50 rounded-lg">
+              <Star className="text-yellow-600" size={20} />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">Notas y Preferencias</h2>
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Notas y Preferencias</h2>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {renderField('Notas del Personal', guest.notes)}
             {renderField('Cliente VIP', guest.vipStatus ? 'Sí' : 'No')}
             {renderField('Idioma Preferido', guest.preferredLanguage)}
@@ -147,5 +181,14 @@ export const GuestProfileModal: React.FC<GuestProfileModalProps> = ({
         </section>
       </div>
     </Modal>
+
+    {/* Modal de edición */}
+    <EditGuestModal
+      isOpen={isEditing}
+      onClose={handleEditClose}
+      guest={guest}
+      onGuestUpdated={handleGuestUpdated}
+    />
+  </>
   );
 };

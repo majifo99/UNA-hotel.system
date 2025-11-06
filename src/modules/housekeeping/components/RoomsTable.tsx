@@ -1,282 +1,482 @@
-import { useEffect, useState, type JSX } from "react";
-import { ArrowUpDown, MoreHorizontal, UserCheck, KeyRound } from "lucide-react";
-import type { Room } from "../types/typesRoom";
+import { useMemo, useEffect, useState, useCallback, useRef } from "react";
+import { UserCheck, MoreHorizontal, Eye, RefreshCw } from "lucide-react";
+import type { Prioridad } from "../types/limpieza";
+import { type LimpiezasTableController } from "../hooks/useLimpiezasQuery";
+import type { ColumnKey } from "../types/table";
+import LimpiezaDetailModal from "./Modals/LimpiezaDetailModal";
+import CleanToggle, { type FinalizePayload } from "./CleanToggle";
+import type { RoomFilters } from "./FilterBar";
 
-type RoomsTableProps = Readonly<{
-  sortedAndFilteredRooms: Room[];
-  selectedRooms?: string[];
-  toggleRoomSelection?: (id: string) => void;
-  toggleAllRooms?: () => void;
-  handleSort?: (field: keyof Room) => void;
-  getStatusBadge?: (status: string) => JSX.Element;
-  onRowEdit?: (room: Room, action: "status" | "reassign") => void;
-}>;
+// UI helpers
+import { BarLoader, TableLoader } from "./UI/Loaders";
+import HabitacionCell from "./UI/HabitacionCell";
+import { EstadoBadge, PrioridadBadge } from "./UI/Badges";
 
-// ✅ Mapa para los títulos de columnas (evita ternario anidado)
-const COLUMN_LABEL: Record<"number" | "type" | "floor", string> = {
-  number: "Número",
-  type: "Tipo",
-  floor: "Piso",
+// Modals
+import SuccessModal from "./Modals/SuccessModal";
+import ReassignModal from "./Modals/ReassignModal";
+
+const cn = (...xs: Array<string | false | null | undefined>) => xs.filter(Boolean).join(" ");
+const PRIORIDAD_CLEAN_MODE: "dash" | "finishedAt" = "dash";
+
+function formatFinishedAt(iso?: string | null) {
+  if (!iso) return "Finalizada";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "Finalizada";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `Finalizada ${dd}/${mm} ${hh}:${mi}`;
+}
+
+function getRowId(item: any): number {
+  return item.id_limpieza ?? item.id;
+}
+function getEstado(item: any): { nombre?: string } | undefined {
+  return item.estado ?? item.estadoHabitacion;
+}
+
+function renderPrioridadCell(clean: boolean, fechaFinal?: string | null, prioridad?: Prioridad | null) {
+  if (clean) {
+    if (PRIORIDAD_CLEAN_MODE === "dash") {
+      return <span className="text-slate-400 text-sm" aria-label="Sin prioridad por estar limpia">—</span>;
+    }
+    return <span className="text-slate-600 text-sm">{formatFinishedAt(fechaFinal ?? undefined)}</span>;
+  }
+  return <PrioridadBadge prioridad={prioridad ?? null} />;
+}
+
+export type SelectedRoom = {
+  id: number;
+  numero?: string;
+  piso?: string | number;
+  tipoNombre?: string;
 };
 
-export default function RoomsTable({
-  sortedAndFilteredRooms,
-  selectedRooms,
-  toggleRoomSelection,
-  toggleAllRooms,
-  handleSort,
-  getStatusBadge,
-  onRowEdit,
-}: RoomsTableProps) {
-  const [internalSelected, setInternalSelected] = useState<string[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+type Props = {
+  controller?: LimpiezasTableController;
+  onEdit?: (item: any) => void;
+  onSelectionChange?: (room: SelectedRoom | null) => void;
+  filters?: RoomFilters;
+};
 
-  const selected = selectedRooms ?? internalSelected;
+export default function RoomsTable({ controller, onSelectionChange, filters }: Readonly<Props>) {
+  if (!controller) {
+    throw new Error("RoomsTable requires a controller prop");
+  }
+  const ctrl = controller;
 
-  const handleToggleOne =
-    toggleRoomSelection ??
-    ((id: string) =>
-      setInternalSelected((prev) =>
-        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-      ));
+  const {
+    loading,
+    error,
+    items,
+    pagination,
+    selectedIds,
+    toggleOne,
+    gotoPage,
+    finalizarLimpieza,
+    reabrirLimpieza,
+    isFirstLoad,
+    isRevalidating,
+    hasPageData,
+  } = ctrl;
 
-  const onSortLocal =
-    handleSort ??
-    (() => {
-      /* noop */
+  const totalPages = pagination.last_page;
+
+  const columns = useMemo(
+    () => [
+      { key: "habitacion", label: "Habitación" },
+      { key: "estado", label: "Estado" },
+      { key: "prioridad", label: "Prioridad" },
+      { key: "asignador", label: "Asignado" },
+      { key: "notas", label: "Notas" },
+    ] as ReadonlyArray<{ key: ColumnKey | "notas" | "habitacion"; label: string }>,
+    []
+  );
+
+  // ✅ Estado del modal de éxito
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("Operación realizada correctamente.");
+
+  // ✅ Estado del modal de reasignación
+  const [showReassignModal, setShowReassignModal] = useState(false);
+  const [reassignItem, setReassignItem] = useState<any>(null);
+
+  // Optimista local para el toggle
+  const [optimisticCleanIds, setOptimisticCleanIds] = useState<Set<number>>(new Set());
+  const addOptimistic = useCallback((id: number) => setOptimisticCleanIds((prev) => new Set(prev).add(id)), []);
+  const removeOptimistic = useCallback((id: number) => {
+    setOptimisticCleanIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
     });
+  }, []);
 
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedRooms = sortedAndFilteredRooms.slice(startIndex, endIndex);
-  const totalPages = Math.ceil(sortedAndFilteredRooms.length / itemsPerPage);
+  const handleFinalizeForToggle = useCallback(
+    async (id: number, payload: FinalizePayload) => {
+      addOptimistic(id);
+      try {
+        await finalizarLimpieza(id, { fecha_final: payload.fecha_final, notas: null });
+      } catch (e) {
+        console.error("[RoomsTable] Error al finalizar limpieza", e);
+        removeOptimistic(id);
+        throw e;
+      }
+    },
+    [finalizarLimpieza, addOptimistic, removeOptimistic]
+  );
 
-  const handleToggleAllLocal =
-    toggleAllRooms ??
-    (() => {
-      const pageIds = paginatedRooms.map((r) => r.id);
-      const allSelected = pageIds.every((id) => selected.includes(id));
-      return setInternalSelected((prev) =>
-        allSelected
-          ? prev.filter((id) => !pageIds.includes(id))
-          : Array.from(new Set([...prev, ...pageIds]))
-      );
-    });
+  const handleReopenForToggle = useCallback(
+    async (id: number) => {
+      removeOptimistic(id);
+      try {
+        await reabrirLimpieza(id);
+      } catch (e) {
+        console.error("[RoomsTable] Error al reabrir limpieza", e);
+        throw e;
+      }
+    },
+    [reabrirLimpieza, removeOptimistic]
+  );
 
-  const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
+  // menú por fila
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  useEffect(() => {
+    const close = () => setOpenMenuId(null);
+    if (openMenuId !== null) document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [openMenuId]);
+
+  // modal detalle
+  const [detailId, setDetailId] = useState<number | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  // ✅ Emitir habitación seleccionada sin loops (no dependemos de la identidad del callback)
+  const onSelRef = useRef<typeof onSelectionChange | null>(null);
+  useEffect(() => {
+    onSelRef.current = onSelectionChange || null;
+  }, [onSelectionChange]);
 
   useEffect(() => {
-    const totalPagesCalc = Math.ceil(sortedAndFilteredRooms.length / itemsPerPage);
-    if (currentPage > totalPagesCalc) setCurrentPage(1);
-  }, [sortedAndFilteredRooms]);
+    if (!onSelRef.current) return;
 
-  if (sortedAndFilteredRooms.length === 0) {
+    if (!items || !Array.isArray(items) || !Array.isArray(selectedIds) || selectedIds.length === 0) {
+      onSelRef.current(null);
+      return;
+    }
+    const selectedRows = items.filter((r) => selectedIds.includes(getRowId(r)));
+    const firstWithRoom = selectedRows.find((r) => r?.habitacion?.id != null);
+    if (!firstWithRoom) {
+      onSelRef.current(null);
+      return;
+    }
+    const rawId = firstWithRoom.habitacion!.id;
+    const numericId = typeof rawId === "number" ? rawId : Number(rawId);
+    onSelRef.current({
+      id: numericId,
+      numero: firstWithRoom.habitacion?.numero,
+      piso: firstWithRoom.habitacion?.piso,
+      tipoNombre: firstWithRoom.habitacion?.tipo?.nombre,
+    });
+  }, [selectedIds, items]); // 👈 sin onSelectionChange aquí
+
+  /* ---------- Filtros cliente ---------- */
+  const hasClientFilters = useMemo(() => {
+    if (!filters) return false;
+    const s = filters.search?.trim();
+    const st = filters.status?.trim().toLowerCase();
+    const pr = filters.priority?.trim().toLowerCase();
+    const as = filters.assigned?.trim();
+    return Boolean(s || st || pr || as);
+  }, [filters]);
+
+  const viewItems = useMemo(() => {
+    if (!filters) return items || [];
+    const fSearch = (filters?.search || "").toLowerCase().trim();
+    const fStatus = (filters?.status || "").toLowerCase().trim();
+    const fPriority = (filters?.priority || "").toLowerCase().trim();
+    const fAssigned = (filters?.assigned || "").trim();
+
+    return (items || []).filter((it: any) => {
+      const numero = String(it?.habitacion?.numero ?? "").toLowerCase();
+      const estadoNombre = String((it?.estado ?? it?.estadoHabitacion)?.nombre ?? "").toLowerCase();
+      const cleanByDate = Boolean(it?.fecha_final);
+      const isLimpia = estadoNombre === "limpia" || cleanByDate;
+      const prioridad = String(it?.prioridad ?? "").toLowerCase();
+      const asignadoNombre = String(it?.usuario_asignado?.nombre ?? it?.asignador?.name ?? "").trim();
+
+      if (fSearch && !numero.includes(fSearch)) return false;
+      if (fStatus === "limpia" && !isLimpia) return false;
+      if (fStatus === "sucia" && isLimpia) return false;
+      if (fPriority && prioridad !== fPriority) return false;
+      if (fAssigned && asignadoNombre !== fAssigned) return false;
+
+      return true;
+    });
+  }, [items, filters]);
+
+  /* ====== ESTADOS DE UI ====== */
+  if (isFirstLoad || (loading && !hasPageData)) {
+    return <TableLoader />;
+  }
+
+  if (error) {
     return (
-      <div className="text-center text-slate-500 py-10 text-sm">
-        No hay habitaciones para mostrar.
+      <div className="bg-white border border-rose-200 rounded-xl overflow-hidden">
+        <div className="text-center text-rose-600 py-10 text-sm">Error: {error}</div>
       </div>
     );
   }
 
-  const closeDetails = (el: HTMLElement) => {
-    const detailsEl = el.closest("details");
-    if (detailsEl instanceof HTMLDetailsElement) detailsEl.open = false;
-  };
+  const HEAD_BASE = "p-4 font-medium text-gray-700 capitalize text-left";
+
+  if (!loading && hasPageData && viewItems.length === 0) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        {isRevalidating && <BarLoader />}
+        <div className="text-center text-slate-500 py-10 text-sm">
+          {hasClientFilters
+            ? "No hay limpiezas para mostrar con los filtros aplicados."
+            : "No hay limpiezas para mostrar."}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-xl overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-slate-50/80 border-b border-slate-200">
-            <tr>
-              <th className="px-6 py-3">
-                <input
-                  type="checkbox"
-                  checked={
-                    paginatedRooms.length > 0 &&
-                    paginatedRooms.every((r) => selected.includes(r.id))
-                  }
-                  onChange={handleToggleAllLocal}
-                  className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                />
-              </th>
+    <>
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        {loading && hasPageData && <BarLoader />}
 
-              {(["number", "type", "floor"] as (keyof Room)[]).map((field) => (
-                <th
-                  key={field}
-                  className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider"
-                >
-                  <button
-                    type="button"
-                    onClick={() => onSortLocal(field)}
-                    className="flex items-center gap-1 hover:text-slate-900 transition-colors"
-                  >
-                    {/* ✅ sin ternarios anidados */}
-                    {COLUMN_LABEL[field as "number" | "type" | "floor"]}
-                    <ArrowUpDown className="w-3 h-3" />
-                  </button>
+        <div className="overflow-x-auto">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col className="w-12" />
+              <col className="w-[22%]" />
+              <col className="w-[12%]" />
+              <col className="w-[12%]" />
+              <col className="w-[22%]" />
+              <col className="w-[22%]" />
+              <col className="w-[110px]" />
+            </colgroup>
+
+            <thead className="bg-[#304D3C] text-white border-b border-slate-200">
+              <tr>
+                <th className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={false}
+                    disabled
+                    className="h-4 w-4 rounded border-white/40 text-white bg-white/20 cursor-not-allowed"
+                  />
                 </th>
-              ))}
+                {columns.map((c) => (
+                  <th key={c.key} className={HEAD_BASE + " text-white"}>
+                    <span>{c.label}</span>
+                  </th>
+                ))}
+                <th className={HEAD_BASE + " text-right text-white"}>Acciones</th>
+              </tr>
+            </thead>
 
-              <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Clave</th>
-              <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Estado</th>
-              <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Responsable</th>
-              <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Última limpieza</th>
-              <th className="px-6 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Acciones</th>
-            </tr>
-          </thead>
+            <tbody className="bg-white divide-y divide-slate-100">
+              {viewItems.map((item: any) => {
+                const id = getRowId(item);
+                const isSelected = selectedIds.includes(id);
+                const numero = item.habitacion?.numero ?? "—";
+                const pisoVal = item.habitacion?.piso;
+                const tipoNombre = item.habitacion?.tipo?.nombre ?? undefined;
+                const estado = getEstado(item);
+                const estadoNombre = estado?.nombre;
+                const clean =
+                  optimisticCleanIds.has(id) || Boolean(item.fecha_final) || (estadoNombre ?? "").toLowerCase() === "limpia";
 
-          <tbody className="bg-white divide-y divide-slate-100">
-            {paginatedRooms.map((room) => {
-              const isSelected = selected.includes(room.id);
-              return (
-                <tr
-                  key={room.id}
-                  className={`hover:bg-slate-50/50 transition-colors ${isSelected ? "bg-teal-50/30" : ""}`}
-                >
-                  <td className="px-6 py-4">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleToggleOne(room.id)}
-                      className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                    />
-                  </td>
+                const asignadoNombre = item?.usuario_asignado?.nombre ?? item?.asignador?.name ?? null;
 
-                  <td className="px-6 py-4 text-sm text-slate-900 font-medium">{room.number}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{room.type}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{room.floor}</td>
-
-                  <td className="px-6 py-4 text-sm text-slate-600">
-                    {room.keyCode ? (
-                      <div className="flex items-center gap-2">
-                        <KeyRound className="w-4 h-4 text-teal-600" />
-                        {room.keyCode}
-                      </div>
-                    ) : (
-                      <span className="text-slate-400">—</span>
-                    )}
-                  </td>
-
-                  <td className="px-6 py-4">
-                    {getStatusBadge ? (
-                      getStatusBadge(room.status)
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-50 border border-slate-200 text-slate-700">
-                        {room.status}
-                      </span>
-                    )}
-                  </td>
-
-                  <td className="px-6 py-4 text-sm text-slate-600">
-                    {room.assignedTo ? (
-                      <div className="flex items-center gap-2">
-                        <UserCheck className="w-4 h-4 text-teal-600" />
-                        {room.assignedTo}
-                      </div>
-                    ) : (
-                      <span className="text-slate-400">Sin asignar</span>
-                    )}
-                  </td>
-
-                  <td className="px-6 py-4 text-sm text-slate-600">
-                    {room.lastCleaned || <span className="text-slate-400">—</span>}
-                  </td>
-
-                  <td className="px-6 py-4 text-right">
-                    <details className="relative">
-                      <summary className="list-none cursor-pointer inline-flex items-center gap-1 text-slate-600 hover:text-slate-900 px-2 py-1 rounded-lg hover:bg-slate-100">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="text-xs">Opciones</span>
-                      </summary>
-
-                      {/* ✅ rol interactivo en contenedor, no en <ul> */}
-                      <div
-                        className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-10"
-                        role="menu"
-                        aria-label="Opciones de habitación"
-                      >
-                        <ul className="text-sm text-slate-700">
-                          <li className="px-3 py-2">
-                            <button
-                              type="button"
-                              role="menuitem"
-                              className="w-full text-left hover:bg-slate-50 rounded-md px-1 py-1"
-                              onClick={(e) => {
-                                onRowEdit?.(room, "status");
-                                closeDetails(e.currentTarget as HTMLElement);
+                return (
+                  <tr key={id} className={cn("hover:bg-slate-50/50 transition-colors", isSelected && "bg-emerald-50/30")}>
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleOne(id)}
+                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                    </td>
+                    <td className="p-4">
+                      <HabitacionCell numero={numero} tipoNombre={tipoNombre} piso={pisoVal} />
+                    </td>
+                    <td className="p-4">
+                      <EstadoBadge clean={clean} />
+                    </td>
+                    <td className="p-4">{renderPrioridadCell(clean, item.fecha_final, item.prioridad ?? null)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {asignadoNombre ? (
+                        <div className="flex items-center gap-2">
+                          <UserCheck className="w-4 h-4 text-emerald-600" />
+                          <span className="text-sm font-medium text-slate-700">
+                            {asignadoNombre}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 text-sm">Sin asignar</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700 truncate" title={item.notas ?? ""}>
+                      {item.notas ?? <span className="text-slate-400">—</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2 justify-end">
+                        <CleanToggle
+                          id={id}
+                          clean={clean}
+                          notas={item.notas ?? null}
+                          onFinalize={async (xid, payload) => {
+                            await handleFinalizeForToggle(xid, payload);
+                            setSuccessMsg(`Habitación ${numero} marcada como LIMPIA.`);
+                            setShowSuccess(true);
+                          }}
+                          onReopen={async (xid) => {
+                            await handleReopenForToggle(xid);
+                            setSuccessMsg(`Habitación ${numero} marcada como SUCIA.`);
+                            setShowSuccess(true);
+                          }}
+                          onOptimisticAdd={(x) => setOptimisticCleanIds((s) => new Set(s).add(x))}
+                          onOptimisticRemove={(x) =>
+                            setOptimisticCleanIds((s) => {
+                              const nx = new Set(s);
+                              nx.delete(x);
+                              return nx;
+                            })
+                          }
+                        />
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId((prev) => (prev === id ? null : id));
+                            }}
+                            aria-haspopup="menu"
+                            aria-expanded={openMenuId === id}
+                            aria-label="Más acciones"
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-slate-300 text-slate-700 hover:bg-slate-50 transition hover:scale-105"
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
+                          {openMenuId === id && (
+                            <div
+                              role="menu"
+                              aria-label="Acciones de limpieza"
+                              tabIndex={-1}
+                              onKeyDown={(e) => {
+                                if (e.key === "Escape") setOpenMenuId(null);
                               }}
+                              className="absolute right-0 mt-2 w-44 rounded-xl border border-slate-200 bg-white shadow-lg py-1 z-20"
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              Cambiar estado
-                            </button>
-                          </li>
+                              <button
+                                role="menuitem"
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  setDetailId(id);
+                                  setDetailOpen(true);
+                                }}
+                              >
+                                <Eye className="w-4 h-4 text-slate-600" />
+                                Ver detalles
+                              </button>
 
-                          <li className="px-3 py-2">
-                            <button
-                              type="button"
-                              role="menuitem"
-                              className="w-full text-left hover:bg-slate-50 rounded-md px-1 py-1"
-                              onClick={(e) => {
-                                onRowEdit?.(room, "reassign");
-                                closeDetails(e.currentTarget as HTMLElement);
-                              }}
-                            >
-                              Reasignar personal
-                            </button>
-                          </li>
-
-                          <li className="px-3 py-2 text-slate-400">Ver historial</li>
-                        </ul>
+                              <button
+                                role="menuitem"
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  setReassignItem(item);
+                                  setShowReassignModal(true);
+                                }}
+                              >
+                                <RefreshCw className="w-4 h-4 text-slate-600" />
+                                Reasignar
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </details>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
 
-      {/* PAGINACIÓN EXTERNA */}
-      <div className="flex justify-center items-center gap-1 py-5 bg-white border-t border-slate-100">
-        <button
-          onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-teal-600 disabled:opacity-30"
-          aria-label="Página anterior"
-        >
-          ←
-        </button>
-
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+        {/* Paginación */}
+        <div className="flex justify-center items-center gap-1 py-5 bg-white border-t border-slate-100">
           <button
-            key={page}
-            onClick={() => handlePageChange(page)}
-            className={`w-8 h-8 rounded-md text-sm transition-colors ${
-              currentPage === page
-                ? "text-teal-700 font-semibold bg-slate-100"
-                : "text-slate-500 hover:text-teal-600"
-            }`}
+            onClick={() => gotoPage(pagination.current_page - 1)}
+            disabled={pagination.current_page <= 1}
+            className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-emerald-600 disabled:opacity-30"
+            aria-label="Página anterior"
           >
-            {page}
+            ←
           </button>
-        ))}
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <button
+              key={p}
+              onClick={() => gotoPage(p)}
+              className={cn(
+                "w-8 h-8 rounded-md text-sm transition-colors",
+                pagination.current_page === p
+                  ? "text-emerald-700 font-semibold bg-slate-100"
+                  : "text-slate-500 hover:text-emerald-600"
+              )}
+            >
+              {p}
+            </button>
+          ))}
+          <button
+            onClick={() => gotoPage(pagination.current_page + 1)}
+            disabled={pagination.current_page >= totalPages}
+            className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-emerald-600 disabled:opacity-30"
+            aria-label="Página siguiente"
+          >
+            →
+          </button>
+        </div>
 
-        <button
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-teal-600 disabled:opacity-30"
-          aria-label="Página siguiente"
-        >
-          →
-        </button>
+        {/* Modal de detalles */}
+        <LimpiezaDetailModal open={detailOpen} limpiezaId={detailId} onClose={() => setDetailOpen(false)} />
       </div>
-    </div>
+
+      {/* ✅ Modal de éxito global de la tabla */}
+      <SuccessModal
+        isOpen={showSuccess}
+        title="¡Operación Exitosa!"
+        message={successMsg}
+        actionLabel="Continuar"
+        autoCloseMs={1500}
+        onAction={() => setShowSuccess(false)}
+        onClose={() => setShowSuccess(false)}
+      />
+
+      {/* ✅ Modal de reasignación */}
+      <ReassignModal
+        isOpen={showReassignModal}
+        onClose={() => {
+          setShowReassignModal(false);
+          setReassignItem(null);
+        }}
+        onSuccess={() => {
+          setSuccessMsg("Limpieza reasignada correctamente.");
+          setShowSuccess(true);
+        }}
+        limpiezaItem={reassignItem}
+      />
+    </>
   );
 }
+

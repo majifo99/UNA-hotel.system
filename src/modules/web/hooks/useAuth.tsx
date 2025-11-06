@@ -5,7 +5,7 @@
  * Manages user sessions, login/logout, and authentication status.
  */
 
-import { createContext, useContext, useReducer, useEffect, useMemo } from 'react';
+import { createContext, useContext, useReducer, useEffect, useMemo, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import type { 
   AuthContextType, 
@@ -103,7 +103,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // =================== ACTIONS ===================
 
-  const login = async (credentials: LoginFormData): Promise<void> => {
+  const login = useCallback(async (credentials: LoginFormData): Promise<void> => {
     try {
       dispatch({ type: 'AUTH_START' });
       
@@ -115,9 +115,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       dispatch({ type: 'AUTH_FAILURE', payload: message });
       throw error;
     }
-  };
+  }, []);
 
-  const register = async (userData: RegisterFormData): Promise<void> => {
+  const register = useCallback(async (userData: RegisterFormData): Promise<void> => {
     try {
       dispatch({ type: 'AUTH_START' });
       
@@ -129,9 +129,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       dispatch({ type: 'AUTH_FAILURE', payload: message });
       throw error;
     }
-  };
+  }, []);
 
-  const logout = async (): Promise<void> => {
+  const logout = useCallback(async (): Promise<void> => {
     try {
       dispatch({ type: 'AUTH_SET_LOADING', payload: true });
       
@@ -143,13 +143,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Even if logout fails, clear local state
       dispatch({ type: 'AUTH_LOGOUT' });
     }
-  };
+  }, []);
 
-  const clearError = (): void => {
+  const clearError = useCallback((): void => {
     dispatch({ type: 'AUTH_CLEAR_ERROR' });
-  };
+  }, []);
 
-  const refreshUser = async (): Promise<void> => {
+  const refreshUser = useCallback(async (): Promise<void> => {
     try {
       dispatch({ type: 'AUTH_SET_LOADING', payload: true });
       
@@ -161,16 +161,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       dispatch({ type: 'AUTH_FAILURE', payload: message });
       throw error;
     }
-  };
+  }, []);
 
-  const resetPassword = async (email: string): Promise<void> => {
+  const resetPassword = useCallback(async (email: string): Promise<void> => {
     try {
       await AuthService.resetPassword(email);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error al resetear contraseña';
       throw new Error(message);
     }
-  };
+  }, []);
 
   // =================== INITIALIZATION ===================
 
@@ -206,7 +206,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     clearError,
     refreshUser,
     resetPassword,
-  }), [state, login, register, logout, clearError, refreshUser, resetPassword]);
+  }), [state]);
 
   return (
     <AuthContext.Provider value={contextValue}>

@@ -4,8 +4,11 @@ import type {
   UpdateGuestData, 
   GuestSearchFilters 
 } from '../types';
-import { guestService } from '../services';
+import guestApiService from '../services/guestApiService';
 import { toast } from 'sonner';
+
+// Use the original service
+const activeGuestService = guestApiService;
 
 export const useGuests = () => {
   const [searchFilters, setSearchFilters] = useState<GuestSearchFilters>({});
@@ -18,16 +21,34 @@ export const useGuests = () => {
     error: searchError 
   } = useQuery({
     queryKey: ['guests', searchFilters],
-    queryFn: () => guestService.searchGuests(searchFilters),
+    queryFn: () => activeGuestService.searchGuests(searchFilters),
     enabled: true
+  });
+
+  // Mutation para crear huésped completo (nuevo endpoint)
+  const createGuestFullMutation = useMutation({
+    mutationFn: activeGuestService.createGuestFull,
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      if (response.success && response.data) {
+        toast.success(`Huésped ${response.data.nombre} ${response.data.apellido1} creado exitosamente`);
+      }
+    },
+    onError: (error) => {
+      console.error('Error creating guest (full):', error);
+      toast.error('Error al crear huésped completo');
+    }
   });
 
   // Mutation para crear huésped
   const createGuestMutation = useMutation({
-    mutationFn: guestService.createGuest,
+    mutationFn: activeGuestService.createGuest,
     onSuccess: (newGuest) => {
       queryClient.invalidateQueries({ queryKey: ['guests'] });
-      toast.success(`Huésped ${newGuest.firstName} ${newGuest.lastName} creado exitosamente`);
+      const fullLastName = newGuest.secondLastName 
+        ? `${newGuest.firstLastName} ${newGuest.secondLastName}`
+        : newGuest.firstLastName;
+      toast.success(`Huésped ${newGuest.firstName} ${fullLastName} creado exitosamente`);
     },
     onError: (error) => {
       console.error('Error creating guest:', error);
@@ -38,10 +59,13 @@ export const useGuests = () => {
   // Mutation para actualizar huésped
   const updateGuestMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateGuestData }) => 
-      guestService.updateGuest(id, data),
+      activeGuestService.updateGuest(id, data),
     onSuccess: (updatedGuest) => {
       queryClient.invalidateQueries({ queryKey: ['guests'] });
-      toast.success(`Huésped ${updatedGuest.firstName} ${updatedGuest.lastName} actualizado`);
+      const fullLastName = updatedGuest.secondLastName 
+        ? `${updatedGuest.firstLastName} ${updatedGuest.secondLastName}`
+        : updatedGuest.firstLastName;
+      toast.success(`Huésped ${updatedGuest.firstName} ${fullLastName} actualizado`);
     },
     onError: (error) => {
       console.error('Error updating guest:', error);
@@ -57,21 +81,41 @@ export const useGuests = () => {
     // Loading states
     isSearching,
     isCreating: createGuestMutation.isPending,
+    isCreatingFull: createGuestFullMutation.isPending,
     isUpdating: updateGuestMutation.isPending,
     
     // Error states
     searchError,
     createError: createGuestMutation.error,
+    createFullError: createGuestFullMutation.error,
     updateError: updateGuestMutation.error,
     
     // Actions
     searchGuests: (filters: GuestSearchFilters) => setSearchFilters(filters),
     createGuest: createGuestMutation.mutateAsync,
+    createGuestFull: createGuestFullMutation.mutateAsync,
     updateGuest: (id: string, data: UpdateGuestData) => 
       updateGuestMutation.mutateAsync({ id, data }),
-    getGuestById: guestService.getById,
+    // Additional utilities
+    getGuestById: activeGuestService.getGuestById,
     
     // Clear search
     clearSearch: () => setSearchFilters({})
   };
+};
+
+/**
+ * Hook específico para obtener un huésped por ID
+ */
+export const useGuestById = (id: string | undefined) => {
+  return useQuery({
+    queryKey: ['guest', id],
+    queryFn: () => {
+      if (!id) throw new Error('ID is required');
+      return activeGuestService.getGuestById(id);
+    },
+    enabled: !!id, // Solo ejecutar si hay ID
+    retry: 2,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+  });
 };

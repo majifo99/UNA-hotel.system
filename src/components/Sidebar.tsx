@@ -1,5 +1,5 @@
 /**
- * Enhanced Sidebar Component for UNA Hotel System
+ * Enhanced Sidebar Component for Lanaku Hotel System
  * 
  * Features:
  * - Config-driven navigation (single source of truth)
@@ -11,20 +11,23 @@
  * 
  * Design Preservation:
  * - Maintains existing visual design and color scheme
- * - Preserves UNA brand colors and styling
+ * - Preserves Lanaku brand colors and styling
  * - Keeps professional dark theme approach
  * - Enhances without breaking existing UX
  */
 
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
-  Building2,
   ChevronRight,
   ChevronLeft,
   Keyboard,
   Search,
+  User,
+  LogOut,
+  Settings,
 } from 'lucide-react';
+import SolLogo from '../assets/Sol nav.png';
 import {
   getNavigationByCategory,
   NAVIGATION_CATEGORIES,
@@ -37,14 +40,13 @@ import {
   useShortcutsAvailable 
 } from '../hooks/useNavigationShortcuts';
 import { CommandPalette, useCommandPalette } from './CommandPalette';
-import { ShortcutGuide } from './ShortcutGuide';
+import { useAdminAuth } from '../modules/admin';
 
 /**
  * Props for NavigationItem component
  */
 interface NavigationItemProps {
   readonly item: NavigationItem;
-  readonly isActive: boolean;
   readonly isCollapsed: boolean;
   readonly level: number;
   readonly expandedItems: Set<string>;
@@ -58,7 +60,6 @@ interface NavigationItemProps {
  */
 function SidebarNavigationItem({ 
   item, 
-  isActive, 
   isCollapsed, 
   level, 
   expandedItems, 
@@ -82,11 +83,13 @@ function SidebarNavigationItem({
     location.pathname.startsWith(child.path + '/')
   );
   
-  // This item is expanded if it has an active child or is in expandedItems
+  // Auto-expand groups that have an active child (but keep other groups open too)
   const isExpanded = hasActiveChild || expandedItems.has(item.path);
   
-  // Only show active state for direct matches, not parents with active children
-  const isCurrentlyActive = isActive && !hasActiveChild;
+  // IMPORTANT: Only show active state for the exact current route
+  // Do NOT highlight parents even if they have active children
+  // Do NOT highlight items marked as containers (they only serve as grouping elements)
+  const isCurrentlyActive = !item.isContainer && location.pathname === item.path;
   
   /**
    * Enhanced click handling for expandable items
@@ -95,6 +98,11 @@ function SidebarNavigationItem({
     if (hasChildren) {
       e.preventDefault();
       onItemExpansion(item.path, !isExpanded);
+    }
+    
+    // If item is a container, prevent navigation entirely
+    if (item.isContainer) {
+      e.preventDefault();
     }
   };
   
@@ -108,6 +116,10 @@ function SidebarNavigationItem({
       classes += ' nav-item-submenu';
     } else if (hasChildren) {
       classes += ' nav-item-parent';
+      // Add special class if parent has active child but isn't active itself
+      if (hasActiveChild && !isCurrentlyActive) {
+        classes += ' has-active-child';
+      }
     }
     
     if (isCurrentlyActive) {
@@ -207,22 +219,18 @@ function SidebarNavigationItem({
       {/* Child items */}
       {hasChildren && isExpanded && !isCollapsed && (
         <div className="space-y-1">
-          {item.children!.map((child) => {
-            const childActive = isActiveRoute(child.path);
-            return (
-              <SidebarNavigationItem
-                key={child.id}
-                item={child}
-                isActive={childActive}
-                isCollapsed={isCollapsed}
-                level={level + 1}
-                expandedItems={expandedItems}
-                onItemExpansion={onItemExpansion}
-                shortcutsAvailable={shortcutsAvailable}
-                isActiveRoute={isActiveRoute}
-              />
-            );
-          })}
+          {item.children!.map((child) => (
+            <SidebarNavigationItem
+              key={child.id}
+              item={child}
+              isCollapsed={isCollapsed}
+              level={level + 1}
+              expandedItems={expandedItems}
+              onItemExpansion={onItemExpansion}
+              shortcutsAvailable={shortcutsAvailable}
+              isActiveRoute={isActiveRoute}
+            />
+          ))}
         </div>
       )}
     </>
@@ -236,7 +244,7 @@ function SidebarNavigationItem({
  * - Professional dark green theme
  * - Category-based organization
  * - Hover states and active indicators
- * - UNA Hotel branding
+ * - Lanaku Hotel branding
  * 
  * Enhancements added:
  * - Config-driven navigation
@@ -247,13 +255,16 @@ function SidebarNavigationItem({
  */
 function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [showUserMenu, setShowUserMenu] = useState(false);
   
   // Hooks for enhanced functionality
   const shortcutState = useNavigationShortcuts();
   const commandPalette = useCommandPalette();
   const shortcutsAvailable = useShortcutsAvailable();
+  const { user, logout } = useAdminAuth();
   
   // Get grouped navigation items from config
   const groupedItems = getNavigationByCategory();
@@ -272,24 +283,42 @@ function Sidebar() {
    * Toggle sidebar collapse
    */
   const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
+    const newCollapsedState = !isCollapsed;
+    setIsCollapsed(newCollapsedState);
+    
+    // Emit custom event for layout to listen
+    window.dispatchEvent(new CustomEvent('sidebar-toggle', { 
+      detail: { isCollapsed: newCollapsedState } 
+    }));
   };
 
   /**
-   * Handle item expansion with single-expansion logic
+   * Handle item expansion with multi-expansion logic
+   * Groups stay open and don't auto-close when others are opened
    */
   const handleItemExpansion = (itemPath: string, shouldExpand: boolean) => {
     setExpandedItems(prev => {
       const newSet = new Set(prev);
       if (shouldExpand) {
-        // Close all others and open this one
-        newSet.clear();
+        // Just add this one - don't close others
         newSet.add(itemPath);
       } else {
         newSet.delete(itemPath);
       }
       return newSet;
     });
+  };
+
+  /**
+   * Handle logout
+   */
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/admin/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   return (
@@ -300,24 +329,28 @@ function Sidebar() {
         style={{ backgroundColor: 'var(--color-darkGreen2)' }}
         aria-label="Navegación principal del sistema"
       >
-        {/* Header UNA Hotel (preserved design) */}
+        {/* Header Lanaku (preserved design) */}
         <div className="flex-shrink-0 p-6 border-b" style={{ borderColor: 'rgba(0,0,0,0.2)' }}>
           <div className="flex items-center gap-3 mb-3">
             <div 
               className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" 
               style={{ backgroundColor: 'var(--color-sand)' }}
             >
-              <Building2 className="w-6 h-6" style={{ color: 'var(--color-blackCustom)' }} />
+              <img 
+                src={SolLogo} 
+                alt="Sol Logo" 
+                className="w-8 h-8 object-contain rounded-lg" 
+              />
             </div>
             
             {!isCollapsed && (
-              <div>
-                <h1 className="text-xl font-bold text-white">UNA Hotel</h1>
+              <div className="flex-1">
+                <h1 className="text-xl font-bold text-white">Lanaku</h1>
                 <div 
                   className="text-xs font-medium tracking-wider uppercase" 
                   style={{ color: 'var(--color-sand)' }}
                 >
-                  Management System
+                  Hotel Management
                 </div>
               </div>
             )}
@@ -333,9 +366,19 @@ function Sidebar() {
           </div>
           
           {!isCollapsed && (
-            <div className="text-white/60 text-sm leading-relaxed">
-              Sistema integral de gestión hotelera
-            </div>
+            <>
+              <div className="text-white/60 text-sm leading-relaxed mb-3">
+                Sistema integral de gestión hotelera Lanaku
+              </div>
+              
+              {/* Shortcuts info - Compact */}
+              {shortcutsAvailable && (
+                <div className="flex items-center gap-2 text-xs text-white/40">
+                  <Keyboard className="w-3.5 h-3.5" />
+                  <span>ALT+1-9 navegación rápida</span>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -401,7 +444,6 @@ function Sidebar() {
                         <li key={item.id}>
                           <SidebarNavigationItem
                             item={item}
-                            isActive={isActiveRoute(item.path)}
                             isCollapsed={isCollapsed}
                             level={0}
                             expandedItems={expandedItems}
@@ -418,27 +460,81 @@ function Sidebar() {
           </ul>
         </div>
         
-        {/* Footer (preserved from original) */}
-        {!isCollapsed && (
-          <div className="flex-shrink-0 pt-6 pb-4 px-6 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-            <div className="text-xs text-white/40 text-center">
-              Universidad Nacional de Costa Rica
+        {/* User Profile Section - Compact */}
+        {user && (
+          <div className="flex-shrink-0 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="w-full px-4 py-3 flex items-center gap-2.5 text-white/90 hover:bg-black/10 transition-colors"
+                aria-label="Menú de usuario"
+              >
+                <div className="w-8 h-8 rounded-full bg-[#D6BD98] flex items-center justify-center flex-shrink-0">
+                  <User className="w-4 h-4 text-[#1A3636]" />
+                </div>
+                
+                {!isCollapsed && (
+                  <div className="flex-1 text-left min-w-0">
+                    <div className="text-sm font-medium truncate">{user.firstName} {user.lastName}</div>
+                    <div className="text-xs text-white/60 truncate">{user.role}</div>
+                  </div>
+                )}
+              </button>
+
+              {/* User Menu Dropdown */}
+              {showUserMenu && !isCollapsed && (
+                <div 
+                  className="absolute bottom-full left-0 right-0 mb-2 mx-4 bg-white rounded-lg shadow-xl overflow-hidden"
+                  style={{ zIndex: 100 }}
+                >
+                  <div className="p-3 border-b border-gray-200">
+                    <div className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</div>
+                    <div className="text-xs text-gray-500 mt-1">{user.email}</div>
+                    <div className="mt-2">
+                      <span className="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-[#E1F2E2] text-[#1A3636]">
+                        {user.role}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        navigate('/perfil');
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2.5"
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span>Configuración</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        handleLogout();
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Cerrar Sesión</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="text-xs text-white/30 text-center mt-1">
+          </div>
+        )}
+        
+        {/* Footer */}
+        {!isCollapsed && (
+          <div className="flex-shrink-0 py-3 px-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+            <div className="text-xs text-white/40 text-center">
+              Lanaku Hotel Resort
+            </div>
+            <div className="text-xs text-white/30 text-center mt-0.5">
               Sistema de Gestión Hotelera
             </div>
-            
-            {/* Shortcuts info with guide */}
-            {shortcutsAvailable && (
-              <div className="mt-3 space-y-2">
-                <div className="text-xs text-white/30 text-center">
-                  ALT+1-9 para navegación rápida
-                </div>
-                <div className="flex justify-center">
-                  <ShortcutGuide className="text-xs" />
-                </div>
-              </div>
-            )}
           </div>
         )}
       </nav>

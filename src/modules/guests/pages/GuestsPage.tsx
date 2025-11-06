@@ -1,22 +1,72 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Plus, Users, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGuests } from '../hooks';
 import { ROUTES } from '../../../router/routes';
 import type { Guest } from '../../../types/core';
 
+interface PaginationInfo {
+  currentPage: number;
+  perPage: number;
+  total: number;
+  from: number;
+  to: number;
+  lastPage: number;
+}
+
 export const GuestsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
   const { guests, totalGuests, isSearching } = useGuests();
 
   // Filtrar huéspedes por término de búsqueda
-  const filteredGuests = guests.filter((guest: Guest) =>
-    guest.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    guest.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    guest.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    guest.documentNumber.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredGuests = useMemo(() => guests.filter((guest: Guest) =>
+    guest.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    guest.firstLastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    guest.secondLastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    guest.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    guest.documentNumber?.toLowerCase().includes(searchTerm.toLowerCase())
+  ), [guests, searchTerm]);
+
+  // Paginación local
+  const paginatedGuests = useMemo(() => {
+    const startIndex = (currentPage - 1) * perPage;
+    const endIndex = startIndex + perPage;
+    return filteredGuests.slice(startIndex, endIndex);
+  }, [filteredGuests, currentPage, perPage]);
+
+  const pagination: PaginationInfo = useMemo(() => {
+    const total = filteredGuests.length;
+    const lastPage = Math.ceil(total / perPage);
+    const from = total === 0 ? 0 : (currentPage - 1) * perPage + 1;
+    const to = Math.min(currentPage * perPage, total);
+
+    return {
+      currentPage,
+      perPage,
+      total,
+      from,
+      to,
+      lastPage,
+    };
+  }, [filteredGuests.length, currentPage, perPage]);
+
+  // Reset a página 1 cuando cambia el término de búsqueda
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setCurrentPage(1);
+  };
 
   const handleCreateGuest = () => {
     navigate(ROUTES.GUESTS.CREATE);
@@ -72,6 +122,11 @@ export const GuestsPage: React.FC = () => {
             Filtros
           </button>
         </div>
+        {filteredGuests.length > 0 && (
+          <div className="mt-4 text-sm text-gray-600">
+            Se encontraron <strong>{filteredGuests.length}</strong> huésped{filteredGuests.length === 1 ? '' : 'es'}
+          </div>
+        )}
       </div>
 
       {/* Stats */}
@@ -135,11 +190,11 @@ export const GuestsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredGuests.length > 0 ? filteredGuests.map((guest: Guest) => (
-                <tr key={guest.id} className="hover:bg-gray-50">
+              {paginatedGuests.length > 0 ? paginatedGuests.map((guest: Guest, index: number) => (
+                <tr key={guest.id || `guest-${index}`} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
-                      {guest.firstName} {guest.lastName}
+                      {guest.firstName} {guest.firstLastName} {guest.secondLastName || ''}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -156,7 +211,7 @@ export const GuestsPage: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
-                      onClick={() => navigate(ROUTES.GUESTS.DETAIL(guest.id))}
+                      onClick={() => guest.id && navigate(ROUTES.GUESTS.DETAIL(guest.id))}
                       className="text-blue-600 hover:underline"
                     >
                       Ver perfil
@@ -173,6 +228,70 @@ export const GuestsPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Paginación */}
+        {filteredGuests.length > 0 && (
+          <div className="flex flex-col items-center justify-between gap-4 border-t border-gray-200 bg-gray-50 px-6 py-4 sm:flex-row">
+            {/* Info de rango */}
+            <div className="text-sm text-gray-600">
+              Mostrando <span className="font-medium">{pagination.from}</span> a <span className="font-medium">{pagination.to}</span> de{' '}
+              <span className="font-medium">{pagination.total}</span> resultados
+            </div>
+
+            {/* Controles */}
+            <div className="flex items-center gap-4">
+              {/* Selector de elementos por página */}
+              <div className="flex items-center gap-2">
+                <label htmlFor="per-page-select" className="text-sm text-gray-600">
+                  Por página:
+                </label>
+                <select
+                  id="per-page-select"
+                  value={perPage}
+                  onChange={(e) => handlePerPageChange(Number.parseInt(e.target.value, 10))}
+                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition hover:border-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+
+              {/* Navegación de páginas */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                  className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Página anterior"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+
+                <span className="text-sm font-medium text-gray-700">
+                  Página {currentPage} de {pagination.lastPage}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= pagination.lastPage}
+                  className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Página siguiente"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

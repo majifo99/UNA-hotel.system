@@ -1,11 +1,7 @@
-import CheckIn from '../components/CheckIn';
+import { CheckInFlow } from '../components/CheckInFlow';
 
 const CheckInPage = () => {
-  return (
-    <div className="min-h-screen bg-[var(--color-darkGreen1)]">
-      <CheckIn />
-    </div>
-  );
+  return <CheckInFlow />;
 };
 
 export default CheckInPage;

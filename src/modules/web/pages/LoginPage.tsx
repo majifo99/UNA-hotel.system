@@ -1,9 +1,3 @@
-/**
- * Login Page - Public Website
- * 
- * User login form with validation and error handling.
- */
-
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -184,10 +178,10 @@ export function LoginPage() {
 
         {/* Demo Credentials */}
         <div className="bg-una-accent-gold/10 border border-una-accent-gold/20 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-una-primary-900 mb-2">Credenciales de prueba:</h3>
+          <h3 className="text-sm font-medium text-una-primary-900 mb-2">Ejemplo de formato:</h3>
           <div className="text-sm text-neutral-600 space-y-1">
-            <p><strong>Email:</strong> user@example.com</p>
-            <p><strong>Contraseña:</strong> password123</p>
+            <p><strong>Email:</strong> cliente@example.com</p>
+            <p><strong>Contraseña:</strong> Mínimo 8 caracteres con mayúsculas, minúsculas y números</p>
           </div>
         </div>
       </div>

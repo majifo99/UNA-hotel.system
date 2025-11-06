@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import 'react-phone-input-2/lib/style.css';
 import type { Guest } from '../types';
+import type { CreateGuestFullRequest } from '../types/guestFull';
+import { useGuests } from '../hooks';
 import { ProgressIndicator } from '../components/ProgressIndicator';
 import { StepNavigation } from '../components/StepNavigation';
 import {
@@ -36,7 +38,7 @@ interface StepConfig {
 
 export const CreateGuestPage: React.FC = () => {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
+  const { createGuestFull, isCreatingFull } = useGuests();
   const [currentStep, setCurrentStep] = useState(1);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [showMedicalSection, setShowMedicalSection] = useState(false);
@@ -47,7 +49,7 @@ export const CreateGuestPage: React.FC = () => {
       title: 'Datos Personales',
       description: 'Información básica del huésped',
       icon: <User size={20} />,
-      fields: ['firstName', 'lastName', 'email', 'phone', 'nationality', 'documentType', 'documentNumber']
+      fields: ['firstName', 'firstLastName', 'email', 'phone', 'nationality', 'documentType', 'documentNumber']
     },
     {
       id: 2,
@@ -96,7 +98,8 @@ export const CreateGuestPage: React.FC = () => {
     } 
   }>({
     firstName: '',
-    lastName: '',
+    firstLastName: '',
+    secondLastName: '',
     email: '',
     phone: '',
     nationality: 'CR',
@@ -153,8 +156,10 @@ export const CreateGuestPage: React.FC = () => {
   const validateField = (fieldName: string, value: any): string => {
     switch (fieldName) {
       case 'firstName':
-      case 'lastName':
+      case 'firstLastName':
         return !value || value.trim() === '' ? 'Este campo es obligatorio' : '';
+      case 'secondLastName':
+        return ''; // Campo opcional
       case 'email': {
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         if (!value) return 'El email es obligatorio';
@@ -227,26 +232,108 @@ export const CreateGuestPage: React.FC = () => {
     }
   };
 
+  // Helper function to get gender value for API
+  const getGenderValue = (gender: string | undefined): 'M' | 'F' | 'O' | undefined => {
+    if (gender === 'male') return 'M';
+    if (gender === 'female') return 'F';
+    return undefined;
+  };
+
   const handleSubmit = async () => {
     if (!validateCurrentStep()) {
       return;
     }
-    
-    setIsLoading(true);
 
     try {
-      // Aquí iría la lógica para crear el huésped
-      console.log('Creating guest:', formData);
+      // Preparar datos para la API completa (asegurar que los campos requeridos están presentes)
+      const guestFullData: CreateGuestFullRequest = {
+        // Datos básicos del huésped
+        nombre: formData.firstName || '',
+        apellido1: formData.firstLastName || '',
+        apellido2: formData.secondLastName || undefined,
+        email: formData.email || '',
+        telefono: formData.phone || '',
+        nacionalidad: formData.nationality || 'CR',
+        id_tipo_doc: (() => {
+          const docType = formData.documentType || 'id_card';
+          const mapping: Record<string, number> = {
+            'id_card': 1,
+            'passport': 2, 
+            'license': 3
+          };
+          return mapping[docType] || 1;
+        })(),
+        numero_doc: formData.documentNumber || '',
+        direccion: formData.address?.street || undefined,
+        fecha_nacimiento: formData.dateOfBirth || undefined,
+        genero: getGenderValue(formData.gender),
+        es_vip: formData.vipStatus || false,
+        notas_personal: formData.notes || undefined,
+
+        // Datos anidados para las tablas relacionadas
+        roomPreferences: formData.roomPreferences && (
+          formData.roomPreferences.bedType || 
+          formData.roomPreferences.floor || 
+          formData.roomPreferences.view
+        ) ? {
+          bedType: formData.roomPreferences.bedType!,
+          floor: formData.roomPreferences.floor!,
+          view: formData.roomPreferences.view!,
+          smokingAllowed: formData.roomPreferences.smokingAllowed || false
+        } : undefined,
+
+        companions: formData.companions && (
+          formData.companions.typicalTravelGroup ||
+          formData.companions.hasChildren !== undefined ||
+          formData.companions.preferredOccupancy
+        ) ? {
+          typicalTravelGroup: (() => {
+            const travelGroup = formData.companions!.typicalTravelGroup;
+            if (travelGroup === 'business_group') return 'business' as const;
+            if (travelGroup === 'friends') return 'group' as const;
+            return travelGroup || 'solo' as const;
+          })(),
+          hasChildren: formData.companions.hasChildren || false,
+          childrenAgeRanges: formData.companions.childrenAgeRanges || [],
+          preferredOccupancy: formData.companions.preferredOccupancy || 1,
+          needsConnectedRooms: formData.companions.needsConnectedRooms || false
+        } : undefined,
+
+        // Información de salud
+        allergies: formData.allergies || [],
+        dietaryRestrictions: formData.dietaryRestrictions || [],
+        medicalNotes: formData.medicalNotes || undefined,
+
+        // Contacto de emergencia
+        emergencyContact: formData.emergencyContact && (
+          formData.emergencyContact.name || 
+          formData.emergencyContact.phone || 
+          formData.emergencyContact.email
+        ) ? {
+          name: formData.emergencyContact.name || '',
+          relationship: formData.emergencyContact.relationship || '',
+          phone: formData.emergencyContact.phone || '',
+          email: formData.emergencyContact.email || ''
+        } : undefined
+      };
       
-      // Simular llamada API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('Sending full guest data to Laravel:', guestFullData);
+      
+      // Crear el huésped usando el método completo que incluye datos anidados
+      const result = await createGuestFull(guestFullData);
+      
+      if (result.success) {
+        console.log('✅ Guest created successfully:', result.data);
+      } else {
+        console.error('❌ Failed to create guest:', result.error);
+        throw new Error(result.error || 'Failed to create guest');
+      }
       
       // Redirigir a la lista de huéspedes
       navigate('/guests');
     } catch (error) {
       console.error('Error creating guest:', error);
-    } finally {
-      setIsLoading(false);
+      // Aquí podrías mostrar un mensaje de error al usuario
     }
   };
 
@@ -385,7 +472,7 @@ export const CreateGuestPage: React.FC = () => {
       <StepNavigation
         currentStep={currentStep}
         totalSteps={steps.length}
-        isLoading={isLoading}
+        isLoading={isCreatingFull}
         onPrevStep={prevStep}
         onNextStep={nextStep}
         onCancel={() => navigate('/guests')}

@@ -1,13 +1,37 @@
 /**
  * Web Reservation Page - Public 3-Step Booking Flow
  * 
- * Multi-step reservation process for public website users
+ * Multi-step reservation process for public website users.
+ * 
+ * AUTHENTICATION INTEGRATION:
+ * - Uses authenticated user's id_cliente from Laravel Sanctum session
+ * - No longer creates duplicate guest records
+ * - Token stored in localStorage as 'authToken' (set by AuthService.login/register)
+ * - useAuth() hook provides current user context (user.id === id_cliente from backend)
+ * - API requests automatically include Bearer token via apiClient interceptors
+ * 
+ * FLOW:
+ * 1. User must be logged in (ProtectedRoute ensures authentication)
+ * 2. Step 1: Select dates and guest counts
+ * 3. Step 2: Choose available rooms
+ * 4. Step 3: Add special requests and services
+ * 5. Submit: Creates reservation with authenticated user's id_cliente
+ * 
+ * BACKEND INTEGRATION:
+ * - Endpoint: POST /api/reservas
+ * - Payload includes: id_cliente (from auth user), habitaciones[], notas, id_fuente, id_estado_res
+ * - Response returns created reservation with confirmation number
  */
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { roomsData } from '../../reservations/data/roomsData';
+import { roomService } from '../../reservations/services/roomService';
 import { ProtectedRoute } from '../components/ProtectedRoute';
+import { useCreateNewReservation } from '../../reservations/hooks/useReservationQueries';
+import { useAuth } from '../hooks/useAuth.tsx';
+import type { Room } from '../../../types/core';
+import type { CreateReservationDto, CreateReservationRoomDto } from '../../reservations/types';
+import { toast } from 'sonner';
 
 // Step Components
 import { ReservationStepOne } from '../components/reservation/ReservationStepOne';
@@ -21,6 +45,7 @@ interface ReservationData {
   checkOut: string;
   adults: number;
   children: number;
+  babies: number;
   
   // Step 2: Room Selection
   selectedRoomIds: string[];
@@ -34,22 +59,59 @@ interface ReservationData {
     nationalId: string;
   };
   specialRequests: string;
-  additionalAmenities: string[];
+  selectedServices: Array<{ id_servicio: number; cantidad: number }>;
 }
+
+// Step-specific data types
+interface StepOneData {
+  checkIn: string;
+  checkOut: string;
+  adults: number;
+  children: number;
+  babies: number;
+}
+
+interface StepTwoData {
+  selectedRoomIds: string[];
+}
+
+interface StepThreeData {
+  guestInfo: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    nationalId: string;
+  };
+  specialRequests: string;
+  selectedServices: Array<{ id_servicio: number; cantidad: number }>;
+}
+
+type StepData = StepOneData | StepTwoData | StepThreeData;
 
 export function WebReservationPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
+  const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
   
   // Pre-selected room from URL parameters
   const preSelectedRoomId = searchParams.get('room');
   
+  // Pre-filled dates from URL (when coming from room detail page)
+  const preFilledCheckIn = searchParams.get('checkIn');
+  const preFilledCheckOut = searchParams.get('checkOut');
+  
+  // TanStack Query mutation for creating reservation
+  const { mutate: createReservation, isPending: isCreating } = useCreateNewReservation();
+  
   const [reservationData, setReservationData] = useState<ReservationData>({
-    checkIn: '',
-    checkOut: '',
+    checkIn: preFilledCheckIn || '',
+    checkOut: preFilledCheckOut || '',
     adults: 2,
     children: 0,
+    babies: 0,
     selectedRoomIds: preSelectedRoomId ? [preSelectedRoomId] : [],
     guestInfo: {
       firstName: '',
@@ -59,22 +121,53 @@ export function WebReservationPage() {
       nationalId: ''
     },
     specialRequests: '',
-    additionalAmenities: []
+    selectedServices: []
   });
 
-  // Available rooms based on dates and filters
-  const availableRooms = roomsData;
-  
   // Capacity warnings and messages
   const [capacityWarning, setCapacityWarning] = useState<string>('');
   const [showSpecialRequestsHint, setShowSpecialRequestsHint] = useState(false);
 
+  // Auto-advance to step 2 if dates are pre-filled from URL
+  useEffect(() => {
+    if (preFilledCheckIn && preFilledCheckOut && currentStep === 1) {
+      console.log('[WebReservationPage] Dates pre-filled from URL, advancing to room selection');
+      // Small delay to ensure state is updated
+      setTimeout(() => {
+        setCurrentStep(2);
+      }, 100);
+    }
+  }, [preFilledCheckIn, preFilledCheckOut, currentStep]);
+
+  // Fetch available rooms when dates change
+  useEffect(() => {
+    const fetchAvailableRooms = async () => {
+      if (!reservationData.checkIn || !reservationData.checkOut) {
+        return;
+      }
+
+      try {
+        const rooms = await roomService.getAvailableRooms(
+          reservationData.checkIn,
+          reservationData.checkOut,
+          reservationData.adults + reservationData.children + reservationData.babies
+        );
+        setAvailableRooms(rooms);
+      } catch (error) {
+        console.error('Error fetching available rooms:', error);
+        setAvailableRooms([]);
+      }
+    };
+
+    fetchAvailableRooms();
+  }, [reservationData.checkIn, reservationData.checkOut, reservationData.adults, reservationData.children, reservationData.babies]);
+
   // Check if current room selection can accommodate guests
   useEffect(() => {
-    if (reservationData.selectedRoomIds.length > 0 && (reservationData.adults + reservationData.children) > 0) {
-      const selectedRooms = roomsData.filter(room => reservationData.selectedRoomIds.includes(room.id));
-      const totalCapacity = selectedRooms.reduce((sum, room) => sum + room.capacity, 0);
-      const totalGuests = reservationData.adults + reservationData.children;
+    if (reservationData.selectedRoomIds.length > 0 && (reservationData.adults + reservationData.children + reservationData.babies) > 0) {
+      const selectedRooms = availableRooms.filter((room: Room) => reservationData.selectedRoomIds.includes(room.id));
+      const totalCapacity = selectedRooms.reduce((sum: number, room: Room) => sum + room.capacity, 0);
+      const totalGuests = reservationData.adults + reservationData.children + reservationData.babies;
       
       if (totalGuests > totalCapacity) {
         const shortage = totalGuests - totalCapacity;
@@ -86,52 +179,124 @@ export function WebReservationPage() {
         setShowSpecialRequestsHint(false);
       }
     }
-  }, [reservationData.selectedRoomIds, reservationData.adults, reservationData.children]);
+  }, [reservationData.selectedRoomIds, reservationData.adults, reservationData.children, reservationData.babies, availableRooms]);
 
   const updateReservationData = (updates: Partial<ReservationData>) => {
     setReservationData(prev => ({ ...prev, ...updates }));
   };
 
-  const handleStepComplete = (stepData: any) => {
+  const handleStepComplete = (stepData: StepData) => {
     switch (currentStep) {
-      case 1:
+      case 1: {
+        const step1Data = stepData as StepOneData;
         updateReservationData({
-          checkIn: stepData.checkIn,
-          checkOut: stepData.checkOut,
-          adults: stepData.adults,
-          children: stepData.children
+          checkIn: step1Data.checkIn,
+          checkOut: step1Data.checkOut,
+          adults: step1Data.adults,
+          children: step1Data.children,
+          babies: step1Data.babies
         });
         setCurrentStep(2);
         break;
-      case 2:
+      }
+      case 2: {
+        const step2Data = stepData as StepTwoData;
         updateReservationData({
-          selectedRoomIds: stepData.selectedRoomIds
+          selectedRoomIds: step2Data.selectedRoomIds
         });
         setCurrentStep(3);
         break;
-      case 3:
+      }
+      case 3: {
+        const step3Data = stepData as StepThreeData;
         // Submit reservation
         handleSubmitReservation({
           ...reservationData,
-          guestInfo: stepData.guestInfo,
-          specialRequests: stepData.specialRequests,
-          additionalAmenities: stepData.additionalAmenities
+          guestInfo: step3Data.guestInfo,
+          specialRequests: step3Data.specialRequests,
+          selectedServices: step3Data.selectedServices
         });
         break;
+      }
     }
   };
 
   const handleSubmitReservation = async (finalData: ReservationData) => {
     try {
-      // Here you would submit to your API
-      console.log('Submitting reservation:', finalData);
+      // Verify user is authenticated
+      if (!user || !isAuthenticated) {
+        toast.error('Sesión expirada', {
+          description: 'Por favor inicie sesión nuevamente.',
+          duration: 5000
+        });
+        navigate('/login');
+        return;
+      }
+
+      // Use authenticated user's id_cliente
+      const idCliente = Number(user.id);
       
-      // For now, just show success message and redirect
-      alert('¡Reserva creada exitosamente! Pronto recibirá un email de confirmación.');
-      navigate('/mis-reservas');
-    } catch (error) {
-      console.error('Error creating reservation:', error);
-      alert('Error al crear la reserva. Por favor intente de nuevo.');
+      if (!idCliente || Number.isNaN(idCliente)) {
+        toast.error('Error de autenticación', {
+          description: 'No se pudo obtener la información del usuario. Por favor intente nuevamente.',
+          duration: 5000
+        });
+        return;
+      }
+      
+      console.log('[WebReservationPage] Creating reservation for authenticated user:', {
+        userId: user.id,
+        idCliente,
+        email: user.email,
+        name: `${user.firstName} ${user.lastName}`
+      });
+      
+      toast.info('Creando reserva...', { duration: 2000 });
+      
+      // Create the reservation with the authenticated user's id_cliente
+      const habitaciones: CreateReservationRoomDto[] = finalData.selectedRoomIds.map(roomId => ({
+        id_habitacion: Number(roomId),
+        fecha_llegada: finalData.checkIn,
+        fecha_salida: finalData.checkOut,
+        adultos: finalData.adults,
+        ninos: finalData.children,
+        bebes: finalData.babies
+      }));
+      
+      const reservationPayload: CreateReservationDto = {
+        id_cliente: idCliente, // Use authenticated user's ID
+        id_estado_res: 1, // Estado "Pendiente" o "Confirmada"
+        id_fuente: 2, // Fuente "Sitio Web"
+        notas: finalData.specialRequests || undefined,
+        habitaciones
+      };
+      
+      createReservation(reservationPayload, {
+        onSuccess: (reservation) => {
+          toast.success('¡Reserva creada exitosamente!', {
+            description: `Reserva #${reservation.id} confirmada. Recibirá un email de confirmación.`,
+            duration: 5000
+          });
+          navigate('/web/confirmation', {
+            state: { reservation }
+          });
+        },
+        onError: (error: unknown) => {
+          console.error('Error creating reservation:', error);
+          toast.error('Error al crear la reserva', {
+            description: 'Por favor intente nuevamente o contacte con soporte.',
+            duration: 5000
+          });
+        }
+      });
+      
+    } catch (error: unknown) {
+      console.error('Error preparing reservation:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      toast.error('Error al preparar la reserva', {
+        description: errorMessage,
+        duration: 5000
+      });
     }
   };
 
@@ -220,7 +385,8 @@ export function WebReservationPage() {
                 checkIn: reservationData.checkIn,
                 checkOut: reservationData.checkOut,
                 adults: reservationData.adults,
-                children: reservationData.children
+                children: reservationData.children,
+                babies: reservationData.babies
               }}
               onComplete={handleStepComplete}
             />
@@ -241,13 +407,15 @@ export function WebReservationPage() {
             />
           )}
 
-          {currentStep === 3 && (
+          {currentStep === 3 && user && (
             <ReservationStepThree
               reservationData={reservationData}
-              selectedRooms={roomsData.filter(room => reservationData.selectedRoomIds.includes(room.id))}
+              selectedRooms={availableRooms.filter((room: Room) => reservationData.selectedRoomIds.includes(room.id))}
+              authenticatedUser={user}
               onComplete={handleStepComplete}
               onBack={goToPreviousStep}
               capacityWarning={capacityWarning}
+              isSubmitting={isCreating}
             />
           )}
         </div>

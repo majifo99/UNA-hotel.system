@@ -16,9 +16,26 @@ export {
   useInvalidateFrontdesk,
 } from './useFrontdesk';
 
-// Calendar navigation
+// Calendar navigation and reservations
 export { useCalendarNavigation } from './useCalendarNavigation';
+export { useCalendarReservations, useRoomReservations } from './useCalendarReservations';
 
 // Check-in and Check-out
 export { useCheckIn } from './useCheckIn';
+export { useCheckInImproved } from './useCheckInImproved';
+export { useWalkIn } from './useWalkIn';
 export { useCheckout } from './useCheckout';
+export { useCheckoutRefactored } from './useCheckoutRefactored';
+
+// Checkout queries para estadía
+export { useEstadiaByReservaCode } from './useCheckoutQueries';
+
+// 🏨 Folio Management Hooks
+export { useDeposito } from './useDeposito';
+export { useDivisionCargos } from './useDivisionCargos';
+export { useFacturacion } from './useFacturacion';
+export { useFolioDistribucion } from './useFolioDistribucion';
+export { useFolioPagos } from './useFolioPagos';
+export { useFolioCierre } from './useFolioCierre';
+export { useFolioHistorial } from './useFolioHistorial';
+export { useFolioManager } from './useFolioManager';

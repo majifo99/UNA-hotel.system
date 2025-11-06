@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 
 /**
@@ -12,8 +12,8 @@ interface MainLayoutProps {
  * Main Layout Component
  * 
  * Provides the core application layout structure:
- * - Left sidebar with navigation
- * - Main content area with padding
+ * - Left sidebar with navigation (collapsible)
+ * - Main content area with padding (responsive to sidebar state)
  * - Responsive design
  * - Full height layout
  * 
@@ -32,18 +32,35 @@ interface MainLayoutProps {
  * </MainLayout>
  */
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Listen for sidebar collapse changes
+  useEffect(() => {
+    const handleSidebarToggle = (e: CustomEvent) => {
+      setSidebarCollapsed(e.detail.isCollapsed);
+    };
+
+    window.addEventListener('sidebar-toggle' as any, handleSidebarToggle);
+    
+    return () => {
+      window.removeEventListener('sidebar-toggle' as any, handleSidebarToggle);
+    };
+  }, []);
+
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: 'var(--color-darkGreen1)' }}>
+    <div className="flex min-h-screen bg-gray-50">
       {/* Navigation Sidebar */}
       <Sidebar />
       
-      {/* Main Content Area - con margen para sidebar fija */}
-      <main className="flex-1 overflow-auto ml-72" style={{ backgroundColor: 'var(--color-darkGreen1)' }}>
-        {/* Content container matching Figma design */}
-        <div className="p-8 min-h-full">
-          <div className="max-w-7xl mx-auto space-y-6">
-            {children}
-          </div>
+      {/* Main Content Area - responsive to sidebar state */}
+      <main 
+        className={`flex-1 overflow-auto transition-all duration-300 bg-gray-50 ${
+          sidebarCollapsed ? 'ml-20' : 'ml-72'
+        }`}
+      >
+        {/* Content container with padding */}
+        <div className="min-h-full p-6">
+          {children}
         </div>
       </main>
     </div>

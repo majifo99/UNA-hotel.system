@@ -1,116 +1,208 @@
-import { FilterBar } from "../components/FilterBar";
-import { MaintenanceTable } from "../components/MaintenanceTable";
-import { useMaintenance } from "../hooks/useMaintenance";
+"use client";
 
-// Icons (lucide-react)
-import { Bell, FileText, LogOut, Wrench} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { FilterBar } from "../components/FilterBar";
+import MaintenanceTable, { type MaintenanceTableRef } from "../components/MaintenanceTable";
+import { useMaintenance } from "../hooks/useMaintenance";
+import type { MantenimientoItem } from "../types/mantenimiento";
+import NotificationBell, { type NotificationItem } from "../components/NotificationBell";
+import { NOTIFICATIONS_MOCK } from "../data/notifications.mock";
+import SolLogo from "../../../assets/Lanaku.png";
+import { FiLogOut } from "react-icons/fi";
+import SuccessModal from "../components/modals/SuccessModalMantenimiento";
 
 export default function MantenimientoPage() {
-  const { filtered, metrics, query, setQuery, status, setStatus, loading } = useMaintenance();
-  const disponibles = Math.max(0, metrics.total - (metrics.pending + metrics.inProgress));
+  const {
+    filtered,
+    query, setQuery,
+    status, setStatus,
+    loading,
+    refetch, // 👈 IMPORTANTE: traemos refetch para refrescar tras guardar
+  } = useMaintenance();
+
+  const navigate = useNavigate();
+
+  // Ref a la tabla para abrir modales internos
+  const tableRef = useRef<MaintenanceTableRef>(null);
+
+  // Cantidad seleccionada
+  const [selectedCount, setSelectedCount] = useState(0);
+
+  // Notificaciones
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [localPendings, setLocalPendings] = useState<MantenimientoItem[]>([]);
+
+  // Modal de éxito global
+  const [successModal, setSuccessModal] = useState({
+    open: false,
+    title: "",
+    message: "",
+  });
+
+  const openSuccessModal = (title: string, message: string) =>
+    setSuccessModal({ open: true, title, message });
+
+  const closeSuccessModal = () =>
+    setSuccessModal((prev) => ({ ...prev, open: false }));
+
+  // Inicializar notificaciones
+  useEffect(() => {
+    setNotifications(NOTIFICATIONS_MOCK);
+  }, []);
+
+  const coercePriority = (p?: string | null) => {
+    const v = (p ?? "").trim().toLowerCase();
+    if (v === "baja" || v === "media" || v === "alta" || v === "urgente") {
+      return v;
+    }
+    return "media";
+  };
+
+  const mapNotifToRow = (n: NotificationItem): MantenimientoItem => ({
+    id: Number(n.id),
+    notas: n.description,
+    prioridad: coercePriority(n.priority),
+    fecha_inicio: new Date().toISOString(),
+    habitacion: {
+      id: 0,
+      numero: n.room ?? "—",
+      piso: "",
+    },
+    usuario_asignado: undefined,
+    usuario_reporta: undefined,
+    estado: { id: 1, nombre: "Pendiente" },
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  });
+
+  // Cuando se acepta una notificación
+  const handleAccept = (n: NotificationItem) => {
+    setLocalPendings((prev) => [mapNotifToRow(n), ...prev]);
+    setNotifications((prev) =>
+      prev.map((x) => (x.id === n.id ? { ...x, read: true } : x))
+    );
+    openSuccessModal("¡Solicitud aceptada!", "La tarea fue agregada a pendientes correctamente.");
+  };
+
+  // Cuando se rechaza
+  const handleReject = (n: NotificationItem) => {
+    setNotifications((prev) =>
+      prev.map((x) =>
+        x.id === n.id ? { ...x, read: true, dismissed: true } : x
+      )
+    );
+  };
+
+  // Combinar tareas pendientes locales con las del backend
+  const allRows = useMemo(
+    () => [...localPendings, ...filtered],
+    [localPendings, filtered]
+  );
+
+  // Cuando se abre una notificación
+  const handleNotificationClick = (n: NotificationItem) => {
+    setNotifications((prev) =>
+      prev.map((x) => (x.id === n.id ? { ...x, read: true } : x))
+    );
+    navigate(`/mantenimientos/detalle/${n.id}`);
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 text-[#0f172a]">
-      <div className="mx-auto max-w-7xl py-6">
-        {/* HEADER */}
-        <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-3xl px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br from-teal-600 to-teal-700">
-                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                  <Wrench className="w-4 h-4 text-teal-700" />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-[22px] font-semibold leading-6">Dashboard de mantenimiento</h1>
-                <p className="text-sm text-slate-600">Área de mantenimiento – control y seguimiento</p>
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 text-[#0f172a] font-sans relative">
+      {/* HEADER */}
+      <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-6 py-4 sticky top-0 z-10">
+        <div className="flex items-center justify-between">
+          {/* IZQUIERDA: logo + título */}
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg ring-1 ring-slate-200 bg-slate-50">
+              <img
+                src={SolLogo}
+                alt="Lanaku Sol"
+                className="w-12 h-12 object-contain drop-shadow"
+              />
             </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                className="inline-flex items-center gap-2 rounded-lg  px-4 py-2 text-sm font-medium text-slate-700 bg-white/80 hover:bg-white "
-                aria-label="Notificaciones"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Bell className="h-4 w-4" />
-                  <span className="rounded-md bg-rose-600 px-2 py-0.5 text-white text-sm">2</span>
-                </span>
-              </button>
-
-              <button className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 bg-white/80 hover:bg-white shadow-sm">
-                <FileText className="h-4 w-4" />
-                Reporte
-              </button>
-              <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 bg-white/80 hover:bg-white shadow-sm">
-                <LogOut className="h-4 w-4" />
-                Cerrar sesión
-              </button>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
+                Sistema de Mantenimiento
+              </h1>
+              <p className="text-sm text-slate-600">
+                Gestión integral de tareas · Dashboard
+              </p>
             </div>
           </div>
 
-          {/* MÉTRICAS (estilo HK) */}
-          <div className="mt-4 pt-4 border-t border-slate-100">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-                <div className="flex items-center gap-3 px-3 py-2 bg-red-50 rounded-lg border border-red-100">
-                  <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                  <span className="text-sm font-medium text-slate-700">Pendientes</span>
-                  <span className="text-xl font-bold text-red-600">{metrics.pending}</span>
-                </div>
+          {/* DERECHA: notificaciones + logout */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <NotificationBell
+              notifications={notifications}
+              onItemClick={handleNotificationClick}
+              onOpenAll={() => navigate("/notificaciones")}
+              markAllAsRead={() =>
+                setNotifications((prev) =>
+                  prev.map((x) => ({ ...x, read: true }))
+                )
+              }
+              onAccept={handleAccept}
+              onReject={handleReject}
+            />
 
-                <div className="flex items-center gap-3 px-3 py-2 bg-blue-50 rounded-lg border border-blue-100">
-                  <span className="h-2 w-2 rounded-full bg-blue-500" />
-                  <span className="text-sm font-medium text-slate-700">En proceso</span>
-                  <span className="text-xl font-bold text-blue-600">{metrics.inProgress}</span>
-                </div>
-
-                <div className="flex items-center gap-3 px-3 py-2 bg-emerald-50 rounded-lg border border-emerald-100">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  <span className="text-sm font-medium text-slate-700">Completados</span>
-                  <span className="text-xl font-bold text-emerald-600">{metrics.done}</span>
-                </div>
-
-                <div className="flex items-center gap-3 px-3 py-2 bg-sky-50 rounded-lg border border-sky-100">
-                  <span className="h-2 w-2 rounded-full bg-sky-500" />
-                  <span className="text-sm font-medium text-slate-700">Disponibles</span>
-                  <span className="text-xl font-bold text-sky-600">{disponibles}</span>
-                </div>
-              </div>
-
-              <div className="text-sm text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
-                Total: {metrics.total} mantenimientos
-              </div>
-            </div>
+            <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 bg-white/80 hover:bg-white shadow-sm">
+              <FiLogOut className="h-4 w-4" />
+              Cerrar sesión
+            </button>
           </div>
-        </header>
+        </div>
+      </header>
 
-        {/* BARRA DE BÚSQUEDA / FILTROS / ACCIONES */}
-        <div className="mt-4 rounded-3xl  bg-white/80 backdrop-blur-sm">
-          <div className="px-6 py-4">
-            <FilterBar
-              query={query}
-              onQuery={setQuery}
-              status={status}
-              onStatus={setStatus}
-              total={filtered.length}
+      {/* FILTROS */}
+      <div className="px-6 sm:px-6 py-4">
+        <FilterBar
+          query={query}
+          onQuery={setQuery}
+          status={status}
+          onStatus={setStatus}
+          total={allRows.length}
+          selectedCount={selectedCount}
+          onOpenDate={() => {
+            /* lógica fecha */
+          }}
+          onNew={() => tableRef.current?.openAssign()}
+        />
+      </div>
+
+      {/* TABLA */}
+      <section className="mt-6">
+        {loading ? (
+          <div className="mx-4 sm:mx-6 grid place-items-center rounded-2xl bg-white p-16 text-gray-500 border border-slate-200">
+            Cargando mantenimiento...
+          </div>
+        ) : (
+          <div className="mx-2 sm:mx-4 lg:mx-6">
+            <MaintenanceTable
+              ref={tableRef}
+              items={allRows}
+              onSelectionChange={setSelectedCount}
+              onSuccess={(msg?: string) =>
+                openSuccessModal(
+                  "¡Operación Exitosa!",
+                  msg ?? "Cambios guardados correctamente."
+                )
+              }
+              onRequestRefresh={refetch} // ✅ ahora la tabla puede refrescar datos tras el modal
             />
           </div>
-        </div>
+        )}
+      </section>
 
-        {/* TABLA */}
-        <div className="px-0 sm:px-1 md:px-2 lg:px-0 mt-4">
-          {loading ? (
-            <div className="mx-6 grid place-items-center rounded-2xl  bg-white p-16 text-gray-500">
-              Cargando mantenimiento...
-            </div>
-          ) : (
-            <div className="mx-6">
-              <MaintenanceTable items={filtered} />
-            </div>
-          )}
-        </div>
-      </div>
+      {/* MODAL DE ÉXITO GLOBAL */}
+      <SuccessModal
+        isOpen={successModal.open}
+        onClose={closeSuccessModal}
+        title={successModal.title}
+        message={successModal.message}
+        autoCloseMs={2200}
+      />
     </div>
   );
 }

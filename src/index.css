@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./styles/typography.css";
 
 /* UNA Hotel System - Global Styles */
 
@@ -47,6 +48,44 @@ body {
 
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-mediumGreen);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-darkGreen2);
+}
+
+/* Animation for modals */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes backdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-backdropFadeIn {
+  animation: backdropFadeIn 0.3s ease-out;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -116,33 +155,40 @@ body {
   font-size: 0.875rem;
 }
 
-/* Clean normal state */
+/* Clean normal state - WHITE text for better contrast */
 .nav-item-normal {
-  color: rgba(214, 189, 152, 0.75);
+  color: rgba(255, 255, 255, 0.85);
   background-color: transparent;
 }
 
 .nav-item-normal:hover {
-  color: var(--color-sand);
-  background-color: rgba(255, 255, 255, 0.04);
-  border-left-color: rgba(214, 189, 152, 0.25);
+  color: rgba(255, 255, 255, 1);
+  background-color: rgba(255, 255, 255, 0.08);
+  border-left-color: rgba(255, 255, 255, 0.3);
 }
 
-/* Clear active state */
+/* Clear active state with very subtle inner shadow */
 .nav-item-active {
   background-color: var(--color-sand);
   color: var(--color-blackCustom);
   font-weight: 500;
   border-left-color: var(--color-blackCustom);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
-/* Parent items - subtle distinction */
+/* Parent items - subtle distinction with WHITE text */
 .nav-item-parent {
   font-weight: 500;
-  color: rgba(214, 189, 152, 0.9);
+  color: rgba(255, 255, 255, 0.95);
 }
 
-/* Clean submenu styling */
+/* Parent with active child - slightly highlighted but NOT active style */
+.nav-item-parent.has-active-child {
+  background-color: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 1);
+}
+
+/* Clean submenu styling with WHITE text */
 .nav-item-submenu {
   margin-left: 1rem;
   margin-right: 0.5rem;
@@ -152,6 +198,7 @@ body {
   border-radius: 0.375rem;
   margin-bottom: 0.0625rem;
   border-left: 2px solid transparent;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .nav-item-submenu.nav-item-active {
@@ -188,11 +235,11 @@ body {
   }
 }
 
-/* Subtle hover for submenus */
+/* Subtle hover for submenus with WHITE text */
 .nav-item-submenu:hover:not(.nav-item-active) {
-  background-color: rgba(255, 255, 255, 0.03);
-  border-left-color: rgba(214, 189, 152, 0.3);
-  color: var(--color-sand);
+  background-color: rgba(255, 255, 255, 0.06);
+  border-left-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 1);
 }
 
 .nav-icon {
@@ -212,7 +259,7 @@ body {
 }
 
 .nav-shortcut-hint {
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-family: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
   font-size: 0.6875rem;
   font-weight: 500;
   opacity: 0.5;
@@ -245,4 +292,156 @@ body {
   border: 1px solid rgba(214, 189, 152, 0.12);
   box-shadow: 0 20px 48px rgba(26, 54, 54, 0.4);
   border-radius: 0.75rem;
+}
+
+/* ========================================
+   PRINT STYLES - For PDF Generation
+   ======================================== */
+@media print {
+  /* Reset for print */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide non-printable elements */
+  .print\:hidden,
+  nav,
+  header.print\:hidden,
+  footer.print\:hidden,
+  button.print\:hidden,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Page setup */
+  @page {
+    size: A4;
+    margin: 1.5cm;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  /* Ensure content fits */
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+
+  /* Optimize spacing for print */
+  .print\:p-4 {
+    padding: 1rem !important;
+  }
+
+  .print\:p-2 {
+    padding: 0.5rem !important;
+  }
+
+  .print\:mb-4 {
+    margin-bottom: 1rem !important;
+  }
+
+  .print\:mb-2 {
+    margin-bottom: 0.5rem !important;
+  }
+
+  .print\:pt-4 {
+    padding-top: 1rem !important;
+  }
+
+  .print\:pt-1 {
+    padding-top: 0.25rem !important;
+  }
+
+  .print\:mt-1 {
+    margin-top: 0.25rem !important;
+  }
+
+  .print\:gap-2 {
+    gap: 0.5rem !important;
+  }
+
+  .print\:space-y-2 > * + * {
+    margin-top: 0.5rem !important;
+  }
+
+  .print\:space-y-1 > * + * {
+    margin-top: 0.25rem !important;
+  }
+
+  /* Text sizing for print */
+  .print\:text-2xl {
+    font-size: 1.5rem !important;
+  }
+
+  .print\:text-lg {
+    font-size: 1.125rem !important;
+  }
+
+  .print\:text-base {
+    font-size: 1rem !important;
+  }
+
+  .print\:text-sm {
+    font-size: 0.875rem !important;
+  }
+
+  .print\:text-xs {
+    font-size: 0.75rem !important;
+  }
+
+  /* Show print-only elements */
+  .print\:block {
+    display: block !important;
+  }
+
+  /* Icon sizing for print */
+  .print\:w-4 {
+    width: 1rem !important;
+  }
+
+  .print\:h-4 {
+    height: 1rem !important;
+  }
+
+  /* Prevent page breaks inside important elements */
+  .print-no-break,
+  .bg-gray-50,
+  .rounded-lg {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Add page breaks before major sections if needed */
+  .print-page-break-before {
+    page-break-before: always;
+    break-before: always;
+  }
+
+  /* Links - show URL after link text */
+  a[href]:after {
+    content: none !important; /* Disabled for cleaner print */
+  }
+
+  /* Ensure colors are preserved */
+  .bg-green-100,
+  .bg-gray-50,
+  .bg-blue-50 {
+    background-color: #f3f4f6 !important;
+  }
+
+  .text-green-600 {
+    color: #059669 !important;
+  }
+
+  /* Border colors */
+  .border-gray-200 {
+    border-color: #e5e7eb !important;
+  }
+
+  .border-gray-300 {
+    border-color: #d1d5db !important;
+  }
 }

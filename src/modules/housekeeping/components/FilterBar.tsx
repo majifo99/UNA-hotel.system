@@ -1,136 +1,246 @@
-import { useState } from "react";
-import { FiSearch, FiChevronDown, FiChevronUp, FiSliders } from "react-icons/fi";
+import React, { useState, useCallback, useId } from "react";
+import {
+  FiSearch,
+  FiChevronDown,
+  FiChevronUp,
+  FiSliders,
+  FiCheckCircle,
+  FiXCircle,
+  FiLayers,
+  FiX,
+} from "react-icons/fi";
+
+const BRAND_GREEN = "#304D3C";         // mismo verde del header de la tabla
+const BRAND_GREEN_HOVER = "#263A2E";   // un poco más oscuro para hover
 
 export type RoomFilters = {
   search: string;
-  status: string;
-  type: string;
-  floor: string;
+  status: "" | "limpia" | "sucia";
+  priority: "" | "baja" | "media" | "alta" | "urgente";
+  assigned: string;
 };
 
-type FilterBarProps = Readonly<{
-  filters: RoomFilters;
-  setFilters: (filters: RoomFilters) => void;
+type FilterBarProps = {
+  /** Estado actual de filtros (no mutar directamente) */
+  filters: Readonly<RoomFilters>;
+  /** Setter provisto por el padre */
+  setFilters: React.Dispatch<React.SetStateAction<RoomFilters>>;
   totalRooms: number;
-}>;
+  shownRooms?: number;
+  disabled?: boolean;
+  assignedOptions?: ReadonlyArray<string>;
+};
 
-export default function FilterBar({ filters, setFilters, totalRooms }: FilterBarProps) {
-  const [isOpen, setIsOpen] = useState(false);
+/** Item de segmentado (chip) */
+function SegItem(props: Readonly<{
+  active?: boolean;
+  onClick?: () => void;
+  children: React.ReactNode;
+  disabled?: boolean;
+}>) {
+  const { active, onClick, children, disabled } = props;
 
   return (
-    <div className="bg-white/60 backdrop-blur-sm rounded-lg px-4 py-3 border border-slate-200/60">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          {/* Buscar */}
-          <div className="relative">
-            <label htmlFor="search-input" className="sr-only">Buscar habitación por número</label>
-            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input
-              id="search-input"
-              value={filters.search}
-              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-              placeholder="Buscar habitación por número..."
-              className="w-64 h-9 rounded-lg border border-slate-300/60 bg-white/80 py-2 pl-9 pr-3 text-sm placeholder:text-slate-400 outline-none focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
-            />
-          </div>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex shrink-0 items-center gap-2 px-3 h-9 rounded-md text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[${BRAND_GREEN}] ${
+        disabled ? "opacity-50 cursor-not-allowed" : ""
+      }`}
+      style={{
+        backgroundColor: active ? BRAND_GREEN : undefined,
+        color: active ? "#FFFFFF" : undefined,
+      }}
+      onMouseEnter={(e) => {
+        // ✅ Eliminado el uso de negación (!disabled && active)
+        if (disabled) return;
+        if (active) e.currentTarget.style.backgroundColor = BRAND_GREEN_HOVER;
+      }}
+      onMouseLeave={(e) => {
+        if (active) e.currentTarget.style.backgroundColor = BRAND_GREEN;
+      }}
+    >
+      {active ? null : <span className="text-slate-600 group-hover:text-slate-700" />}
+      {children}
+    </button>
+  );
+}
 
-          {/* Toggle búsqueda avanzada */}
+export default function FilterBar({
+  filters,
+  setFilters,
+  totalRooms,
+  shownRooms,
+  disabled = false,
+  assignedOptions = [],
+}: Readonly<FilterBarProps>) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  // IDs accesibles
+  const searchId = useId();
+  const priorityId = useId();
+  const assignedId = useId();
+
+  const handleChange =
+    (key: keyof RoomFilters) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      setFilters((prev) => ({ ...prev, [key]: e.target.value }));
+    };
+
+  const handleClear = useCallback(() => {
+    setFilters({ search: "", status: "", priority: "", assigned: "" });
+  }, [setFilters]);
+
+  const setStatus = (status: "" | "limpia" | "sucia") =>
+    setFilters((prev) => ({ ...prev, status }));
+
+  const totalFmt = Number.isFinite(totalRooms) && totalRooms > 0 ? totalRooms : 0;
+  const headerText =
+      shownRooms === null || shownRooms === undefined
+    ? `${totalFmt} habitaciones`
+    : `${shownRooms} de ${totalFmt} habitaciones`;
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white/70 backdrop-blur-sm">
+      {/* Fila 1 - buscador */}
+      <div className="px-4 pt-3">
+        <div className="relative">
+          <label htmlFor={searchId} className="sr-only">
+            Buscar habitación
+          </label>
+          <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <input
+            id={searchId}
+            type="text"
+            value={filters.search}
+            onChange={handleChange("search")}
+            placeholder="Buscar habitación por número…"
+            disabled={disabled}
+            className="w-full h-10 pl-9 pr-3 rounded-md border border-slate-300 text-sm text-slate-700 focus:ring-2 focus:ring-[--ring] focus:border-[--ring] outline-none bg-white"
+            style={{ ["--ring" as any]: BRAND_GREEN }}
+          />
+        </div>
+      </div>
+
+      {/* Fila 2 - filtros y acciones */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between px-4 pb-3 pt-3">
+        {/* Segmentado (scroll-x en móvil) */}
+        <div className="-mx-2 md:mx-0">
+          <div className="flex items-center gap-2 overflow-x-auto px-2 no-scrollbar">
+            <SegItem
+              active={filters.status === ""}
+              onClick={() => setStatus("")}
+              disabled={disabled}
+            >
+              <FiLayers className="h-4 w-4" />
+              Todas
+            </SegItem>
+            <SegItem
+              active={filters.status === "limpia"}
+              onClick={() => setStatus("limpia")}
+              disabled={disabled}
+            >
+              <FiCheckCircle className="h-4 w-4" />
+              Limpias
+            </SegItem>
+            <SegItem
+              active={filters.status === "sucia"}
+              onClick={() => setStatus("sucia")}
+              disabled={disabled}
+            >
+              <FiXCircle className="h-4 w-4" />
+              Sucias
+            </SegItem>
+          </div>
+        </div>
+
+        {/* Acciones */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-slate-500 px-2">{headerText}</span>
+
           <button
             type="button"
-            onClick={() => setIsOpen((o) => !o)}
+            onClick={() => setIsOpen((v) => !v)}
+            disabled={disabled}
+            className="inline-flex items-center gap-2 h-9 px-3 rounded-md border border-slate-300 text-sm text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+            style={{ ["--tw-ring-color" as any]: BRAND_GREEN }}
             aria-expanded={isOpen}
             aria-controls="advanced-filters"
-            className="group inline-flex items-center gap-2 text-[15px] font-medium text-slate-600 hover:text-slate-800"
           >
-            <FiSliders className="h-5 w-5 text-slate-500 group-hover:text-slate-700" />
-            <span>Búsqueda avanzada</span>
-            {isOpen ? (
-              <FiChevronUp className="h-4 w-4 text-slate-500 group-hover:text-slate-700" />
-            ) : (
-              <FiChevronDown className="h-4 w-4 text-slate-500 group-hover:text-slate-700" />
-            )}
+            <FiSliders className="h-4 w-4" />
+            Avanzada
+            {isOpen ? <FiChevronUp /> : <FiChevronDown />}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleClear}
+            disabled={disabled}
+            className="inline-flex items-center gap-2 h-9 px-3 rounded-md text-sm text-slate-600 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+            style={{ ["--tw-ring-color" as any]: BRAND_GREEN }}
+          >
+            <FiX className="h-4 w-4" />
+            Limpiar
           </button>
         </div>
-
-        <div className="text-xs text-slate-500">{totalRooms} habitaciones</div>
       </div>
 
-      {/* Acordeón búsqueda avanzada */}
+      {/* Panel avanzada */}
       <div
         id="advanced-filters"
-        className={`grid transition-[grid-template-rows] duration-300 ease-out overflow-hidden ${
-          isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-        }`}
+        className={`transition-[max-height,opacity] duration-300 ${
+          isOpen ? "max-h-48 opacity-100" : "max-h-0 opacity-0"
+        } overflow-hidden border-t border-slate-100`}
       >
-        <div className="min-h-0">
-          <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-3">
-            <span className="text-sm text-slate-600">Filtros:</span>
-
-            {/* Estado */}
-            <div className="flex items-center gap-2">
-              <label htmlFor="status-select" className="text-sm text-slate-600">Estado</label>
-              <select
-                id="status-select"
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className="h-9 rounded-lg border border-slate-300 bg-white/80 px-3 text-sm text-slate-700 hover:bg-white focus:outline-none"
-              >
-                <option value="">Todos los estados</option>
-                <option value="Disponible">Disponible</option>
-                <option value="Ocupada">Ocupada</option>
-                <option value="Pendiente">Pendiente</option>
-                <option value="En limpieza">En limpieza</option>
-                <option value="Inspección">Inspección</option>
-                <option value="Fuera de servicio">Fuera de servicio</option>
-                <option value="Mantenimiento">Mantenimiento</option>
-              </select>
-            </div>
-
-            {/* Tipo */}
-            <div className="flex items-center gap-2">
-              <label htmlFor="type-select" className="text-sm text-slate-600">Tipo</label>
-              <select
-                id="type-select"
-                value={filters.type}
-                onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                className="h-9 rounded-lg border border-slate-300 bg-white/80 px-3 text-sm text-slate-700 hover:bg-white focus:outline-none"
-              >
-                <option value="">Todos los tipos</option>
-                <option value="Sencilla">Sencilla</option>
-                <option value="Doble">Doble</option>
-                <option value="Suite">Suite</option>
-                <option value="King">King</option>
-              </select>
-            </div>
-
-            {/* Piso */}
-            <div className="flex items-center gap-2">
-              <label htmlFor="floor-select" className="text-sm text-slate-600">Piso</label>
-              <select
-                id="floor-select"
-                value={filters.floor}
-                onChange={(e) => setFilters({ ...filters, floor: e.target.value })}
-                className="h-9 rounded-lg border border-slate-300 bg-white/80 px-3 text-sm text-slate-700 hover:bg-white focus:outline-none"
-              >
-                <option value="">Todos los pisos</option>
-                <option value="1">Piso 1</option>
-                <option value="2">Piso 2</option>
-                <option value="3">Piso 3</option>
-                <option value="4">Piso 4</option>
-              </select>
-            </div>
-
-            {/* Limpiar */}
-            <button
-              type="button"
-              onClick={() => setFilters({ search: "", status: "", type: "", floor: "" })}
-              className="h-9 inline-flex items-center rounded-lg border border-slate-300 bg-white/80 px-3 text-sm text-slate-700 hover:bg-white"
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 px-4 py-3 bg-slate-50/40">
+          <div className="flex items-center gap-2">
+            <label htmlFor={priorityId} className="text-sm text-slate-700">
+              Prioridad
+            </label>
+            <select
+              id={priorityId}
+              value={filters.priority}
+              onChange={handleChange("priority")}
+              disabled={disabled}
+              className="flex-1 h-9 rounded-md border border-slate-300 text-sm text-slate-700 bg-white focus:ring-2 focus:ring-[--ring] focus:border-[--ring] outline-none"
+              style={{ ["--ring" as any]: BRAND_GREEN }}
             >
-              Limpiar
-            </button>
+              <option value="">Todas</option>
+              <option value="baja">Baja</option>
+              <option value="media">Media</option>
+              <option value="alta">Alta</option>
+              <option value="urgente">Urgente</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor={assignedId} className="text-sm text-slate-700">
+              Asignado
+            </label>
+            <select
+              id={assignedId}
+              value={filters.assigned}
+              onChange={handleChange("assigned")}
+              disabled={disabled || assignedOptions.length === 0}
+              className="flex-1 h-9 rounded-md border border-slate-300 text-sm text-slate-700 bg-white focus:ring-2 focus:ring-[--ring] focus:border-[--ring] outline-none"
+              style={{ ["--ring" as any]: BRAND_GREEN }}
+            >
+              <option value="">Todos</option>
+              {assignedOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Columna libre para crecer futuro (ej: piso, tipo, etc.) */}
+          <div className="hidden lg:flex items-center justify-end pr-1">
+            {/* espacio reservado para futuros filtros */}
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

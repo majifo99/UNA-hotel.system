@@ -1,22 +1,40 @@
-
-import { createBrowserRouter, RouterProvider, Outlet, Navigate } from 'react-router-dom';
+﻿import { createBrowserRouter, RouterProvider, Outlet, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MainLayout } from '../layouts/MainLayout';
 import { Home } from '../pages/Home';
-import { CreateReservationPage } from '../modules/reservations/pages/CreateReservationPage'; 
+import { ReservationsListPage } from '../modules/reservations/pages/ReservationsListPage';
+import { CreateReservationPage } from '../modules/reservations/pages/CreateReservationPage';
+import { ReservationDetailFullPage } from '../modules/reservations/pages/ReservationDetailFullPage';
+import { ReservationEditPage } from '../modules/reservations/pages/ReservationEditPage';
+import { ReservationCancelPage } from '../modules/reservations/pages/ReservationCancelPage';
 import HousekeepingDashboard from '../modules/housekeeping/pages/HousekeepingDashboard';
-import { SelectServicesPage } from '../modules/reservations/pages/SelectServicesPage';
 import { GuestsPage } from '../modules/guests/pages/GuestsPage';
 import { CreateGuestPage } from '../modules/guests/pages/CreateGuestPage';
 import FrontDesk from '../modules/frontdesk/components/FrontDesk';
-import { default as CheckInPage } from '../modules/frontdesk/pages/CheckInPage';
-import { default as CheckOutPage } from '../modules/frontdesk/pages/CheckOutPage';
+import CheckInPage from '../modules/frontdesk/pages/CheckInPage';
+import CheckOutPage from '../modules/frontdesk/pages/CheckOutPage';
+import RoomChange from '../modules/frontdesk/components/RoomChange';
+import DateModification from '../modules/frontdesk/components/DateModification';
+import ReduceStay from '../modules/frontdesk/components/ReduceStay';
+import { FolioPage } from '../modules/frontdesk/pages/FolioPage';
 import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
 import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
 
+
+import HistorialLimpiezasPage from '../modules/housekeeping/pages/HistorialLimpiezasPage';
+
+import HistorialMantenimientosPage from '../modules/Mantenimiento/pages/HistorialMantenimientosPage';
+
+
+
+import { AdminLoginPage, AdminAuthProvider, ProtectedRoute } from '../modules/admin';
+import { ReservationReportsPage } from '../modules/reservations/features/reports';
+
+
+
 /**
  * TanStack Query Client Configuration
- * 
+ *
  * Global configuration for server state management:
  * - staleTime: 5 minutes (data considered fresh for 5 minutes)
  * - retry: 1 (retry failed requests once)
@@ -37,45 +55,58 @@ const queryClient = new QueryClient({
 
 /**
  * Root Layout Component
- * 
+ *
  * Wraps all routes with:
  * - TanStack Query Provider (for server state management)
+ * - Admin Auth Provider (for admin authentication)
+ * - Protected Route (requires authentication)
  * - Main Layout (sidebar, header, main content area)
- * 
+ *
  * The Outlet component renders the matched child route
  */
 function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
-      <MainLayout>
-        <Outlet />
-      </MainLayout>
+      <AdminAuthProvider>
+        <ProtectedRoute>
+          <MainLayout>
+            <Outlet />
+          </MainLayout>
+        </ProtectedRoute>
+      </AdminAuthProvider>
     </QueryClientProvider>
   );
 }
 
 /**
  * Application Router Configuration
- * 
+ *
  * Route Structure:
+ * /admin/login              - Admin authentication page (no layout)
  * /                          - Dashboard/Home page
+ * /reservations              - Reservations list and management
  * /reservations/create       - Create new reservation form
- * 
- * Future routes to implement:
- * /reservations              - List all reservations
- * /reservations/:id          - View/edit specific reservation
- * /rooms                     - Room management
- * /guests                    - Guest management
- * /payments                  - Payment management
- * /reports                   - Reports and analytics
- * /settings                  - System configuration
- * 
+ * /reservations/create/services - Select services flow
+ *
+ * Additional routes include FrontDesk, Housekeeping, Guests, and utilities.
+ *
  * To add a new route:
  * 1. Import the page component
  * 2. Add a new route object to the children array
  * 3. Update the Sidebar navigation items
  */
 const router = createBrowserRouter([
+  {
+    // Admin login route - standalone without layout
+    path: '/admin/login',
+    element: (
+      <QueryClientProvider client={queryClient}>
+        <AdminAuthProvider>
+          <AdminLoginPage />
+        </AdminAuthProvider>
+      </QueryClientProvider>
+    ),
+  },
   {
     path: '/',
     element: <RootLayout />,
@@ -108,6 +139,22 @@ const router = createBrowserRouter([
             element: <CheckOutPage />,
           },
           {
+            path: 'room-change',
+            element: <RoomChange />,
+          },
+          {
+            path: 'date-modification',
+            element: <DateModification />,
+          },
+          {
+            path: 'reduce-stay',
+            element: <ReduceStay />,
+          },
+          {
+            path: 'folio/:folioId',
+            element: <FolioPage />,
+          },
+          {
             path: 'register',
             element: <Navigate to="/reservations/create" replace />,
           },
@@ -118,41 +165,52 @@ const router = createBrowserRouter([
         path: 'reservations',
         children: [
           {
+            index: true,
+            element: <ReservationsListPage />,
+          },
+          {
             // Create new reservation
             path: 'create',
             element: <CreateReservationPage />,
           },
           {
-            // Select services for reservation
-            path: 'create/services',
-            element: <SelectServicesPage />,
+            // View reservation detail
+            path: ':id/detail',
+            element: <ReservationDetailFullPage />,
           },
-          // Add more reservation routes here:
-          // {
-          //   path: '', // /reservations (list)
-          //   element: <ReservationsListPage />,
-          // },
-          // {
-          //   path: ':id', // /reservations/123 (view/edit)
-          //   element: <ReservationDetailPage />,
-          // },
+          {
+            // Edit reservation
+            path: ':id/edit',
+            element: <ReservationEditPage />,
+          },
+          {
+            // Cancel reservation
+            path: ':id/cancel',
+            element: <ReservationCancelPage />,
+          },
+          {
+            // Reports and analytics
+            path: 'reports',
+            element: <ReservationReportsPage />,
+          },
         ],
       },
+        {
+        path: "housekeeping",
+        children: [
+          { index: true, element: <HousekeepingDashboard /> },
+          { path: "historiales", element: <HistorialLimpiezasPage /> },
+        ],
+      },
+
       {
-  path: 'housekeeping',
-  element: <HousekeepingDashboard />,
-},
+        path: 'mantenimiento',
+        children: [
+          { index: true, element: <Mantenimiento /> },                 // /mantenimiento
+          { path: 'historiales', element: <HistorialMantenimientosPage /> }, // /mantenimiento/historiales
+        ],
+      },
 
-{
-  path: 'Mantenimiento',
-  element: <Mantenimiento/>,
-},
-
-      // Add more top-level routes here:
-      // {
-      //   path: 'rooms',
-      //   element: <RoomsPage />,
-      // },
       {
         path: 'guests',
         children: [
@@ -166,8 +224,8 @@ const router = createBrowserRouter([
           },
           {
             path: ':id',
-            element: <GuestProfilePage />, 
-          }
+            element: <GuestProfilePage />,
+          },
         ],
       },
     ],
@@ -176,7 +234,7 @@ const router = createBrowserRouter([
 
 /**
  * Main App Router Component
- * 
+ *
  * Entry point for the application routing system.
  * Uses React Router v6 with createBrowserRouter for better performance
  * and nested routing capabilities.
