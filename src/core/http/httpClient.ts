@@ -42,7 +42,7 @@ const DEFAULT_CONFIG: ClientConfig = {
  */
 function createAxiosInstance(config: ClientConfig = DEFAULT_CONFIG) {
   return axios.create({
-    baseURL: import.meta.env.VITE_API_URL || '/api',
+    baseURL: import.meta.env.VITE_API_URL || 'https://backendhotelt.onrender.com',
     timeout: config.timeout,
     headers: {
       'Content-Type': 'application/json',
