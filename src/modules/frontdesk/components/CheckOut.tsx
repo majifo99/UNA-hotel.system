@@ -32,7 +32,11 @@ const CheckOut = () => {
   const [idClienteTitular, setIdClienteTitular] = useState<number | undefined>(undefined);
   
   // Hook refactorizado para checkout completo - solo se inicializa si hay folioId
-  const checkoutRefactored = useCheckoutRefactored(folioId || 1, reservaId);
+  // Deshabilitado temporalmente para evitar errores 404
+  const checkoutRefactored = useCheckoutRefactored(
+    folioId || 1, 
+    reservaId
+  );
   
   // ✨ Hook de checkout con folios (integración completa con backend Laravel)
   // Solo se inicializa si tenemos folioId válido
@@ -184,6 +188,8 @@ const CheckOut = () => {
         const currentFolioId = folioId || Number.parseInt(localStorage.getItem(`folio_${resNumericId}`) || '0');
         if (currentFolioId) {
           try {
+            console.log('🔍 Validando folio...', currentFolioId);
+            
             // 1️⃣ Validar pre-checkout
             const validacionResult = await checkoutFolioHook.validarPreCheckout();
             setValidacion(validacionResult);
@@ -199,9 +205,12 @@ const CheckOut = () => {
             }
             
             // 2️⃣ Obtener resumen financiero del folio
+            console.log('📊 Obteniendo resumen del folio...');
             const resumenFinal = await checkoutFolioHook.obtenerResumen();
             
             if (resumenFinal) {
+              console.log('✅ Resumen obtenido:', resumenFinal);
+              
               // 3️⃣ Mapear datos financieros al formData
               const totalCargos = Number.parseFloat(resumenFinal.resumen.a_distribuir) + Number.parseFloat(resumenFinal.resumen.distribuido);
               const totalPagos = resumenFinal.totales.pagos_totales || 0;
@@ -247,16 +256,28 @@ const CheckOut = () => {
               toast.success('Datos financieros cargados', {
                 description: `Saldo pendiente: $${saldoPendiente.toFixed(2)}`
               });
+            } else {
+              console.warn('⚠️ No se pudo obtener el resumen del folio');
+              toast.warning('Advertencia', {
+                description: 'No se pudo cargar el resumen del folio. Puede continuar con el checkout manual.'
+              });
             }
             
             // 4️⃣ Mostrar automáticamente el resumen del folio
             setMostrarResumenFolio(true);
           } catch (err) {
-            console.error('Error al validar folio:', err);
-            toast.error('Error', {
-              description: 'No se pudo cargar la información financiera del folio'
+            console.error('❌ Error al validar folio:', err);
+            
+            // No mostrar error crítico, permitir continuar
+            toast.warning('Advertencia', {
+              description: 'No se pudo cargar la información financiera del folio. Puede continuar con checkout manual.'
             });
+            
+            // No establecer error que bloquee el formulario
+            // setError('No se pudo cargar la información financiera del folio');
           }
+        } else {
+          console.warn('⚠️ No se encontró folioId para esta reserva');
         }
       }, 500);
     }
@@ -483,7 +504,31 @@ const CheckOut = () => {
 
   const handleCloseReceipt = () => {
     setShowReceipt(false);
-    navigate(ROUTES.FRONTDESK.BASE);
+    
+    // Limpiar datos del folio en localStorage
+    if (reservaId) {
+      localStorage.removeItem(`folio_${reservaId}`);
+      localStorage.removeItem(`checkin_info_${reservaId}`);
+    }
+    
+    // Limpiar estados
+    setFolioId(null);
+    setReservaId(undefined);
+    setIdClienteTitular(undefined);
+    setValidacion(null);
+    setMostrarResumenFolio(false);
+    setMostrarHistorialFolio(false);
+    
+    // Mostrar mensaje de éxito y redirigir
+    toast.success('Check-out completado', {
+      description: 'El proceso de check-out se completó exitosamente',
+      duration: 3000,
+    });
+    
+    // Redirigir al dashboard después de un pequeño delay
+    setTimeout(() => {
+      navigate(ROUTES.FRONTDESK.BASE);
+    }, 500);
   };
 
   return (

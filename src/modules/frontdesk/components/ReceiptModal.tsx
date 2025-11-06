@@ -11,6 +11,16 @@ interface ReceiptModalProps {
 const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, receiptData }) => {
   if (!isOpen || !receiptData) return null;
 
+  // Helper para convertir valores a número de forma segura
+  const toNumber = (value: unknown): number => {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const parsed = Number.parseFloat(value);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -127,8 +137,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, receiptDat
                     <tr key={item.id}>
                       <td className="px-4 py-3 text-sm text-gray-900">{item.description}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 text-right">{item.quantity}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 text-right">${item.unitPrice.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">${item.total.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 text-right">${toNumber(item.unitPrice).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">${toNumber(item.total).toFixed(2)}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 text-center">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                           item.category === 'room' ? 'bg-blue-100 text-blue-800' :
@@ -162,20 +172,20 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, receiptDat
                   <div key={split.id} className="border border-gray-200 rounded-lg p-4 bg-blue-50">
                     <div className="flex justify-between items-center mb-2">
                       <h4 className="font-medium text-blue-900">{split.guestName}</h4>
-                      <span className="text-sm text-blue-700">({split.percentage.toFixed(1)}% del total)</span>
+                      <span className="text-sm text-blue-700">({toNumber(split.percentage).toFixed(1)}% del total)</span>
                     </div>
                     <div className="grid grid-cols-3 gap-4 text-sm">
                       <div>
                         <span className="text-blue-700">Subtotal:</span>
-                        <span className="ml-2 font-medium text-blue-900">${split.subtotal.toFixed(2)}</span>
+                        <span className="ml-2 font-medium text-blue-900">${toNumber(split.subtotal).toFixed(2)}</span>
                       </div>
                       <div>
                         <span className="text-blue-700">Impuestos:</span>
-                        <span className="ml-2 font-medium text-blue-900">${split.tax.toFixed(2)}</span>
+                        <span className="ml-2 font-medium text-blue-900">${toNumber(split.tax).toFixed(2)}</span>
                       </div>
                       <div>
                         <span className="text-blue-700">Total:</span>
-                        <span className="ml-2 font-bold text-blue-900">${split.total.toFixed(2)}</span>
+                        <span className="ml-2 font-bold text-blue-900">${toNumber(split.total).toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
@@ -189,20 +199,20 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, receiptDat
             <div className="max-w-md ml-auto space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Subtotal:</span>
-                <span className="font-medium">${receiptData.subtotal.toFixed(2)}</span>
+                <span className="font-medium">${toNumber(receiptData.subtotal).toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Impuestos:</span>
-                <span className="font-medium">${receiptData.taxAmount.toFixed(2)}</span>
+                <span className="font-medium">${toNumber(receiptData.taxAmount).toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Descuentos:</span>
-                <span className="font-medium">-${receiptData.discountAmount.toFixed(2)}</span>
+                <span className="font-medium">-${toNumber(receiptData.discountAmount).toFixed(2)}</span>
               </div>
               <hr className="border-gray-300" />
               <div className="flex justify-between text-lg font-bold">
                 <span>Total General:</span>
-                <span className="text-green-600">${receiptData.grandTotal.toFixed(2)}</span>
+                <span className="text-green-600">${toNumber(receiptData.grandTotal).toFixed(2)}</span>
               </div>
             </div>
           </div>

@@ -82,8 +82,8 @@ export function mapEstadoNombreToStatus(nombre: string): Reservation['status'] {
 /**
  * Calculate total nights from all rooms
  */
-function calculateTotalNights(habitaciones: ApiReservaHabitacion[]): number {
-  if (habitaciones.length === 0) return 0;
+function calculateTotalNights(habitaciones?: ApiReservaHabitacion[]): number {
+  if (!habitaciones || habitaciones.length === 0) return 0;
   
   // Use the first room's dates as reference
   const firstRoom = habitaciones[0];
@@ -97,12 +97,16 @@ function calculateTotalNights(habitaciones: ApiReservaHabitacion[]): number {
 /**
  * Calculate total guests from all rooms
  */
-function calculateTotalGuests(habitaciones: ApiReservaHabitacion[]): {
+function calculateTotalGuests(habitaciones?: ApiReservaHabitacion[]): {
   total: number;
   adults: number;
   children: number;
   infants: number;
 } {
+  if (!habitaciones || habitaciones.length === 0) {
+    return { total: 0, adults: 0, children: 0, infants: 0 };
+  }
+  
   const totals = habitaciones.reduce(
     (acc, hab) => ({
       adults: acc.adults + hab.adultos,
@@ -121,11 +125,11 @@ function calculateTotalGuests(habitaciones: ApiReservaHabitacion[]): {
 /**
  * Get earliest check-in and latest check-out from all rooms
  */
-function getCheckInOutDates(habitaciones: ApiReservaHabitacion[]): {
+function getCheckInOutDates(habitaciones?: ApiReservaHabitacion[]): {
   checkInDate: string;
   checkOutDate: string;
 } {
-  if (habitaciones.length === 0) {
+  if (!habitaciones || habitaciones.length === 0) {
     return {
       checkInDate: new Date().toISOString(),
       checkOutDate: new Date().toISOString(),
@@ -152,10 +156,16 @@ export function mapApiReservaFullToReservation(api: ApiReservaFull): Reservation
     id_reserva: api.id_reserva,
     codigo_reserva: api.codigo_reserva,
     habitaciones_count: api.habitaciones?.length || 0,
+    habitaciones_raw: api.habitaciones,
     first_room: api.habitaciones?.[0] ? {
       id_habitacion: api.habitaciones[0].habitacion.id_habitacion,
       numero: api.habitaciones[0].habitacion.numero,
       nombre: api.habitaciones[0].habitacion.nombre,
+      fecha_llegada: api.habitaciones[0].fecha_llegada,
+      fecha_salida: api.habitaciones[0].fecha_salida,
+      adultos: api.habitaciones[0].adultos,
+      ninos: api.habitaciones[0].ninos,
+      bebes: api.habitaciones[0].bebes,
     } : null,
   });
 
@@ -163,8 +173,15 @@ export function mapApiReservaFullToReservation(api: ApiReservaFull): Reservation
   const { checkInDate, checkOutDate } = getCheckInOutDates(api.habitaciones);
   const nights = calculateTotalNights(api.habitaciones);
 
+  console.log('📊 Calculated values:', {
+    guestTotals,
+    checkInDate,
+    checkOutDate,
+    nights,
+  });
+
   // Map first room if available (for backward compatibility)
-  const firstRoom = api.habitaciones[0];
+  const firstRoom = api.habitaciones?.[0];
   const room = firstRoom ? mapApiHabitacionToRoom(firstRoom) : undefined;
 
   console.log('🏨 Mapped room object:', {
