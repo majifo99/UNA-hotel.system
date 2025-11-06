@@ -18,13 +18,16 @@ const NotificationContext = createContext<NotificationContextType | undefined>(
   undefined
 );
 
+/**
+ * Provider para gestionar notificaciones de mantenimiento en tiempo real
+ */
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [notifications, setNotifications] = useState<StoredNotification[]>([]);
   const [isConnected, setIsConnected] = useState(false);
 
-  // Cargar notificaciones del localStorage al montar
+  /* ------------------ Cargar desde localStorage al montar ------------------ */
   useEffect(() => {
     const stored = localStorage.getItem("mantenimiento_notifications");
     if (stored) {
@@ -38,7 +41,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
-  // Persistir notificaciones en localStorage cuando cambien
+  /* ---------------- Guardar en localStorage cuando cambien ----------------- */
   useEffect(() => {
     localStorage.setItem(
       "mantenimiento_notifications",
@@ -46,7 +49,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   }, [notifications]);
 
-  // Conectar al WebSocket y escuchar eventos
+  /* ---------------- Conexión WebSocket y suscripciones ---------------- */
   useEffect(() => {
     try {
       const echo = mantenimientoWebSocketService.getEcho();
@@ -66,12 +69,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       );
       channel.listen(".NuevoMantenimientoAsignado", handleNotification);
 
-      // Debug: escuchar TODOS los eventos del canal
+      // Debug de whispers
       channel.listenForWhisper("*", (e: any) => {
         console.log("🔊 Whisper recibido:", e);
       });
 
-      // 🧪 Listener para notificaciones de prueba (TEMPORAL)
+      // Listener de prueba
       const handleTestNotification = (e: any) => {
         console.log("🧪 Evento de prueba recibido");
         handleNotification(e.detail);
@@ -81,7 +84,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
         handleTestNotification
       );
 
-      // Escuchar eventos de conexión/desconexión
+      // Escuchar conexión/desconexión
       if (echo.connector?.pusher) {
         const pusher = echo.connector.pusher;
 
@@ -98,7 +101,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
         pusher.connection.bind("connected", handleConnected);
         pusher.connection.bind("disconnected", handleDisconnected);
 
-        // Estado inicial
         const currentState = pusher.connection.state;
         setIsConnected(currentState === "connected");
 
@@ -115,11 +117,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       return () => {
-        try {
-          echo.leaveChannel("mantenimientos");
-        } catch (error) {
-          console.error("Error al salir del canal:", error);
-        }
+        echo.leaveChannel("mantenimientos");
         globalThis.removeEventListener(
           "test-mantenimiento-notification",
           handleTestNotification
@@ -135,7 +133,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const addNotification = useCallback((notification: MantenimientoNotification) => {
     const newNotification: StoredNotification = {
-      id: `notif-${Date.now()}-${Math.random()}`,
+      id: crypto.randomUUID(), // ✅ reemplazo seguro de Math.random()
       title: notification.title,
       message: notification.message,
       habitacion: notification.data.habitacion,
@@ -147,6 +145,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       timestamp: notification.timestamp || new Date().toISOString(),
       read: false,
     };
+
     setNotifications((prev) => [newNotification, ...prev]);
   }, []);
 
@@ -173,10 +172,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.removeItem("mantenimiento_notifications");
   }, []);
 
-  // Calcular notificaciones no leídas
+  // Calcular no leídas
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // ✅ FIX: Memoizar value
+  /* -------------------------- Memo del value -------------------------- */
   const value = useMemo<NotificationContextType>(
     () => ({
       notifications,
@@ -207,6 +206,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
+/**
+ * Hook para usar el contexto de notificaciones
+ */
 export const useNotifications = (): NotificationContextType => {
   const context = useContext(NotificationContext);
   if (!context) {
