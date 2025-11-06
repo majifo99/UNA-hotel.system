@@ -65,18 +65,12 @@ type LocalState = {
   paymentStatus: "pending" | "completed";
   paymentMethod: PaymentMethod | "";
   currency: Currency;
-  observacion_checkin: string;
   email: string;
   phone: string;
   phoneCountryCode: string;
   nationality: string;
   selectedGuestId: string;
   guestSearchTerm: string;
-  // ⚖️ División de cargos
-  requiereDivisionCargos: boolean;
-  notasDivision: string;
-  empresaPagadora: string;
-  tipoDivision?: string;
   // 👥 Acompañantes
   pago_modo: string; // "por_persona" | "por_habitacion"
   acompanantes: Acompanante[];
@@ -293,18 +287,12 @@ const CheckIn = () => {
     paymentStatus: "pending",
     paymentMethod: "",
     currency: DEFAULT_CURRENCY,
-    observacion_checkin: "",
     email: "",
     phone: "",
     phoneCountryCode: "us",
     nationality: "US",
     selectedGuestId: "",
     guestSearchTerm: "",
-    // ⚖️ División de cargos
-    requiereDivisionCargos: false,
-    notasDivision: "",
-    empresaPagadora: "",
-    tipoDivision: "",
     // 👥 Acompañantes
     pago_modo: "por_persona", // ✅ valor permitido por backend
     acompanantes: [],
@@ -375,6 +363,12 @@ const CheckIn = () => {
         roomNumber: foundReservation.room?.number,
         roomType: foundReservation.roomType,
         roomId: foundReservation.roomId,
+        checkInDate: foundReservation.checkInDate,
+        checkOutDate: foundReservation.checkOutDate,
+        numberOfGuests: foundReservation.numberOfGuests,
+        numberOfAdults: foundReservation.numberOfAdults,
+        numberOfChildren: foundReservation.numberOfChildren,
+        numberOfInfants: foundReservation.numberOfInfants,
       });
 
       // Autorellenar datos del huésped
@@ -383,6 +377,15 @@ const CheckIn = () => {
         const fullLastName = guest.secondLastName
           ? `${guest.firstLastName} ${guest.secondLastName}`
           : guest.firstLastName;
+
+        console.log("👤 Setting guest data:", {
+          firstName: guest.firstName,
+          lastName: fullLastName,
+          email: guest.email,
+          phone: guest.phone,
+          identificationNumber: guest.documentNumber,
+          nationality: guest.nationality || "US",
+        });
 
         setFormData((prev) => ({
           ...prev,
@@ -409,6 +412,32 @@ const CheckIn = () => {
         final: roomNumber,
       });
 
+      console.log("📅 Setting dates and guests:", {
+        checkInDate: foundReservation.checkInDate,
+        checkInDateFormatted: foundReservation.checkInDate?.split("T")[0],
+        checkOutDate: foundReservation.checkOutDate,
+        checkOutDateFormatted: foundReservation.checkOutDate?.split("T")[0],
+        numberOfGuests: foundReservation.numberOfGuests,
+        adultos: foundReservation.numberOfAdults,
+        ninos: foundReservation.numberOfChildren,
+        bebes: foundReservation.numberOfInfants,
+      });
+
+      // Verificar si faltan datos críticos
+      const missingData: string[] = [];
+      if (!roomNumber) missingData.push("Habitación");
+      if (!foundReservation.checkInDate) missingData.push("Fecha de llegada");
+      if (!foundReservation.checkOutDate) missingData.push("Fecha de salida");
+      if (!foundReservation.numberOfAdults || foundReservation.numberOfAdults === 0) missingData.push("Número de adultos");
+
+      if (missingData.length > 0) {
+        console.warn("⚠️ Missing reservation data:", missingData);
+        toast.warning("Datos incompletos en la reserva", {
+          description: `Faltan los siguientes datos: ${missingData.join(", ")}. Por favor, complételos manualmente.`,
+          duration: 8000,
+        });
+      }
+
       setFormData((prev) => ({
         ...prev,
         checkInDate: foundReservation.checkInDate
@@ -417,10 +446,10 @@ const CheckIn = () => {
         checkOutDate: foundReservation.checkOutDate
           ? foundReservation.checkOutDate.split("T")[0]
           : prev.checkOutDate,
-        numberOfGuests: foundReservation.numberOfGuests,
-        adultos: foundReservation.numberOfAdults,
-        ninos: foundReservation.numberOfChildren,
-        bebes: foundReservation.numberOfInfants,
+        numberOfGuests: foundReservation.numberOfGuests || 0,
+        adultos: foundReservation.numberOfAdults || 0,
+        ninos: foundReservation.numberOfChildren || 0,
+        bebes: foundReservation.numberOfInfants || 0,
         roomNumber: roomNumber,
       }));
 
@@ -686,7 +715,6 @@ const CheckIn = () => {
           ninos: formData.ninos,
           bebes: formData.bebes,
           paymentMethod: formData.paymentMethod || undefined,
-          observacion_checkin: formData.observacion_checkin || undefined,
         };
 
         console.log("📋 Datos de estancia preparados:", stayData);
@@ -883,8 +911,6 @@ const CheckIn = () => {
           email: acomp.email,
           ...(acomp.id_cliente && { id_cliente: acomp.id_cliente }),
         })),
-        observacion_checkin:
-          formData.observacion_checkin || "Check-in desde sistema frontend",
       };
 
       console.log("📋 Payload para crear folio:", checkInDataConFolio);
@@ -976,9 +1002,6 @@ const CheckIn = () => {
         checkOutDate: formData.checkOutDate,
         guestName: `${formData.firstName} ${formData.lastName}`,
         pago_modo: formData.pago_modo,
-        requiereDivisionCargos: formData.requiereDivisionCargos,
-        notasDivision: formData.notasDivision,
-        empresaPagadora: formData.empresaPagadora,
         timestamp: new Date().toISOString(),
       };
 
@@ -2449,242 +2472,6 @@ const CheckIn = () => {
                     </p>
                   </div>
                 )}
-              </div>
-
-              {/* ⚖️ División de Cargos al Checkout */}
-              <div className="mt-6 border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  ⚖️ División de Cargos
-                  <span className="text-sm font-normal text-gray-500">
-                    (Se aplicará en el check-out)
-                  </span>
-                </h3>
-
-                <div className="space-y-4">
-                  <div className="flex items-center">
-                    <input
-                      id="requiereDivisionCargos"
-                      type="checkbox"
-                      checked={formData.requiereDivisionCargos}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          requiereDivisionCargos: e.target.checked,
-                          notasDivision: e.target.checked
-                            ? prev.notasDivision
-                            : "",
-                          empresaPagadora: e.target.checked
-                            ? prev.empresaPagadora
-                            : "",
-                          tipoDivision: e.target.checked
-                            ? prev.tipoDivision || ""
-                            : "",
-                        }))
-                      }
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <label
-                      htmlFor="requiereDivisionCargos"
-                      className="ml-2 block text-sm font-medium text-gray-700"
-                    >
-                      Requiere división de cargos en el checkout
-                    </label>
-                  </div>
-
-                  {formData.requiereDivisionCargos && (
-                    <div className="ml-6 space-y-5 border-l-4 border-blue-500 pl-4 bg-blue-50 p-4 rounded-r-lg shadow-sm transition-all">
-                      {/* Información explicativa */}
-                      <div className="bg-blue-100 border border-blue-300 rounded-md p-3">
-                        <p className="text-sm text-blue-800 leading-snug">
-                          <strong>ℹ️ Nota:</strong> La división de cargos puede
-                          aplicarse al alojamiento, servicios o ambos. Aquí solo
-                          se indica la solicitud; la distribución exacta se
-                          realizará en el check-out.
-                        </p>
-                      </div>
-
-                      {/* Selección del tipo de división */}
-                      <div>
-                        <label
-                          htmlFor="tipoDivision"
-                          className="block text-sm font-medium text-gray-700 mb-2"
-                        >
-                          Tipo de División
-                        </label>
-                        <select
-                          id="tipoDivision"
-                          value={formData.tipoDivision || ""}
-                          onChange={(e) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              tipoDivision: e.target.value,
-                            }))
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="">Seleccionar tipo</option>
-                          <option value="empresa">
-                            Empresa paga alojamiento / huésped servicios
-                          </option>
-                          <option value="huespedes">
-                            Entre varios huéspedes (mitad o porcentajes)
-                          </option>
-                          <option value="total">
-                            Un solo responsable (sin dividir)
-                          </option>
-                        </select>
-                      </div>
-
-                      {/* Visualización ilustrativa */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Alojamiento */}
-                        <div className="border rounded-lg bg-white p-4 shadow-sm">
-                          <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                            🏨 Alojamiento
-                          </h4>
-                          <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden mb-2">
-                            <div className="h-2 bg-blue-500 w-3/4"></div>
-                          </div>
-                          <p className="text-xs text-gray-600">
-                            <strong>Empresa Pagadora:</strong>{" "}
-                            {formData.empresaPagadora || "No especificada"}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Ejemplo: empresa cubre la noche y desayuno
-                          </p>
-                        </div>
-
-                        {/* Servicios */}
-                        <div className="border rounded-lg bg-white p-4 shadow-sm">
-                          <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                            👤 Servicios y extras
-                          </h4>
-                          <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden mb-2">
-                            <div className="h-2 bg-green-500 w-2/4"></div>
-                          </div>
-                          <p className="text-xs text-gray-600">
-                            <strong>Cargo al huésped:</strong> Servicios
-                            adicionales (restaurante, lavandería, minibar)
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Campos de empresa y notas */}
-                      <div>
-                        <label
-                          htmlFor="empresaPagadora"
-                          className="block text-sm font-medium text-gray-700 mb-2"
-                        >
-                          Empresa/Agencia Pagadora (opcional)
-                        </label>
-                        <input
-                          id="empresaPagadora"
-                          type="text"
-                          value={formData.empresaPagadora}
-                          onChange={(e) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              empresaPagadora: e.target.value,
-                            }))
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Ej: Corporativo ABC, Agencia XYZ..."
-                          maxLength={100}
-                        />
-                        <p className="mt-1 text-xs text-gray-500">
-                          Nombre de la empresa o agencia que cubrirá parte o
-                          todos los cargos
-                        </p>
-                      </div>
-
-                      <div>
-                        <label
-                          htmlFor="notasDivision"
-                          className="block text-sm font-medium text-gray-700 mb-2"
-                        >
-                          Notas sobre la división
-                        </label>
-                        <textarea
-                          id="notasDivision"
-                          value={formData.notasDivision}
-                          onChange={(e) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              notasDivision: e.target.value,
-                            }))
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                          rows={3}
-                          placeholder="Ej: 'Hospedaje y desayuno a cargo de la empresa. Otros cargos al huésped.'"
-                          maxLength={300}
-                        />
-                        <div className="mt-1 text-xs text-gray-500 text-right">
-                          {formData.notasDivision.length}/300 caracteres
-                        </div>
-                        <p className="mt-1 text-xs text-gray-500">
-                          Instrucciones específicas sobre cómo dividir los
-                          cargos (se usarán en el checkout)
-                        </p>
-                      </div>
-
-                      {/* Recordatorio */}
-                      <div className="bg-yellow-50 border border-yellow-300 rounded-md p-3">
-                        <p className="text-sm text-yellow-800">
-                          ⚠️ La división detallada (porcentajes o cargos
-                          específicos) se configurará durante el proceso de
-                          check-out.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Observaciones */}
-              <div className="mt-4">
-                <label
-                  htmlFor="observacion_checkin"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Observaciones del Check-In
-                </label>
-                <textarea
-                  id="observacion_checkin"
-                  value={formData.observacion_checkin}
-                  maxLength={500}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // Permitir texto con puntuación básica
-                    if (/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,;:!?()-]*$/.test(value)) {
-                      setFormData((prev) => ({
-                        ...prev,
-                        observacion_checkin: value,
-                      }));
-                      clearError("observaciones");
-                    }
-                  }}
-                  onBlur={(e) =>
-                    validate(
-                      "observaciones",
-                      e.target.value,
-                      getCommonRules("observations")
-                    )
-                  }
-                  className={`${getInputClasses(
-                    !!errors.observaciones,
-                    false
-                  )} resize-none`}
-                  rows={3}
-                  placeholder="Observaciones adicionales sobre el check-in... (máx. 500 caracteres)"
-                />
-                {errors.observaciones && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {errors.observaciones}
-                  </p>
-                )}
-                <div className="mt-1 text-xs text-gray-500 text-right">
-                  {formData.observacion_checkin.length}/500 caracteres
-                </div>
               </div>
             </div>
 
