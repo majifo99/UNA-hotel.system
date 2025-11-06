@@ -33,29 +33,29 @@ export default function HistorialLimpiezasPage() {
   };
 
   const renderRow = (record: any, index: number) => (
-    <tr
-      key={record.id_historial_limp ?? `${extractRoomNumber(record)}-${index}`}
-      className="align-top odd:bg-slate-50/50 hover:bg-slate-100/60 transition-colors break-inside-avoid"
-    >
-      <td className="px-4 py-2">
-        <span className="inline-flex min-w-[40px] justify-center rounded-md bg-slate-100 px-2 py-1 text-sm font-semibold ring-1 ring-slate-200">
-          {extractRoomNumber(record)}
-        </span>
-      </td>
-      <td className="px-4 py-2 whitespace-nowrap text-slate-700">
-        {formatDatetime(asPrimitiveString(record.fecha))}
-      </td>
-      <td className="px-4 py-2 font-medium text-slate-800">{record.evento ?? "—"}</td>
-      <td className="px-4 py-2 text-slate-700">
-        {record.actor?.nombre ?? record.actor?.email ?? "—"}
-      </td>
-      <td className="px-4 py-2">
-        <ValueBlock json={record.valor_anterior} />
-      </td>
-      <td className="px-4 py-2">
-        <ValueBlock json={record.valor_nuevo} />
-      </td>
-    </tr>
+      <tr
+        key={record.id_historial_limp ?? `${extractRoomNumber(record)}-${index}`}
+        className="align-top odd:bg-slate-50/50 hover:bg-slate-100/60 transition-colors break-inside-avoid"
+      >
+        <td className="px-4 py-2">
+          <span className="inline-flex min-w-[40px] justify-center rounded-md bg-slate-100 px-2 py-1 text-sm font-semibold ring-1 ring-slate-200">
+            {extractRoomNumber(record)}
+          </span>
+        </td>
+        <td className="px-4 py-2 whitespace-nowrap text-slate-700">
+          {formatDatetime(asPrimitiveString(record.fecha))}
+        </td>
+        <td className="px-4 py-2 font-medium text-slate-800">{record.evento ?? "—"}</td>
+        <td className="px-4 py-2 text-slate-700">
+          {record.actor?.nombre ?? record.actor?.email ?? "—"}
+        </td>
+        <td className="px-4 py-2">
+          <ValueBlock json={record.valor_anterior} />
+        </td>
+        <td className="px-4 py-2">
+          <ValueBlock json={record.valor_nuevo} />
+        </td>
+      </tr>
   );
 
   return <HistorialPageBase config={pageConfig} hookData={historialData} renderTableRow={renderRow} />;

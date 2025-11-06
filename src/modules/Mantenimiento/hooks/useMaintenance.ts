@@ -45,6 +45,15 @@ export function useMaintenance() {
     }
   }, []);
 
+  // Actualización optimista: actualizar un item en el cache sin refetch
+  const updateItemOptimistic = useCallback((id: number, updates: Partial<MantenimientoItem>) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, ...updates } : item
+      )
+    );
+  }, []);
+
   // Carga inicial
   useEffect(() => {
     let mounted = true;
@@ -117,5 +126,6 @@ export function useMaintenance() {
     counts,
 
     refetch, // 👈 importante exponerlo
+    updateItemOptimistic, // 👈 actualización optimista
   };
 }

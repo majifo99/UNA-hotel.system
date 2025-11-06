@@ -1,37 +1,34 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRef, useState } from "react";
+
 import { FilterBar } from "../components/FilterBar";
 import MaintenanceTable, { type MaintenanceTableRef } from "../components/MaintenanceTable";
 import { useMaintenance } from "../hooks/useMaintenance";
-import type { MantenimientoItem } from "../types/mantenimiento";
-import NotificationBell, { type NotificationItem } from "../components/NotificationBell";
-import { NOTIFICATIONS_MOCK } from "../data/notifications.mock";
+
+import { NotificationBell } from "../components/NotificationBell";
+import { NotificationProvider } from "../context/NotificationContext";
 import SolLogo from "../../../assets/Lanaku.png";
 import { FiLogOut } from "react-icons/fi";
 import SuccessModal from "../components/modals/SuccessModalMantenimiento";
 
-export default function MantenimientoPage() {
+function MantenimientoPageContent() {
   const {
     filtered,
     query, setQuery,
     status, setStatus,
     loading,
     refetch, // 👈 IMPORTANTE: traemos refetch para refrescar tras guardar
+    updateItemOptimistic, // 👈 Para actualizaciones optimistas
   } = useMaintenance();
 
-  const navigate = useNavigate();
+
 
   // Ref a la tabla para abrir modales internos
   const tableRef = useRef<MaintenanceTableRef>(null);
 
   // Cantidad seleccionada
   const [selectedCount, setSelectedCount] = useState(0);
-
-  // Notificaciones
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [localPendings, setLocalPendings] = useState<MantenimientoItem[]>([]);
 
   // Modal de éxito global
   const [successModal, setSuccessModal] = useState({
@@ -45,68 +42,6 @@ export default function MantenimientoPage() {
 
   const closeSuccessModal = () =>
     setSuccessModal((prev) => ({ ...prev, open: false }));
-
-  // Inicializar notificaciones
-  useEffect(() => {
-    setNotifications(NOTIFICATIONS_MOCK);
-  }, []);
-
-  const coercePriority = (p?: string | null) => {
-    const v = (p ?? "").trim().toLowerCase();
-    if (v === "baja" || v === "media" || v === "alta" || v === "urgente") {
-      return v;
-    }
-    return "media";
-  };
-
-  const mapNotifToRow = (n: NotificationItem): MantenimientoItem => ({
-    id: Number(n.id),
-    notas: n.description,
-    prioridad: coercePriority(n.priority),
-    fecha_inicio: new Date().toISOString(),
-    habitacion: {
-      id: 0,
-      numero: n.room ?? "—",
-      piso: "",
-    },
-    usuario_asignado: undefined,
-    usuario_reporta: undefined,
-    estado: { id: 1, nombre: "Pendiente" },
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  });
-
-  // Cuando se acepta una notificación
-  const handleAccept = (n: NotificationItem) => {
-    setLocalPendings((prev) => [mapNotifToRow(n), ...prev]);
-    setNotifications((prev) =>
-      prev.map((x) => (x.id === n.id ? { ...x, read: true } : x))
-    );
-    openSuccessModal("¡Solicitud aceptada!", "La tarea fue agregada a pendientes correctamente.");
-  };
-
-  // Cuando se rechaza
-  const handleReject = (n: NotificationItem) => {
-    setNotifications((prev) =>
-      prev.map((x) =>
-        x.id === n.id ? { ...x, read: true, dismissed: true } : x
-      )
-    );
-  };
-
-  // Combinar tareas pendientes locales con las del backend
-  const allRows = useMemo(
-    () => [...localPendings, ...filtered],
-    [localPendings, filtered]
-  );
-
-  // Cuando se abre una notificación
-  const handleNotificationClick = (n: NotificationItem) => {
-    setNotifications((prev) =>
-      prev.map((x) => (x.id === n.id ? { ...x, read: true } : x))
-    );
-    navigate(`/mantenimientos/detalle/${n.id}`);
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 text-[#0f172a] font-sans relative">
@@ -134,18 +69,7 @@ export default function MantenimientoPage() {
 
           {/* DERECHA: notificaciones + logout */}
           <div className="flex items-center gap-3 flex-wrap">
-            <NotificationBell
-              notifications={notifications}
-              onItemClick={handleNotificationClick}
-              onOpenAll={() => navigate("/notificaciones")}
-              markAllAsRead={() =>
-                setNotifications((prev) =>
-                  prev.map((x) => ({ ...x, read: true }))
-                )
-              }
-              onAccept={handleAccept}
-              onReject={handleReject}
-            />
+            <NotificationBell />
 
             <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 bg-white/80 hover:bg-white shadow-sm">
               <FiLogOut className="h-4 w-4" />
@@ -162,7 +86,7 @@ export default function MantenimientoPage() {
           onQuery={setQuery}
           status={status}
           onStatus={setStatus}
-          total={allRows.length}
+          total={filtered.length}
           selectedCount={selectedCount}
           onOpenDate={() => {
             /* lógica fecha */
@@ -181,7 +105,7 @@ export default function MantenimientoPage() {
           <div className="mx-2 sm:mx-4 lg:mx-6">
             <MaintenanceTable
               ref={tableRef}
-              items={allRows}
+              items={filtered}
               onSelectionChange={setSelectedCount}
               onSuccess={(msg?: string) =>
                 openSuccessModal(
@@ -190,6 +114,7 @@ export default function MantenimientoPage() {
                 )
               }
               onRequestRefresh={refetch} // ✅ ahora la tabla puede refrescar datos tras el modal
+              onUpdateOptimistic={updateItemOptimistic} // ✅ actualización optimista
             />
           </div>
         )}
@@ -204,5 +129,13 @@ export default function MantenimientoPage() {
         autoCloseMs={2200}
       />
     </div>
+  );
+}
+
+export default function MantenimientoPage() {
+  return (
+    <NotificationProvider>
+      <MantenimientoPageContent />
+    </NotificationProvider>
   );
 }

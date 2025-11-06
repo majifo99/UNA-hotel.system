@@ -11,11 +11,20 @@ const HOUR12 = false;
  */
 export function formatDatetime(value?: string | null): string {
   if (!value || value === "—" || value === "-") return "—";
-  const clean = typeof value === "string"
+
+  let clean = typeof value === "string"
     ? value.replaceAll(/(\.\d{3})\d+(Z)?$/g, "$1$2")
     : value;
+
+  // Si la fecha viene en formato "YYYY-MM-DD HH:MM:SS" (sin timezone),
+  // reemplazar el espacio por "T" para que JavaScript la interprete correctamente
+  if (typeof clean === "string" && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(clean)) {
+    clean = clean.replace(" ", "T");
+  }
+
   const d = new Date(String(clean));
   if (Number.isNaN(d.getTime())) return String(value);
+
   return new Intl.DateTimeFormat("es-CR", {
     day: "2-digit",
     month: "2-digit",
@@ -24,6 +33,57 @@ export function formatDatetime(value?: string | null): string {
     minute: "2-digit",
     hour12: HOUR12,
   }).format(d);
+}
+
+/**
+ * Formatea solo la fecha (sin hora) en formato DD/MM/YYYY
+ */
+export function formatDate(value?: string | null): string {
+  if (!value || value === "—" || value === "-") return "—";
+
+  let clean = typeof value === "string"
+    ? value.replaceAll(/(\.\d{3})\d+(Z)?$/g, "$1$2")
+    : value;
+
+  // Si la fecha viene en formato "YYYY-MM-DD HH:MM:SS" o "YYYY-MM-DD"
+  if (typeof clean === "string" && /^\d{4}-\d{2}-\d{2}/.test(clean)) {
+    clean = clean.replace(" ", "T");
+  }
+
+  const d = new Date(String(clean));
+  if (Number.isNaN(d.getTime())) return String(value);
+
+  return new Intl.DateTimeFormat("es-CR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(d);
+}
+
+/**
+ * Formatea fechas UTC (con "Z") convirtiéndolas a hora local de Costa Rica (UTC-6)
+ * Específicamente para fecha_inicio y fecha_final que vienen del backend con timezone UTC
+ * El backend guarda la hora local como UTC, así que debemos restar 6 horas
+ */
+export function formatDatetimeUTC(value?: string | null): string {
+  if (!value || value === "—" || value === "-") return "—";
+
+  // Parsear la fecha UTC que viene del backend
+  const d = new Date(String(value));
+  if (Number.isNaN(d.getTime())) return String(value);
+
+  // Restar 6 horas para convertir de UTC a hora local de Costa Rica (UTC-6)
+  const offsetMinutes = 6 * 60; // 6 horas en minutos
+  const localDate = new Date(d.getTime() - offsetMinutes * 60 * 1000);
+
+  return new Intl.DateTimeFormat("es-CR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: HOUR12,
+  }).format(localDate);
 }
 
 /**

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Home, UserRound, AlertCircle } from "lucide-react";
+import { X, Save, RefreshCw, Home, UserRound, AlertCircle } from "lucide-react";
 import type { MantenimientoItem, Prioridad } from "../../types/mantenimiento";
 import { getUsers } from "../../services/usersMantenimiento";
 import mantenimientoService from "../../services/maintenanceService";
@@ -10,22 +10,19 @@ import mantenimientoService from "../../services/maintenanceService";
 /* -------------------------------- Constants -------------------------------- */
 const PRIORIDADES: Prioridad[] = ["baja", "media", "alta", "urgente"];
 
-/* -------------------------------- Helpers -------------------------------- */
-
-
 /* --------------------------------- Props --------------------------------- */
 
 type Props = Readonly<{
   isOpen: boolean;
   onClose: () => void;
-  item?: MantenimientoItem | null;
+  item: MantenimientoItem | null;
   /** Avisar éxito al padre; enviamos el item actualizado para optimismo opcional */
   onSaved?: (updated?: MantenimientoItem) => void;
 }>;
 
 /* --------------------------------- Modal --------------------------------- */
 
-export default function AssignMaintenanceModal({ isOpen, onClose, item, onSaved }: Props) {
+export default function ReassignMaintenanceModal({ isOpen, onClose, item, onSaved }: Props) {
   // ESC
   useEffect(() => {
     if (!isOpen) return;
@@ -45,21 +42,23 @@ export default function AssignMaintenanceModal({ isOpen, onClose, item, onSaved 
   const [prioridadLocal, setPrioridadLocal] = useState<Prioridad | "">("");
   const [notasLocal, setNotasLocal] = useState<string>("");
 
-  // ✨ Precargar valores existentes del item cuando se abre el modal
+  // Precarga valores del item cuando abre (REASIGNACIÓN)
   useEffect(() => {
-    if (!isOpen || !item) {
-      // Si no está abierto o no hay item, limpiar
+    if (item) {
+      setSelectedUserId(item?.usuario_asignado?.id ?? item?.usuario_reporta?.id ?? "");
+
+      // Cargar prioridad y notas existentes
+      const prioridadActual = (item as any)?.prioridad ?? "";
+      setPrioridadLocal(prioridadActual);
+
+      const notasActuales = (item as any)?.notas ?? "";
+      setNotasLocal(notasActuales);
+    } else {
       setSelectedUserId("");
       setPrioridadLocal("");
       setNotasLocal("");
-      return;
     }
-
-    // Precargar valores existentes
-    setSelectedUserId(item.usuario_asignado?.id ?? "");
-    setPrioridadLocal((item.prioridad as Prioridad) ?? "");
-    setNotasLocal(item.notas ?? "");
-  }, [isOpen, item]);
+  }, [item]);
 
   // cargar usuarios al abrir
   useEffect(() => {
@@ -93,9 +92,9 @@ export default function AssignMaintenanceModal({ isOpen, onClose, item, onSaved 
   const habPiso = item?.habitacion?.piso ?? "—";
 
   const ids = {
-    asignadoA: "mnt-asignadoA",
-    prioridad: "mnt-prioridad",
-    notas: "mnt-notas",
+    asignadoA: "reassign-asignadoA",
+    prioridad: "reassign-prioridad",
+    notas: "reassign-notas",
   } as const;
 
   async function handleSave() {
@@ -103,6 +102,12 @@ export default function AssignMaintenanceModal({ isOpen, onClose, item, onSaved 
     setSaving(true);
     try {
       const body: any = {};
+
+      // ✅ Si el mantenimiento está finalizado, reabrirlo
+      const estaFinalizado = item.fecha_final !== null && item.fecha_final !== undefined;
+      if (estaFinalizado) {
+        body.fecha_final = null; // ✅ Limpiar fecha_final para reabrir
+      }
 
       // Usuario asignado
       if (selectedUserId !== "") body.id_usuario_asigna = Number(selectedUserId);
@@ -115,11 +120,11 @@ export default function AssignMaintenanceModal({ isOpen, onClose, item, onSaved 
 
       const resp = await mantenimientoService.updateMantenimiento(item.id, body);
       const updated = resp?.data;
-      onSaved?.(updated); // ✅ devolvemos el item actualizado
-      onClose();          // cerrar modal
+      onSaved?.(updated);
+      onClose();
     } catch (err: unknown) {
-      console.error("[AssignMantenimiento] updateMantenimiento failed:", err);
-      alert(err instanceof Error ? err.message : "No se pudo guardar la asignación");
+      console.error("[ReassignMantenimiento] updateMantenimiento failed:", err);
+      alert(err instanceof Error ? err.message : "No se pudo guardar la reasignación");
     } finally {
       setSaving(false);
     }
@@ -131,19 +136,19 @@ export default function AssignMaintenanceModal({ isOpen, onClose, item, onSaved 
       <dialog
         open
         aria-modal="true"
-        aria-labelledby="assign-modal-title"
+        aria-labelledby="reassign-modal-title"
         className="fixed z-[51] inset-0 m-0 grid place-items-center w-full h-full bg-transparent"
       >
         <div className="w-full max-w-xl max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4" style={{ backgroundColor: "#304D3C" }}>
             <div className="flex items-center gap-3">
-              <div className="h-7 w-7 rounded-lg bg-white/15" aria-hidden="true" />
+              <RefreshCw className="h-6 w-6 text-white" />
               <div>
-                <h2 id="assign-modal-title" className="text-lg font-semibold leading-tight text-white">
-                  Editar mantenimiento
+                <h2 id="reassign-modal-title" className="text-lg font-semibold leading-tight text-white">
+                  Reasignar mantenimiento
                 </h2>
-                <p className="text-xs/5 text-white/80">Modifica los campos que necesites actualizar.</p>
+                <p className="text-xs/5 text-white/80">Actualiza responsable, prioridad, notas y programación</p>
               </div>
             </div>
             <button type="button" onClick={onClose} aria-label="Cerrar" className="rounded-lg p-2 text-white/90 hover:bg-white/10 transition">
@@ -182,7 +187,7 @@ export default function AssignMaintenanceModal({ isOpen, onClose, item, onSaved 
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
                   disabled={loadingUsers}
                 >
-                  <option value="">Sin asignar</option>
+                  <option value="">Seleccionar usuario</option>
                   {users.map((u) => (
                     <option key={u.id} value={u.id}>
                       {u.nombreCompleto}
@@ -209,7 +214,7 @@ export default function AssignMaintenanceModal({ isOpen, onClose, item, onSaved 
                   onChange={(e) => setPrioridadLocal(e.target.value as Prioridad | "")}
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
                 >
-                  <option value="">Sin prioridad</option>
+                  <option value="">Seleccionar prioridad</option>
                   {PRIORIDADES.map((p) => (
                     <option key={p} value={p}>
                       {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -226,7 +231,7 @@ export default function AssignMaintenanceModal({ isOpen, onClose, item, onSaved 
               </label>
               <textarea
                 id={ids.notas}
-                placeholder="Escribe notas adicionales sobre el mantenimiento..."
+                placeholder="Notas adicionales (opcional)"
                 maxLength={500}
                 value={notasLocal}
                 onChange={(e) => setNotasLocal(e.target.value)}
@@ -248,10 +253,11 @@ export default function AssignMaintenanceModal({ isOpen, onClose, item, onSaved 
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="rounded-xl px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-70"
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-70"
               title="Guardar cambios"
             >
-              {saving ? "Guardando…" : "Guardar"}
+              <Save className="h-4 w-4" />
+              {saving ? "Guardando…" : "Guardar cambios"}
             </button>
           </div>
         </div>
