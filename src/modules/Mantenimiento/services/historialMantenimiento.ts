@@ -75,3 +75,23 @@ export async function fetchHistorialPorMantenimiento(idMantenimiento: number, pa
     total: Array.isArray(arr) ? arr.length : 0,
   };
 }
+
+/**
+ * GET /historial-mantenimientos para una habitación específica (últimas N finalizadas)
+ */
+export async function fetchHistorialByHabitacion(
+  id_habitacion: number,
+  limit: number = 3
+): Promise<{ data: any[] }> {
+  const query = toQuery({
+    id_habitacion,
+    per_page: limit,
+  });
+
+  const data = await request(`${API_URL}/historial-mantenimientos${query}`, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+
+  return data as { data: any[] };
+}

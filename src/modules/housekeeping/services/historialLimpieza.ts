@@ -96,3 +96,23 @@ export async function fetchHistorialLimpiezas(params?: {
 
   return data as HistorialPagination;
 }
+
+/**
+ * GET /historial-limpiezas para una habitación específica (últimas N finalizadas)
+ */
+export async function fetchHistorialByHabitacion(
+  id_habitacion: number,
+  limit: number = 3
+): Promise<{ data: any[] }> {
+  const query = toQuery({
+    id_habitacion,
+    per_page: limit,
+  });
+
+  const data = await request(`${API_URL}/historial-limpiezas${query}`, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+
+  return data as { data: any[] };
+}

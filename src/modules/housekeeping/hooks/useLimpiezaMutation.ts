@@ -109,7 +109,7 @@ export function useLimpiezaMutation(params: UseLimpiezaMutationParams) {
       if (fechaInicio) {
         try {
           const date = new Date(fechaInicio);
-          if (!isNaN(date.getTime())) {
+          if (!Number.isNaN(date.getTime())) {
             const yyyy = date.getFullYear();
             const mm = String(date.getMonth() + 1).padStart(2, "0");
             const dd = String(date.getDate()).padStart(2, "0");
@@ -120,7 +120,8 @@ export function useLimpiezaMutation(params: UseLimpiezaMutationParams) {
             setHora(`${hh}:${mi}`);
           }
         } catch (e) {
-          // Ignorar errores de parsing
+          console.warn('Error parsing date:', e);
+          // Continue execution as the date parsing is not critical
         }
       }
 
@@ -152,53 +153,45 @@ export function useLimpiezaMutation(params: UseLimpiezaMutationParams) {
   }, []);
 
   // ✅ Mutation con optimistic update SIMPLE para velocidad máxima
+  const handleOptimisticUpdate = async (targetId: number, payload: Record<string, any>) => {
+    await queryClient.cancelQueries({ queryKey: limpiezasKeys.lists() });
+    const previousData = queryClient.getQueryData(limpiezasKeys.lists());
+
+    const updatePayload = (item: any) => {
+      if (item.id !== targetId && item.id_limpieza !== targetId) return item;
+      let updatedPayload = { ...payload };
+
+      if (payload.id_usuario_asigna && users.length > 0) {
+        const user = users.find(u => u.id === payload.id_usuario_asigna);
+        if (user) {
+          const primerNombre = user.nombreCompleto.split(/\s+/)[0] || user.nombreCompleto;
+          updatedPayload.usuario_asignado = {
+            id: user.id,
+            nombre: primerNombre,
+          };
+        }
+      }
+
+      return { ...item, ...updatedPayload };
+    };
+
+    queryClient.setQueriesData({ queryKey: limpiezasKeys.lists() }, (old: any) => {
+      if (!old?.data) return old;
+      return { ...old, data: old.data.map(updatePayload) };
+    });
+
+    setToast({ type: "success", msg: "Cambios guardados." });
+    onSuccess?.();
+    onClose?.();
+
+    return { previousData };
+  };
+
   const updateMutation = useMutation({
     mutationFn: async ({ targetId, payload }: { targetId: number; payload: Record<string, any> }) => {
       return await limpiezaService.updateLimpieza(targetId, payload, "PATCH");
     },
-    onMutate: async ({ targetId, payload }) => {
-      // ✅ Actualización optimista SIMPLE - UI instantánea
-      await queryClient.cancelQueries({ queryKey: limpiezasKeys.lists() });
-
-      const previousData = queryClient.getQueryData(limpiezasKeys.lists());
-
-      // Actualizar todas las queries de lista
-      queryClient.setQueriesData({ queryKey: limpiezasKeys.lists() }, (old: any) => {
-        if (!old?.data) return old;
-        return {
-          ...old,
-          data: old.data.map((item: any) => {
-            if (item.id !== targetId && item.id_limpieza !== targetId) return item;
-
-            // ✅ Si estamos asignando un usuario, construir el objeto usuario_asignado
-            let updatedPayload = { ...payload };
-            if (payload.id_usuario_asigna && users.length > 0) {
-              const user = users.find(u => u.id === payload.id_usuario_asigna);
-              if (user) {
-                // Solo usar el primer nombre
-                const primerNombre = user.nombreCompleto.split(/\s+/)[0] || user.nombreCompleto;
-                updatedPayload = {
-                  ...payload,
-                  usuario_asignado: {
-                    id: user.id,
-                    nombre: primerNombre,
-                  }
-                };
-              }
-            }
-
-            return { ...item, ...updatedPayload };
-          }),
-        };
-      });
-
-      // ✅ CERRAR MODAL INMEDIATAMENTE después del optimistic update
-      setToast({ type: "success", msg: "Cambios guardados." });
-      onSuccess?.();
-      onClose?.();
-
-      return { previousData };
-    },
+    onMutate: async ({ targetId, payload }) => handleOptimisticUpdate(targetId, payload),
     onSuccess: (resp) => {
       const updated = (resp as any)?.data ?? resp;
 
@@ -316,8 +309,13 @@ export function useLimpiezaMutation(params: UseLimpiezaMutationParams) {
     const iso = buildISO(fecha, hora);
     if (iso) payload.fecha_inicio = iso;
 
+    // ✨ Si se asigna un usuario, establecer fecha_inicio automáticamente
     if (typeof asignadoA === "number") {
       payload.id_usuario_asigna = asignadoA;
+      // Solo establecer fecha_inicio si no hay una fecha manual
+      if (!iso) {
+        payload.fecha_inicio = new Date().toISOString();
+      }
     }
 
     setToast(null);
@@ -338,8 +336,6 @@ export function useLimpiezaMutation(params: UseLimpiezaMutationParams) {
 
       // ✅ Ejecutar mutation con optimistic update
       await updateMutation.mutateAsync({ targetId, payload });
-    } catch (err: any) {
-      // Error ya manejado en onError de la mutation
     } finally {
       setIsSaving(false);
     }

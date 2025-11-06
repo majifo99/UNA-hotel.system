@@ -71,18 +71,14 @@ export default function RoomsTable({ controller, onSelectionChange, filters }: R
     loading,
     error,
     items,
-    pagination,
     selectedIds,
     toggleOne,
-    gotoPage,
     finalizarLimpieza,
     reabrirLimpieza,
     isFirstLoad,
     isRevalidating,
     hasPageData,
   } = ctrl;
-
-  const totalPages = pagination.last_page;
 
   const columns = useMemo(
     () => [
@@ -412,40 +408,6 @@ export default function RoomsTable({ controller, onSelectionChange, filters }: R
               })}
             </tbody>
           </table>
-        </div>
-
-        {/* Paginación */}
-        <div className="flex justify-center items-center gap-1 py-5 bg-white border-t border-slate-100">
-          <button
-            onClick={() => gotoPage(pagination.current_page - 1)}
-            disabled={pagination.current_page <= 1}
-            className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-emerald-600 disabled:opacity-30"
-            aria-label="Página anterior"
-          >
-            ←
-          </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <button
-              key={p}
-              onClick={() => gotoPage(p)}
-              className={cn(
-                "w-8 h-8 rounded-md text-sm transition-colors",
-                pagination.current_page === p
-                  ? "text-emerald-700 font-semibold bg-slate-100"
-                  : "text-slate-500 hover:text-emerald-600"
-              )}
-            >
-              {p}
-            </button>
-          ))}
-          <button
-            onClick={() => gotoPage(pagination.current_page + 1)}
-            disabled={pagination.current_page >= totalPages}
-            className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-emerald-600 disabled:opacity-30"
-            aria-label="Página siguiente"
-          >
-            →
-          </button>
         </div>
 
         {/* Modal de detalles */}

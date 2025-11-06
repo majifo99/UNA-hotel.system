@@ -1,29 +1,27 @@
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
-// Configurar Pusher globalmente
+// -------------------------------------------------------------
+// 🔧 Extensión global sin referencia circular
+// -------------------------------------------------------------
 declare global {
-  interface Window {
-    Pusher: typeof Pusher;
-  }
+  // eslint-disable-next-line no-var
+  var Pusher: ReturnType<typeof importPusher> | undefined;
 }
 
-window.Pusher = Pusher;
+function importPusher() {
+  return Pusher;
+}
+
+globalThis.Pusher = Pusher as any;
 
 /**
  * Servicio WebSocket para notificaciones de limpieza
- *
- * Gestiona la conexión con Laravel Reverb para recibir notificaciones
- * en tiempo real cuando se asignan nuevas limpiezas.
  */
-
 class LimpiezaWebSocketService {
   private echo: Echo<any> | null = null;
-  private isConnected: boolean = false;
+  private isConnected = false;
 
-  /**
-   * Inicializa la conexión WebSocket con Laravel Echo
-   */
   initialize(): Echo<any> {
     if (this.echo) {
       console.log('🔌 Echo ya está inicializado');
@@ -32,7 +30,7 @@ class LimpiezaWebSocketService {
 
     const appKey = import.meta.env.VITE_REVERB_APP_KEY || 'local-app-key';
     const wsHost = import.meta.env.VITE_REVERB_HOST || 'localhost';
-    const wsPort = parseInt(import.meta.env.VITE_REVERB_PORT || '8080');
+    const wsPort = Number.parseInt(import.meta.env.VITE_REVERB_PORT || '8080');
     const scheme = import.meta.env.VITE_REVERB_SCHEME || 'http';
     const forceTLS = scheme === 'https';
 
@@ -43,100 +41,79 @@ class LimpiezaWebSocketService {
       forceTLS,
     });
 
-    this.echo = new Echo({
+    this.echo = new Echo<any>({
       broadcaster: 'reverb',
       key: appKey,
-      wsHost: wsHost,
-      wsPort: wsPort,
+      wsHost,
+      wsPort,
       wssPort: wsPort,
-      forceTLS: forceTLS,
+      forceTLS,
       enabledTransports: ['ws', 'wss'],
       disableStats: true,
-
-      // Configuración de autenticación
+      encrypted: forceTLS,
       auth: {
         headers: {
           Authorization: `Bearer ${this.getAuthToken()}`,
         },
       },
-
-      encrypted: forceTLS,
     });
 
-    // Event listeners para debugging
-    if (this.echo.connector?.pusher) {
-      const pusher = this.echo.connector.pusher;
-
+    const pusher = (this.echo.connector)?.pusher;
+    if (pusher?.connection) {
       pusher.connection.bind('connected', () => {
-        console.log('✅ WebSocket de limpiezas conectado');
+        console.log('✅ WebSocket conectado');
         this.isConnected = true;
       });
 
       pusher.connection.bind('disconnected', () => {
-        console.log('❌ WebSocket de limpiezas desconectado');
+        console.log('❌ WebSocket desconectado');
         this.isConnected = false;
       });
 
       pusher.connection.bind('error', (error: any) => {
-        console.error('❌ Error en WebSocket de limpiezas:', error);
+        console.error('❌ Error en WebSocket:', error);
         this.isConnected = false;
       });
 
       pusher.connection.bind('state_change', (states: any) => {
-        console.log('🔄 Estado WebSocket limpiezas:', states.current);
+        console.log('🔄 Estado WebSocket:', states.current);
       });
     }
 
     return this.echo;
   }
 
-  /**
-   * Obtiene el token de autenticación del localStorage
-   */
   private getAuthToken(): string {
-    return localStorage.getItem('adminAuthToken')
-      || localStorage.getItem('authToken')
-      || '';
+    return (
+      localStorage.getItem('adminAuthToken') ||
+      localStorage.getItem('authToken') ||
+      ''
+    );
   }
 
-  /**
-   * Obtiene la instancia de Echo (la crea si no existe)
-   */
   getEcho(): Echo<any> {
-    if (!this.echo) {
-      this.initialize();
-    }
+    if (!this.echo) this.initialize();
     return this.echo!;
   }
 
-  /**
-   * Verifica si el WebSocket está conectado
-   */
   isWebSocketConnected(): boolean {
     return this.isConnected;
   }
 
-  /**
-   * Desconecta y limpia la conexión WebSocket
-   */
   disconnect(): void {
     if (this.echo) {
-      console.log('🔌 Desconectando WebSocket de limpiezas...');
+      console.log('🔌 Desconectando WebSocket...');
       this.echo.disconnect();
       this.echo = null;
       this.isConnected = false;
     }
   }
 
-  /**
-   * Reconecta el WebSocket (útil después de cambios de token)
-   */
   reconnect(): void {
-    console.log('🔄 Reconectando WebSocket de limpiezas...');
+    console.log('🔄 Reconectando WebSocket...');
     this.disconnect();
     this.initialize();
   }
 }
 
-// Exportar instancia singleton
 export const limpiezaWebSocketService = new LimpiezaWebSocketService();

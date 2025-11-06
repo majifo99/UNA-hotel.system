@@ -18,7 +18,7 @@ export default function FilterBarHistoriales({
 }: Props) {
   const [localQ, setLocalQ] = useState(q);
   // En entorno browser (use client), setTimeout devuelve number
-  const debounceRef = useRef<number | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onChangeQ = useCallback((value: string) => {
     setLocalQ(value);

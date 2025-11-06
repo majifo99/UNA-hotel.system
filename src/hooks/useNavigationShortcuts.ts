@@ -96,7 +96,7 @@ export function useNavigationShortcuts(config: Partial<ShortcutConfig> = {}) {
   });
   
   // Sequence timeout
-  const [sequenceTimer, setSequenceTimer] = useState<number | null>(null);
+  const [sequenceTimer, setSequenceTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   
   /**
    * Clear current sequence and reset state

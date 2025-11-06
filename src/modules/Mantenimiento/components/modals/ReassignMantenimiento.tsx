@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { MantenimientoModalBase } from "./MantenimientoModalBase";
 import { MantenimientoFormContent } from "../MantenimientoFormContent";
 import type { MantenimientoItem, Prioridad } from "../../types/mantenimiento";
@@ -13,7 +14,7 @@ type Props = {
   onSaved?: (updated?: MantenimientoItem) => void;
 };
 
-export default function AssignMaintenanceModal({ isOpen, onClose, item, onSaved }: Props) {
+export default function ReassignMaintenanceModal({ isOpen, onClose, item, onSaved }: Readonly<Props>) {
   const [users, setUsers] = useState<Array<{ id: number; nombreCompleto: string }>>([]);
   const [selectedUserId, setSelectedUserId] = useState<number | "">("");
   const [prioridadLocal, setPrioridadLocal] = useState<Prioridad | "">("");
@@ -32,17 +33,23 @@ export default function AssignMaintenanceModal({ isOpen, onClose, item, onSaved 
         setLoadingUsers(false);
       }
     })();
-    // Modal vacío
-    setSelectedUserId("");
-    setPrioridadLocal("");
-    setNotasLocal("");
   }, [isOpen]);
+
+  // Precarga datos
+  useEffect(() => {
+    if (item) {
+      setSelectedUserId(item.usuario_asignado?.id ?? "");
+      setPrioridadLocal((item.prioridad as Prioridad) ?? "");
+      setNotasLocal(item.notas ?? "");
+    }
+  }, [item]);
 
   async function handleSave() {
     if (!item?.id) return;
     setSaving(true);
     try {
       const body: any = {};
+      if (item.fecha_final) body.fecha_final = null;
       if (selectedUserId) body.id_usuario_asigna = Number(selectedUserId);
       if (prioridadLocal) body.prioridad = prioridadLocal;
       if (notasLocal.trim()) body.notas = notasLocal.trim();
@@ -61,11 +68,12 @@ export default function AssignMaintenanceModal({ isOpen, onClose, item, onSaved 
     <MantenimientoModalBase
       isOpen={isOpen}
       onClose={onClose}
-      title="Editar mantenimiento"
-      subtitle="Modifica los campos que necesites actualizar."
-      icon={<div className="h-6 w-6 rounded-full bg-white/20" />}
+      title="Reasignar mantenimiento"
+      subtitle="Actualiza responsable, prioridad, notas y programación"
+      icon={<RefreshCw className="h-6 w-6 text-white" />}
       onSave={handleSave}
       saving={saving}
+      saveLabel="Guardar cambios"
     >
       <MantenimientoFormContent
         habNumero={habNumero}
