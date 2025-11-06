@@ -42,13 +42,17 @@ const DEFAULT_CONFIG: ClientConfig = {
  */
 function createAxiosInstance(config: ClientConfig = DEFAULT_CONFIG) {
   return axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
+    baseURL: import.meta.env.VITE_API_URL || 'https://backendhotelt.onrender.com',
     timeout: config.timeout,
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     },
-    // Note: withCredentials and withXSRFToken disabled to match working legacy config
-    // Enable only when Laravel backend is properly configured for CORS with credentials
+    // ✅ HABILITAR PARA CORS CON CREDENCIALES
+    withCredentials: true, // ← AGREGAR ESTA LÍNEA
+    
+    // Note: withXSRFToken disabled - Laravel handles CSRF via Sanctum tokens
+    // Enable only when using session-based authentication
   });
 }
 
@@ -173,6 +177,9 @@ function setupInterceptors(
       const isReport = config.url?.includes('/reportes/');
       if (!isReport) {
         console.log(`[${logPrefix}] ${config.method?.toUpperCase()} ${config.url}`);
+        console.log(`[${logPrefix}] Full URL: ${config.baseURL}${config.url}`);
+        console.log(`[${logPrefix}] Headers:`, config.headers);
+        console.log(`[${logPrefix}] withCredentials:`, config.withCredentials);
       }
       
       return config;

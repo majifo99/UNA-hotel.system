@@ -1,5 +1,6 @@
 import React from "react";
 import { X, BadgeCheck } from "lucide-react";
+import { formatDatetime } from "../../../housekeeping/utils/formatters";
 
 type ShellProps = {
   open: boolean;
@@ -15,8 +16,6 @@ type ShellProps = {
 
 const BRAND_DEF = "#304D3C";
 const cx = (...xs: Array<string | false | null | undefined>) => xs.filter(Boolean).join(" ");
-export const fmtDateTime = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleString("es-CR", { dateStyle: "medium", timeStyle: "short" }) : "—";
 
 function Pill({ children, tone = "slate" }: Readonly<{ children: React.ReactNode; tone?: "slate" | "green" | "rose" }>) {
   const map = {
@@ -62,7 +61,7 @@ export default function DetailModal({
               {finishedAt && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-2 py-0.5 text-xs font-medium text-white/90">
                   <BadgeCheck className="w-3 h-3 text-white/80" />
-                  <span>Finalizado: {fmtDateTime(finishedAt)}</span>
+                  <span>Finalizado: {formatDatetime(finishedAt)}</span>
                 </span>
               )}
               <button aria-label="Cerrar" onClick={onClose}

@@ -15,6 +15,8 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // Explicitly disable credentials to prevent CORS issues
+  withCredentials: false,
 });
 
 // Debug baseURL once at startup

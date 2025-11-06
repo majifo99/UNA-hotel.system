@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useState, useCallback, useRef } from "react";
 import { UserCheck, MoreHorizontal, Eye, RefreshCw } from "lucide-react";
 import type { Prioridad } from "../types/limpieza";
-import { useLimpiezasTable, type LimpiezasTableController } from "../hooks/useLimpiezasTable";
+import { type LimpiezasTableController } from "../hooks/useLimpiezasQuery";
 import type { ColumnKey } from "../types/table";
 import LimpiezaDetailModal from "./Modals/LimpiezaDetailModal";
 import CleanToggle, { type FinalizePayload } from "./CleanToggle";
@@ -12,8 +12,9 @@ import { BarLoader, TableLoader } from "./UI/Loaders";
 import HabitacionCell from "./UI/HabitacionCell";
 import { EstadoBadge, PrioridadBadge } from "./UI/Badges";
 
-// ✅ Modal de éxito
+// Modals
 import SuccessModal from "./Modals/SuccessModal";
+import ReassignModal from "./Modals/ReassignModal";
 
 const cn = (...xs: Array<string | false | null | undefined>) => xs.filter(Boolean).join(" ");
 const PRIORIDAD_CLEAN_MODE: "dash" | "finishedAt" = "dash";
@@ -61,27 +62,23 @@ type Props = {
 };
 
 export default function RoomsTable({ controller, onSelectionChange, filters }: Readonly<Props>) {
-  // ✅ SIEMPRE invocar el hook; luego decidir cuál controller usar
-  const internal = useLimpiezasTable({ initialFilters: { per_page: 10, pendientes: false } });
-  const ctrl = controller ?? internal;
+  if (!controller) {
+    throw new Error("RoomsTable requires a controller prop");
+  }
+  const ctrl = controller;
 
   const {
     loading,
     error,
     items,
-    pagination,
     selectedIds,
     toggleOne,
-    gotoPage,
     finalizarLimpieza,
     reabrirLimpieza,
     isFirstLoad,
     isRevalidating,
-    showInitialSkeleton,
     hasPageData,
   } = ctrl;
-
-  const totalPages = pagination.last_page;
 
   const columns = useMemo(
     () => [
@@ -97,6 +94,10 @@ export default function RoomsTable({ controller, onSelectionChange, filters }: R
   // ✅ Estado del modal de éxito
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMsg, setSuccessMsg] = useState("Operación realizada correctamente.");
+
+  // ✅ Estado del modal de reasignación
+  const [showReassignModal, setShowReassignModal] = useState(false);
+  const [reassignItem, setReassignItem] = useState<any>(null);
 
   // Optimista local para el toggle
   const [optimisticCleanIds, setOptimisticCleanIds] = useState<Set<number>>(new Set());
@@ -194,7 +195,7 @@ export default function RoomsTable({ controller, onSelectionChange, filters }: R
     const fPriority = (filters?.priority || "").toLowerCase().trim();
     const fAssigned = (filters?.assigned || "").trim();
 
-    return (items || []).filter((it) => {
+    return (items || []).filter((it: any) => {
       const numero = String(it?.habitacion?.numero ?? "").toLowerCase();
       const estadoNombre = String((it?.estado ?? it?.estadoHabitacion)?.nombre ?? "").toLowerCase();
       const cleanByDate = Boolean(it?.fecha_final);
@@ -213,7 +214,7 @@ export default function RoomsTable({ controller, onSelectionChange, filters }: R
   }, [items, filters]);
 
   /* ====== ESTADOS DE UI ====== */
-  if ((showInitialSkeleton || isFirstLoad || loading) && !hasPageData) {
+  if (isFirstLoad || (loading && !hasPageData)) {
     return <TableLoader />;
   }
 
@@ -311,7 +312,9 @@ export default function RoomsTable({ controller, onSelectionChange, filters }: R
                       {asignadoNombre ? (
                         <div className="flex items-center gap-2">
                           <UserCheck className="w-4 h-4 text-emerald-600" />
-                          <span className="text-sm font-medium text-slate-700">{asignadoNombre}</span>
+                          <span className="text-sm font-medium text-slate-700">
+                            {asignadoNombre}
+                          </span>
                         </div>
                       ) : (
                         <span className="text-slate-400 text-sm">Sin asignar</span>
@@ -388,7 +391,8 @@ export default function RoomsTable({ controller, onSelectionChange, filters }: R
                                 className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
                                 onClick={() => {
                                   setOpenMenuId(null);
-                                  alert(`Reasignar tarea de la habitación ${numero}`);
+                                  setReassignItem(item);
+                                  setShowReassignModal(true);
                                 }}
                               >
                                 <RefreshCw className="w-4 h-4 text-slate-600" />
@@ -406,40 +410,6 @@ export default function RoomsTable({ controller, onSelectionChange, filters }: R
           </table>
         </div>
 
-        {/* Paginación */}
-        <div className="flex justify-center items-center gap-1 py-5 bg-white border-t border-slate-100">
-          <button
-            onClick={() => gotoPage(pagination.current_page - 1)}
-            disabled={pagination.current_page <= 1}
-            className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-emerald-600 disabled:opacity-30"
-            aria-label="Página anterior"
-          >
-            ←
-          </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <button
-              key={p}
-              onClick={() => gotoPage(p)}
-              className={cn(
-                "w-8 h-8 rounded-md text-sm transition-colors",
-                pagination.current_page === p
-                  ? "text-emerald-700 font-semibold bg-slate-100"
-                  : "text-slate-500 hover:text-emerald-600"
-              )}
-            >
-              {p}
-            </button>
-          ))}
-          <button
-            onClick={() => gotoPage(pagination.current_page + 1)}
-            disabled={pagination.current_page >= totalPages}
-            className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-emerald-600 disabled:opacity-30"
-            aria-label="Página siguiente"
-          >
-            →
-          </button>
-        </div>
-
         {/* Modal de detalles */}
         <LimpiezaDetailModal open={detailOpen} limpiezaId={detailId} onClose={() => setDetailOpen(false)} />
       </div>
@@ -454,6 +424,21 @@ export default function RoomsTable({ controller, onSelectionChange, filters }: R
         onAction={() => setShowSuccess(false)}
         onClose={() => setShowSuccess(false)}
       />
+
+      {/* ✅ Modal de reasignación */}
+      <ReassignModal
+        isOpen={showReassignModal}
+        onClose={() => {
+          setShowReassignModal(false);
+          setReassignItem(null);
+        }}
+        onSuccess={() => {
+          setSuccessMsg("Limpieza reasignada correctamente.");
+          setShowSuccess(true);
+        }}
+        limpiezaItem={reassignItem}
+      />
     </>
   );
 }
+

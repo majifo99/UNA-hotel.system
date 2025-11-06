@@ -28,6 +28,11 @@ export function BarLoader() {
 export function InitialDashSkeleton() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
+      {/* Indicador de carga */}
+      <div className="flex items-center gap-3 text-slate-600">
+        <div className="h-5 w-5 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+        <span className="text-sm font-medium">Cargando datos del servidor...</span>
+      </div>
       <div className="h-8 w-56 bg-slate-200/80 rounded-md animate-pulse" />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {Array.from({ length: 3 }).map((_, idx) => (

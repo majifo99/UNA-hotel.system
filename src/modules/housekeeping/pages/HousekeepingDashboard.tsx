@@ -3,7 +3,7 @@ import { FiLogOut } from "react-icons/fi";
 import { Users, ClipboardCheck, AlertTriangle } from "lucide-react";
 
 import SolLogo from "../../../assets/Lanaku.png";
-import { useLimpiezasTable } from "../hooks/useLimpiezasTable";
+import { useLimpiezasQuery } from "../hooks/useLimpiezasQuery";
 import LimpiezasTable, { type SelectedRoom } from "../components/RoomsTable";
 import AssignModal from "../components/Modals/AssignModal";
 import DamageReportModal from "../components/Modals/DamageReportModal";
@@ -11,9 +11,11 @@ import FilterBar, { type RoomFilters } from "../components/FilterBar";
 import type { LimpiezaItem } from "../types/limpieza";
 import { InitialDashSkeleton } from "../components/UI/Loaders";
 import HKCounterCards from "../components//UI/HKMetricCard";
-import SuccessModal from "../components/Modals/SuccessModal"; // ✅
+import SuccessModal from "../components/Modals/SuccessModal";
+import { NotificationProvider } from "../context/NotificationContext";
+import { NotificationBell } from "../components/NotificationBell";
 
-export default function HousekeepingDashboard() {
+function HousekeepingDashboardContent() {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDamageModal, setShowDamageModal] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<SelectedRoom | null>(null);
@@ -31,12 +33,8 @@ export default function HousekeepingDashboard() {
     assigned: "",
   });
 
-  const table = useLimpiezasTable({ initialFilters: { per_page: 10, pendientes: false } });
-  const { rawItems, pagination, refetch, isFirstLoad, loading } = table;
-
-  const showInitialSkeleton =
-    isFirstLoad ||
-    (loading && (!pagination?.total || pagination.total === 0) && (!rawItems || rawItems.length === 0));
+  const table = useLimpiezasQuery({ initialFilters: { per_page: 1000, pendientes: false } });
+  const { rawItems, pagination, refetch, isFirstLoad, loading, hasPageData } = table;
 
   const totalRooms = useMemo(() => {
     const t = pagination?.total ?? 0;
@@ -52,39 +50,18 @@ export default function HousekeepingDashboard() {
     return unique;
   }, [rawItems]);
 
-  const filteredItems = useMemo(() => {
-    const fSearch = (filters.search || "").toLowerCase().trim();
-    const fStatus = (filters.status || "").toLowerCase().trim();
-    const fPriority = (filters.priority || "").toLowerCase().trim();
-    const fAssigned = (filters.assigned || "").trim();
+  // Calcular métricas desde rawItems (la tabla hace su propio filtrado)
+  const { limpiasVisibles, suciasVisibles } = useMemo(() => {
+    const limpias = rawItems.filter((it) => {
+      const nombre = String((it?.estado ?? it?.estadoHabitacion)?.nombre ?? "").toLowerCase();
+      return Boolean(it?.fecha_final) || nombre === "limpia";
+    }).length;
+    return { limpiasVisibles: limpias, suciasVisibles: rawItems.length - limpias };
+  }, [rawItems]);
 
-    return (rawItems || []).filter((it) => {
-      const numero = String(it?.habitacion?.numero ?? "").toLowerCase();
-      const estadoNombre = String((it?.estado ?? it?.estadoHabitacion)?.nombre ?? "").toLowerCase();
-      const cleanByDate = Boolean(it?.fecha_final);
-      const isLimpia = estadoNombre === "limpia" || cleanByDate;
-      const prioridad = String(it?.prioridad ?? "").toLowerCase();
-      const asignadoNombre = String(it?.usuario_asignado?.nombre ?? it?.asignador?.name ?? "").trim();
-
-      if (fSearch && !numero.includes(fSearch)) return false;
-      if (fStatus === "limpia" && !isLimpia) return false;
-      if (fStatus === "sucia" && isLimpia) return false;
-      if (fPriority && prioridad !== fPriority) return false;
-      if (fAssigned && asignadoNombre !== fAssigned) return false;
-
-      return true;
-    });
-  }, [rawItems, filters]);
-
-  const shownRooms = filteredItems.length;
-
-  const isItemLimpia = (it: any) => {
-    const nombre = String((it?.estado ?? it?.estadoHabitacion)?.nombre ?? "").toLowerCase();
-    return Boolean(it?.fecha_final) || nombre === "limpia";
-    };
-  const limpiasVisibles = filteredItems.filter(isItemLimpia).length;
-  const suciasVisibles = filteredItems.length - limpiasVisibles;
-  const totalTareasVisibles = filteredItems.length;
+  // Para mostrar en FilterBar y footer (sin aplicar filtros - la tabla los aplica)
+  const shownRooms = rawItems.length;
+  const totalTareasVisibles = rawItems.length;
 
   const selectedRoomIdStr = selectedRoom ? String(selectedRoom.id) : null;
 
@@ -135,7 +112,10 @@ export default function HousekeepingDashboard() {
           </div>
 
           {/* DERECHA: Acciones */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {/* Campana de notificaciones */}
+            <NotificationBell />
+
             <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 bg-white/80 hover:bg-white shadow-sm">
               <FiLogOut className="h-4 w-4" />
               Cerrar sesión
@@ -144,7 +124,7 @@ export default function HousekeepingDashboard() {
         </div>
       </header>
 
-      {showInitialSkeleton ? (
+      {isFirstLoad || (loading && !hasPageData) ? (
         <main className="p-5 pb-0">
           <InitialDashSkeleton />
         </main>
@@ -219,7 +199,7 @@ export default function HousekeepingDashboard() {
           setEditingItem(null);
         }}
         onSuccess={() => {
-          refetch(); // refresca la data
+          // ✅ Ya no necesitamos refetch - optimistic updates lo manejan
           setShowAssignModal(false);
           setEditingId(null);
           setEditingItem(null);
@@ -250,5 +230,14 @@ export default function HousekeepingDashboard() {
         onClose={() => setShowSuccess(false)}
       />
     </div>
+  );
+}
+
+// Wrapper con NotificationProvider
+export default function HousekeepingDashboard() {
+  return (
+    <NotificationProvider>
+      <HousekeepingDashboardContent />
+    </NotificationProvider>
   );
 }
