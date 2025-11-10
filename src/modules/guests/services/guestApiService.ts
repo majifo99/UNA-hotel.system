@@ -19,7 +19,7 @@ class GuestApiService {
 
   constructor() {
     this.baseUrl = '/clientes';  // Use the working GET endpoint for listing
-    this.apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+    this.apiBaseUrl = '/api';
   }
 
   /**
