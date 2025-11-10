@@ -22,7 +22,17 @@ interface ApiConfig {
 }
 
 const defaultConfig: ApiConfig = {
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
+  baseURL: (() => {
+    if (import.meta.env.VITE_API_URL) {
+      return import.meta.env.VITE_API_URL;
+    }
+    if (import.meta.env.DEV) {
+      // In development, fallback to '/api' for Vite proxy
+      return '/api';
+    }
+    // In production, fail fast if VITE_API_URL is not set
+    throw new Error('VITE_API_URL environment variable must be set in production.');
+  })(),
   timeout: 10000, // 10 seconds
   headers: {
     'Content-Type': 'application/json',
