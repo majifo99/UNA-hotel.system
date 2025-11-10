@@ -35,7 +35,7 @@ npm run dev
 # http://localhost:5173
 ```
 
-## � Documentación
+## 📚 Documentación
 
 Para guías detalladas y documentación técnica, consulta la carpeta [`/docs`](./docs/):
 
@@ -43,6 +43,8 @@ Para guías detalladas y documentación técnica, consulta la carpeta [`/docs`](
 - **[Sistema de Navegación](./docs/NAVEGACION-README.md)** - Documentación completa del sistema de navegación
 - **[Guía de Desarrollo](./docs/GUIA-DESARROLLO.md)** - Estándares y mejores prácticas para desarrolladores
 - **[Setup del Equipo](./docs/SETUP-EQUIPO.md)** - Configuración del entorno de desarrollo
+- **[API Configuration Guide](./docs/API_CONFIGURATION.md)** - Backend API configuration for dev & production
+- **[Deployment Quick Start](./docs/DEPLOYMENT_QUICK_START.md)** - Deploy to Vercel, Netlify, or other platforms
 
 ## �🔐 **IMPORTANTE: Acceso al Sistema Administrativo**
 
@@ -95,6 +97,32 @@ npm run preview      # Vista previa de build de producción
 npm run type-check   # Verificar tipos TypeScript
 npm run lint         # Ejecutar ESLint
 ```
+
+## 🚀 Deployment to Production
+
+### ⚠️ Critical: Environment Variables
+
+**REQUIRED:** Set `VITE_API_URL` in your production environment.
+
+```bash
+# For Vercel, Netlify, or other platforms
+VITE_API_URL=https://backendhotelt.onrender.com/api
+```
+
+### Quick Deploy to Vercel
+
+1. Set environment variable: `VITE_API_URL` in Vercel dashboard
+2. Push your code or trigger redeploy
+3. Application will fail to start if `VITE_API_URL` is not set
+
+### Development vs Production
+
+| Environment | API Configuration |
+|------------|-------------------|
+| **Development** | Uses Vite proxy (`/api` → `VITE_BACKEND_URL`) |
+| **Production** | Requires `VITE_API_URL` (full backend URL) |
+
+📖 **See full guide:** [Deployment Quick Start](./docs/DEPLOYMENT_QUICK_START.md)
 
 ## 🏗️ Tecnologías Utilizadas
 
