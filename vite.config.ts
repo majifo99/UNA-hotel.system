@@ -20,33 +20,35 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      proxy: {
-        '/api': {
-          target: env.VITE_BACKEND_URL,
-          changeOrigin: true,
-          secure: true,
-          configure: (proxy) => {
-            // Validar que VITE_BACKEND_URL esté definido
-            if (!env.VITE_BACKEND_URL) {
-              throw new Error('VITE_BACKEND_URL environment variable is required for development proxy');
-            }
+      proxy: (() => {
+        // Validate VITE_BACKEND_URL is defined before creating proxy configuration
+        if (!env.VITE_BACKEND_URL) {
+          throw new Error('VITE_BACKEND_URL environment variable is required for development proxy');
+        }
 
-            proxy.on('error', (err) => {
-              console.error('[Proxy Error]:', err.message);
-            });
+        return {
+          '/api': {
+            target: env.VITE_BACKEND_URL,
+            changeOrigin: true,
+            secure: true,
+            configure: (proxy) => {
+              proxy.on('error', (err) => {
+                console.error('[Proxy Error]:', err.message);
+              });
 
-            // Solo loggear en desarrollo
-            if (isDev) {
-              proxy.on('proxyReq', (_proxyReq, req) => {
-                console.log('[Proxy Request]', req.method, req.url);
-              });
-              proxy.on('proxyRes', (proxyRes, req) => {
-                console.log('[Proxy Response]', proxyRes.statusCode, req.url);
-              });
-            }
+              // Solo loggear en desarrollo
+              if (isDev) {
+                proxy.on('proxyReq', (_proxyReq, req) => {
+                  console.log('[Proxy Request]', req.method, req.url);
+                });
+                proxy.on('proxyRes', (proxyRes, req) => {
+                  console.log('[Proxy Response]', proxyRes.statusCode, req.url);
+                });
+              }
+            },
           },
-        },
-      },
+        };
+      })(),
     },
   }
 })
