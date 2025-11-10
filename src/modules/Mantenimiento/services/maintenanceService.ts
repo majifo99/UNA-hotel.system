@@ -7,8 +7,9 @@ import type {
 } from "../types/mantenimiento";
 import { toQueryString } from "../../housekeeping/utils/formatters";
 import { authenticatedRequest } from "../../housekeeping/utils/apiHelpers";
+import { getApiBaseUrl } from "../../../config/api";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 
 /* ======================
  * DTOs específicos

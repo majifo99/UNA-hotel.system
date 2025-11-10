@@ -9,8 +9,9 @@ import type {
 import { ESTADO_HAB } from "../types/limpieza";
 import { toQueryString } from "../utils/formatters";
 import { authenticatedRequest } from "../utils/apiHelpers";
+import { getApiBaseUrl } from "../../../config/api";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 
 export const limpiezaService = {
   async getLimpiezas(

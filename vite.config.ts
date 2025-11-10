@@ -17,6 +17,7 @@ export default defineConfig(({ mode }) => {
         '@core': '/src/core',
         '@shared': '/src/shared',
         '@modules': '/src/modules',
+        '@config': '/src/config',
       },
     },
     server: {
