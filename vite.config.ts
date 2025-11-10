@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), '')
+  const isDev = mode === 'development'
   
   return {
     plugins: [react(), tailwindcss()],
@@ -25,15 +26,24 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: true,
           configure: (proxy) => {
+            // Validar que VITE_BACKEND_URL esté definido
+            if (!env.VITE_BACKEND_URL) {
+              throw new Error('VITE_BACKEND_URL environment variable is required for development proxy');
+            }
+
             proxy.on('error', (err) => {
-              console.log('Proxy error:', err);
+              console.error('[Proxy Error]:', err.message);
             });
-            proxy.on('proxyReq', (_proxyReq, req) => {
-              console.log('Sending Request to the Target:', req.method, req.url);
-            });
-            proxy.on('proxyRes', (proxyRes, req) => {
-              console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
-            });
+
+            // Solo loggear en desarrollo
+            if (isDev) {
+              proxy.on('proxyReq', (_proxyReq, req) => {
+                console.log('[Proxy Request]', req.method, req.url);
+              });
+              proxy.on('proxyRes', (proxyRes, req) => {
+                console.log('[Proxy Response]', proxyRes.statusCode, req.url);
+              });
+            }
           },
         },
       },

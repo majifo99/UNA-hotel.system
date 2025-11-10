@@ -20,7 +20,17 @@ interface ReservationSearchResult {
 }
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const API_BASE_URL = (() => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  if (import.meta.env.DEV) {
+    // In development, fallback to '/api' for Vite proxy
+    return '/api';
+  }
+  // In production, fail fast if VITE_API_URL is not set
+  throw new Error('VITE_API_URL environment variable must be set in production.');
+})();
 const API_TIMEOUT = 10000; // 10 seconds
 
 /**

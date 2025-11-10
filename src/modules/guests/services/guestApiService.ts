@@ -19,7 +19,16 @@ class GuestApiService {
 
   constructor() {
     this.baseUrl = '/clientes';  // Use the working GET endpoint for listing
-    this.apiBaseUrl = '/api';
+
+    // Set API base URL from environment, with dev fallback and prod error
+    const apiUrl = import.meta.env.VITE_API_URL;
+    if (apiUrl) {
+      this.apiBaseUrl = apiUrl;
+    } else if (import.meta.env.DEV) {
+      this.apiBaseUrl = '/api';
+    } else {
+      throw new Error('VITE_API_URL environment variable must be set in production.');
+    }
   }
 
   /**
