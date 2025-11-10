@@ -10,7 +10,17 @@ const DISABLE_AUTH_FOR_TESTING = false;
 
 // Create axios instance with base configuration
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+  baseURL: (() => {
+    if (import.meta.env.VITE_API_URL) {
+      return import.meta.env.VITE_API_URL;
+    }
+    if (import.meta.env.DEV) {
+      // In development, fallback to '/api' for Vite proxy
+      return '/api';
+    }
+    // In production, fail fast if VITE_API_URL is not set
+    throw new Error('VITE_API_URL environment variable must be set in production.');
+  })(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
