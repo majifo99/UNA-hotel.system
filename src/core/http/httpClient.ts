@@ -34,7 +34,7 @@ interface ClientConfig {
  * Default configuration
  */
 const DEFAULT_CONFIG: ClientConfig = {
-  timeout: 10000, // 10 seconds - matches legacy apiClient
+  timeout: 10000000, // 10 seconds - matches legacy apiClient
   timeoutErrorMessage: 'La solicitud tardó demasiado tiempo. Por favor, intente nuevamente.',
 };
 
