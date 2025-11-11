@@ -76,7 +76,7 @@ class LimpiezaWebSocketService {
         this.isConnected = false;
       });
 
-      pusher.connection.bind('error', (error: any) => {
+      pusher.connection.bind('error', () => {
         // Silenciar errores de conexión esperados cuando Reverb no está disponible
         if (import.meta.env.VITE_DEBUG === 'true') {
           console.warn('⚠️ WebSocket error (Reverb no disponible)');
