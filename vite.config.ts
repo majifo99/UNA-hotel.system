@@ -49,8 +49,5 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    preview: {
-      allowedHosts: process.env.ALLOWED_HOSTS ? process.env.ALLOWED_HOSTS.split(',') : [],
-    },
   }
 })
