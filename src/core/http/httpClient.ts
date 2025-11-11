@@ -34,7 +34,7 @@ interface ClientConfig {
  * Default configuration
  */
 const DEFAULT_CONFIG: ClientConfig = {
-  timeout: 30000, // 30 seconds - increased for heavy operations like reservations
+  timeout: 300000, // 5 minutes - increased for heavy operations like reservations
   timeoutErrorMessage: 'La solicitud tardó demasiado tiempo. Por favor, intente nuevamente.',
 };
 
