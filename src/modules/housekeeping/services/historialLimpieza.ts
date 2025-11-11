@@ -1,7 +1,8 @@
 // src/modules/housekeeping/services/historialLimpieza.ts
 import type { HistorialPagination } from "../types/historial";
+import { getApiBaseUrl } from "../../../config/api";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 
 /* ─── helpers ─── */
 function serializeParam(v: unknown): string {

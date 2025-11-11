@@ -1,6 +1,7 @@
 import type { HistorialMantPagination } from "../types/historialMantenimiento";
+import { getApiBaseUrl } from "../../../config/api";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 
 function serializeParam(v: unknown): string {
   if (v === undefined || v === null) return "";

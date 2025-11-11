@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getApiBaseUrl } from '../../../config/api';
 
 // ========================================
 // 🧪 TEST MODE: Desactivar autenticación
@@ -10,17 +11,7 @@ const DISABLE_AUTH_FOR_TESTING = false;
 
 // Create axios instance with base configuration
 export const apiClient = axios.create({
-  baseURL: (() => {
-    if (import.meta.env.VITE_API_URL) {
-      return import.meta.env.VITE_API_URL;
-    }
-    if (import.meta.env.DEV) {
-      // In development, fallback to '/api' for Vite proxy
-      return '/api';
-    }
-    // In production, fail fast if VITE_API_URL is not set
-    throw new Error('VITE_API_URL environment variable must be set in production.');
-  })(),
+  baseURL: getApiBaseUrl(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

@@ -7,18 +7,9 @@
 
 import type { CreateReservationDto } from '../types';
 import { TokenAnalyzer } from './TokenAnalyzer';
+import { getApiBaseUrl } from '../../../config/api';
 
-const BASE_URL = (() => {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
-  if (import.meta.env.DEV) {
-    // In development, fallback to '/api' for Vite proxy
-    return '/api';
-  }
-  // In production, fail fast if VITE_API_URL is not set
-  throw new Error('[MultiHttpClient] VITE_API_URL is not set. In production, you must set the VITE_API_URL environment variable to the backend API base URL.');
-})();
+const BASE_URL = getApiBaseUrl();
 
 /**
  * Respuesta HTTP normalizada

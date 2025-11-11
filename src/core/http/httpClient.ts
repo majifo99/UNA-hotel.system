@@ -10,6 +10,7 @@
  */
 
 import axios, { type AxiosRequestConfig, type AxiosResponse, type AxiosError } from 'axios';
+import { getApiBaseUrl } from '../../config/api';
 
 /**
  * HTTP Error Response Structure
@@ -33,7 +34,7 @@ interface ClientConfig {
  * Default configuration
  */
 const DEFAULT_CONFIG: ClientConfig = {
-  timeout: 10000, // 10 seconds - matches legacy apiClient
+  timeout: 600000, // 10 minutes - matches legacy apiClient
   timeoutErrorMessage: 'La solicitud tardó demasiado tiempo. Por favor, intente nuevamente.',
 };
 
@@ -42,7 +43,7 @@ const DEFAULT_CONFIG: ClientConfig = {
  */
 function createAxiosInstance(config: ClientConfig = DEFAULT_CONFIG) {
   return axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'https://backendhotelt.onrender.com',
+    baseURL: getApiBaseUrl(),
     timeout: config.timeout,
     headers: {
       'Content-Type': 'application/json',
