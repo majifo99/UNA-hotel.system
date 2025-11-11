@@ -31,17 +31,20 @@ class MantenimientoWebSocketService {
     }
 
     const appKey = import.meta.env.VITE_REVERB_APP_KEY || 'local-app-key';
-    const wsHost = import.meta.env.VITE_REVERB_HOST || 'localhost';
-    const wsPort = Number.parseInt(import.meta.env.VITE_REVERB_PORT || '8080');
-    const scheme = import.meta.env.VITE_REVERB_SCHEME || 'http';
+    const wsHost = import.meta.env.VITE_REVERB_HOST || 'backendhotelt.onrender.com';
+    const wsPort = Number.parseInt(import.meta.env.VITE_REVERB_PORT || '443');
+    const scheme = import.meta.env.VITE_REVERB_SCHEME || 'https';
     const forceTLS = scheme === 'https';
 
-    console.log('🚀 Inicializando Laravel Echo para mantenimientos...', {
-      key: appKey,
-      wsHost,
-      wsPort,
-      forceTLS,
-    });
+    // Silenciar logs si Reverb no está configurado
+    if (import.meta.env.VITE_DEBUG === 'true') {
+      console.log('🚀 Inicializando Laravel Echo para mantenimientos...', {
+        key: appKey,
+        wsHost,
+        wsPort,
+        forceTLS,
+      });
+    }
 
     this.echo = new Echo({
       broadcaster: 'reverb',
@@ -73,17 +76,26 @@ class MantenimientoWebSocketService {
       });
 
       pusher.connection.bind('disconnected', () => {
-        console.log('❌ WebSocket de mantenimientos desconectado');
+        // Solo log en debug mode
+        if (import.meta.env.VITE_DEBUG === 'true') {
+          console.log('❌ WebSocket de mantenimientos desconectado');
+        }
         this.isConnected = false;
       });
 
-      pusher.connection.bind('error', (error: any) => {
-        console.error('❌ Error en WebSocket de mantenimientos:', error);
+      pusher.connection.bind('error', () => {
+        // Silenciar errores de conexión esperados cuando Reverb no está disponible
+        if (import.meta.env.VITE_DEBUG === 'true') {
+          console.warn('⚠️ WebSocket error (Reverb no disponible)');
+        }
         this.isConnected = false;
       });
 
       pusher.connection.bind('state_change', (states: any) => {
-        console.log('🔄 Estado WebSocket mantenimientos:', states.current);
+        // Solo log en debug mode y solo si cambia a connected o error
+        if (import.meta.env.VITE_DEBUG === 'true' && (states.current === 'connected' || states.current === 'failed')) {
+          console.log('🔄 Estado WebSocket mantenimientos:', states.current);
+        }
       });
     }
 

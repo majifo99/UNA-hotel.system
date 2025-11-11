@@ -12,7 +12,8 @@ function App() {
                        currentPath.startsWith('/reservations') ||
                        currentPath.startsWith('/housekeeping') ||
                        currentPath.startsWith('/guests') ||
-                       currentPath.startsWith('/mantenimiento');
+                       currentPath.startsWith('/mantenimiento') ||
+                       currentPath.startsWith('/gestion-habitaciones');
   
   // Public web routes - marketing site and public auth
   const isPublicRoute = currentPath === '/' ||

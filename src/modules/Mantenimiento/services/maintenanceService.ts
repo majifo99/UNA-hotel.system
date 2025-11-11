@@ -6,9 +6,7 @@ import type {
   MantenimientoCreateDTO,
 } from "../types/mantenimiento";
 import { toQueryString } from "../../housekeeping/utils/formatters";
-import { authenticatedRequest } from "../../housekeeping/utils/apiHelpers";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import apiClient from "../lib/apiClient";
 
 /* ======================
  * DTOs específicos
@@ -43,29 +41,24 @@ export const mantenimientoService = {
       page: (filters as any).page,
     });
 
-    return await authenticatedRequest<MantenimientoPaginatedResponse>(`${API_URL}/mantenimientos${query}`, {
-      method: "GET",
-      signal: opts?.signal,
-    });
+    const response = await apiClient.get<MantenimientoPaginatedResponse>(`/mantenimientos${query}`, { signal: opts?.signal });
+    return response.data;
   },
 
   /**
    * GET /mantenimientos/{id}
    */
   async getMantenimientoById(id: number): Promise<{ data: MantenimientoItem }> {
-    return await authenticatedRequest<{ data: MantenimientoItem }>(`${API_URL}/mantenimientos/${id}`, {
-      method: "GET",
-    });
+    const response = await apiClient.get<{ data: MantenimientoItem }>(`/mantenimientos/${id}`);
+    return response.data;
   },
 
   /**
    * POST /mantenimientos — crear
    */
   async createMantenimiento(body: MantenimientoCreateDTO): Promise<{ data: MantenimientoItem }> {
-    return await authenticatedRequest<{ data: MantenimientoItem }>(`${API_URL}/mantenimientos`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
+    const response = await apiClient.post<{ data: MantenimientoItem }>(`/mantenimientos`, body);
+    return response.data;
   },
 
   /**
@@ -77,10 +70,10 @@ export const mantenimientoService = {
     opts?: { method?: "PUT" | "PATCH" }
   ): Promise<{ data: MantenimientoItem }> {
     const method = opts?.method ?? "PATCH";
-    return await authenticatedRequest<{ data: MantenimientoItem }>(`${API_URL}/mantenimientos/${id}`, {
-      method,
-      body: JSON.stringify(body),
-    });
+    const response = method === "PATCH"
+      ? await apiClient.patch<{ data: MantenimientoItem }>(`/mantenimientos/${id}`, body)
+      : await apiClient.put<{ data: MantenimientoItem }>(`/mantenimientos/${id}`, body);
+    return response.data;
   },
 
   /**
@@ -90,26 +83,23 @@ export const mantenimientoService = {
     id: number,
     body: MantenimientoFinalizarDTO
   ): Promise<{ data: MantenimientoItem }> {
-    return await authenticatedRequest<{ data: MantenimientoItem }>(`${API_URL}/mantenimientos/${id}/finalizar`, {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    });
+    const response = await apiClient.patch<{ data: MantenimientoItem }>(`/mantenimientos/${id}/finalizar`, body);
+    return response.data;
   },
 
   /**
    * DELETE /mantenimientos/{id}
    */
   async deleteMantenimiento(id: number): Promise<void> {
-    await authenticatedRequest<void>(`${API_URL}/mantenimientos/${id}`, { method: "DELETE" });
+    await apiClient.delete(`/mantenimientos/${id}`);
   },
 
   /**
    * (Opcional) GET /mantenimientos/{id}/historial
    */
   async getHistorial(id: number): Promise<{ data: any[] }> {
-    return await authenticatedRequest<{ data: any[] }>(`${API_URL}/mantenimientos/${id}/historial`, {
-      method: "GET",
-    });
+    const response = await apiClient.get<{ data: any[] }>(`/mantenimientos/${id}/historial`);
+    return response.data;
   },
 };
 

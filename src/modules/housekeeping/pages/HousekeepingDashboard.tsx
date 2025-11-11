@@ -33,7 +33,7 @@ function HousekeepingDashboardContent() {
     assigned: "",
   });
 
-  const table = useLimpiezasQuery({ initialFilters: { per_page: 1000, pendientes: false } });
+  const table = useLimpiezasQuery({ initialFilters: { per_page: 1000 } });
   const { rawItems, pagination, refetch, isFirstLoad, loading, hasPageData } = table;
 
   const totalRooms = useMemo(() => {
