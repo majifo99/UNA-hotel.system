@@ -6,7 +6,14 @@ import type {
   MantenimientoCreateDTO,
 } from "../types/mantenimiento";
 import { toQueryString } from "../../housekeeping/utils/formatters";
+
 import apiClient from "../lib/apiClient";
+
+import { authenticatedRequest } from "../../housekeeping/utils/apiHelpers";
+import { getApiBaseUrl } from "../../../config/api";
+
+const API_URL = getApiBaseUrl();
+
 
 /* ======================
  * DTOs específicos

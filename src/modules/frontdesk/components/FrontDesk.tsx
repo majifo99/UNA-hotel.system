@@ -3,8 +3,7 @@ import { Users, Bed, Filter, Calendar, Grid, LogIn, LogOut, ArrowLeftRight } fro
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../router/routes';
 import { 
-  useRooms, 
-  useDashboardStats
+  useRooms
 } from '../hooks';
 import type { Room } from '../../../types/core/domain';
 import type { FrontdeskRoom, RoomFilters, FrontdeskRoomStatus, FrontdeskRoomType } from '../types';
@@ -73,54 +72,11 @@ const ROOM_STATUS_LABELS = {
 } as const;
 
 // =================== INTERFACES ===================
-interface StatsCardProps {
-  title: string;
-  value: number;
-  icon: React.ReactNode;
-  color: string;
-  subtitle?: string;
-}
-
 interface RoomCardProps {
   room: FrontdeskRoom;
 }
 
 // =================== COMPONENTS ===================
-
-const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtitle }) => (
-  <div className="relative overflow-hidden p-6 rounded-xl bg-white border-2 border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 group">
-    {/* Enhanced background decoration */}
-    <div className="absolute top-0 right-0 w-24 h-24 -mr-12 -mt-12 rounded-full bg-gradient-to-br from-gray-50 to-gray-100/50 opacity-60 group-hover:opacity-80 transition-opacity"></div>
-    <div className="absolute bottom-0 left-0 w-16 h-16 -ml-8 -mb-8 rounded-full bg-gradient-to-tr from-gray-100/30 to-transparent opacity-40 group-hover:opacity-60 transition-opacity"></div>
-    
-    <div className="relative flex items-center justify-between">
-      <div className="flex-1">
-        <p className="text-sm font-semibold text-gray-700 mb-2 tracking-wide uppercase">{title}</p>
-        <p className={`text-4xl font-bold ${color} mb-2 tracking-tight`}>{value}</p>
-        {subtitle && (
-          <div className="flex items-center">
-            <span className="text-xs text-gray-600 font-medium bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
-              {subtitle}
-            </span>
-          </div>
-        )}
-      </div>
-      <div className={`relative p-5 rounded-2xl ${color} bg-opacity-15 group-hover:scale-110 group-hover:bg-opacity-20 transition-all duration-300 shadow-lg border border-gray-100`}>
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-gray-50/30 to-transparent opacity-60"></div>
-        <div className="absolute inset-0 rounded-2xl border border-gray-200/30"></div>
-        <div className="relative">
-          {icon}
-        </div>
-      </div>
-    </div>
-    
-    {/* Enhanced hover effect line */}
-    <div className={`absolute bottom-0 left-0 h-1.5 w-0 ${color.replace('text-', 'bg-')} group-hover:w-full transition-all duration-700 ease-out shadow-sm rounded-full`}></div>
-    
-    {/* Border glow effect */}
-    <div className={`absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-opacity-50 ${color.replace('text-', 'border-')} transition-all duration-300`}></div>
-  </div>
-);
 
 const RoomCard: React.FC<RoomCardProps> = ({ room }) => {
   const statusColor = ROOM_STATUS_COLORS[room.status];
@@ -182,7 +138,6 @@ const FrontDesk: React.FC = () => {
 
   // Hooks
   const { data: rooms = [], isLoading: roomsLoading } = useRooms(filters);
-  const { data: stats, isLoading: statsLoading } = useDashboardStats();
 
   // Handlers
   const handleDateFilterChange = (field: 'startDate' | 'endDate', value: string) => {
@@ -273,37 +228,6 @@ const FrontDesk: React.FC = () => {
                 </button>
               </div>
             </div>
-
-            {/* Stats Cards */}
-            {!statsLoading && stats && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatsCard
-                  title="Habitaciones Ocupadas"
-                  value={stats.occupiedRooms}
-                  icon={<Bed className="w-6 h-6" />}
-                  color="text-red-600"
-                  subtitle={`${stats.occupancyRate}% ocupación`}
-                />
-                <StatsCard
-                  title="Disponibles"
-                  value={stats.availableRooms}
-                  icon={<Bed className="w-6 h-6" />}
-                  color="text-green-600"
-                />
-                <StatsCard
-                  title="Check-ins Hoy"
-                  value={stats.checkInsToday}
-                  icon={<LogIn className="w-6 h-6" />}
-                  color="text-blue-600"
-                />
-                <StatsCard
-                  title="Check-outs Hoy"
-                  value={stats.checkOutsToday}
-                  icon={<LogOut className="w-6 h-6" />}
-                  color="text-purple-600"
-                />
-              </div>
-            )}
 
             {/* Estadísticas Detalladas del Front Desk */}
             <FrontDeskStats rooms={filteredRooms.map(adaptRoomToFrontdesk)} />

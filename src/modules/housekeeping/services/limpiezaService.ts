@@ -8,7 +8,14 @@ import type {
 } from "../types/limpieza";
 import { ESTADO_HAB } from "../types/limpieza";
 import { toQueryString } from "../utils/formatters";
+
 import apiClient from "../lib/apiClient";
+
+import { authenticatedRequest } from "../utils/apiHelpers";
+import { getApiBaseUrl } from "../../../config/api";
+
+const API_URL = getApiBaseUrl();
+
 
 export const limpiezaService = {
   async getLimpiezas(
