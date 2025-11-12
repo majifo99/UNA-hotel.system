@@ -1,11 +1,6 @@
 import type { UserItem } from "../types/user";
-
 import apiClient from "../lib/apiClient";
 
-import { getApiBaseUrl } from "../../../config/api";
-
-const API_URL = getApiBaseUrl();
->
 export async function getUsers(): Promise<UserItem[]> {
   const response = await apiClient.get<{ data: any[] }>('/usuarios');
   return (
