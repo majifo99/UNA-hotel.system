@@ -24,6 +24,8 @@ import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
 import HistorialLimpiezasPage from '../modules/housekeeping/pages/HistorialLimpiezasPage';
 
 import HistorialMantenimientosPage from '../modules/Mantenimiento/pages/HistorialMantenimientosPage';
+import HabitacionesDashboard from '../modules/habitaciones/pages/HabitacionesDashboard';
+import DisponibilidadPage from '../modules/habitaciones/pages/DisponibilidadPage';
 
 
 
@@ -208,6 +210,21 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Mantenimiento /> },                 // /mantenimiento
           { path: 'historiales', element: <HistorialMantenimientosPage /> }, // /mantenimiento/historiales
+        ],
+      },
+
+      {
+        // Habitaciones module routes
+        path: 'gestion-habitaciones',
+        children: [
+          {
+            index: true,
+            element: <HabitacionesDashboard />,
+          },
+          {
+            path: 'disponibilidad',
+            element: <DisponibilidadPage />,
+          },
         ],
       },
 

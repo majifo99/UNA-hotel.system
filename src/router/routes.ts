@@ -49,13 +49,13 @@ export const ROUTES = {
     REPORTS: '/reservations/reports',
   },
   
-  // Rooms Module (future implementation)
+  // Rooms Module - Gestión de Habitaciones
   ROOMS: {
-    BASE: '/rooms',
-    LIST: '/rooms',
-    DETAIL: (id: string) => `/rooms/${id}`,
-    CREATE: '/rooms/create',
-    AVAILABILITY: '/rooms/availability',
+    BASE: '/gestion-habitaciones',
+    LIST: '/gestion-habitaciones',
+    DETAIL: (id: string) => `/gestion-habitaciones/${id}`,
+    CREATE: '/gestion-habitaciones/create',
+    AVAILABILITY: '/gestion-habitaciones/disponibilidad',
   },
   
   // Guests Module (future implementation)

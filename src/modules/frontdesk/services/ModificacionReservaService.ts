@@ -265,27 +265,120 @@ export class ModificacionReservaService {
 
   /**
    * Validar disponibilidad de habitación para un rango de fechas
+   * Usa el endpoint de reservas para verificar si hay conflictos
    */
   static async validarDisponibilidad(
     idHabitacion: number,
     fechaLlegada: string,
-    fechaSalida: string
+    fechaSalida: string,
+    idReservaActual?: string | number // Excluir la reserva actual del chequeo
   ): Promise<{ disponible: boolean; mensaje?: string }> {
     try {
-      const response = await apiClient.post('/habitaciones/validar-disponibilidad', {
-        id_habitacion: idHabitacion,
-        fecha_llegada: fechaLlegada,
-        fecha_salida: fechaSalida
+      console.log('🔍 Validando disponibilidad:', {
+        idHabitacion,
+        fechaLlegada,
+        fechaSalida,
+        idReservaActual
       });
-      
-      return response.data;
-    } catch (error: any) {
-      console.error('Error al validar disponibilidad:', error);
-      
-      if (error.response?.data?.message) {
+
+      // Obtener todas las reservas en el rango de fechas
+      const response = await apiClient.get('/reservas', {
+        params: {
+          fecha_llegada: fechaLlegada,
+          fecha_salida: fechaSalida,
+          estado: 'Confirmada,Pendiente,CheckIn' // Solo reservas activas
+        }
+      });
+
+      console.log('📋 Reservas en el rango de fechas:', response.data);
+
+      // Extraer las reservas del response
+      interface ReservaApi {
+        id: string | number;
+        codigo_reserva?: string;
+        habitacion?: { id: number };
+        habitaciones?: Array<{ id_habitacion: number }>;
+        id_habitacion?: number;
+        room?: { id: number };
+        fecha_llegada?: string;
+        fecha_salida?: string;
+        checkInDate?: string;
+        checkOutDate?: string;
+      }
+
+      let reservas: ReservaApi[] = [];
+      if (Array.isArray(response.data)) {
+        reservas = response.data;
+      } else if (response.data?.data && Array.isArray(response.data.data)) {
+        reservas = response.data.data;
+      } else if (response.data?.reservas && Array.isArray(response.data.reservas)) {
+        reservas = response.data.reservas;
+      }
+
+      console.log('🔎 Total de reservas activas encontradas:', reservas.length);
+
+      // Verificar si alguna reserva usa la habitación en las fechas solicitadas
+      const conflictos = reservas.filter((reserva: ReservaApi) => {
+        // Excluir la reserva actual (la que estamos modificando)
+        if (idReservaActual && (reserva.id === idReservaActual || reserva.id.toString() === idReservaActual.toString())) {
+          console.log('⏭️ Omitiendo reserva actual:', reserva.id);
+          return false;
+        }
+
+        // La habitación puede estar en diferentes estructuras según el endpoint
+        const habitacionId = 
+          reserva.habitacion?.id || 
+          reserva.habitaciones?.[0]?.id_habitacion || 
+          reserva.id_habitacion ||
+          reserva.room?.id;
+
+        const esLaMismaHabitacion = habitacionId === idHabitacion;
+
+        if (esLaMismaHabitacion) {
+          console.log('⚠️ Conflicto encontrado:', {
+            reservaId: reserva.id,
+            codigoReserva: reserva.codigo_reserva,
+            habitacionId,
+            fechas: {
+              llegada: reserva.fecha_llegada || reserva.checkInDate,
+              salida: reserva.fecha_salida || reserva.checkOutDate
+            }
+          });
+        }
+
+        return esLaMismaHabitacion;
+      });
+
+      if (conflictos.length > 0) {
+        const primeraConflicto = conflictos[0];
         return {
           disponible: false,
-          mensaje: error.response.data.message
+          mensaje: `Habitación ocupada por la reserva ${primeraConflicto.codigo_reserva || primeraConflicto.id} del ${primeraConflicto.fecha_llegada || primeraConflicto.checkInDate} al ${primeraConflicto.fecha_salida || primeraConflicto.checkOutDate}`
+        };
+      }
+
+      console.log('✅ Habitación disponible - No hay conflictos');
+      
+      return {
+        disponible: true,
+        mensaje: 'Habitación disponible para las fechas seleccionadas'
+      };
+    } catch (error) {
+      const err = error as { response?: { status?: number; data?: { message?: string } } };
+      console.error('❌ Error al validar disponibilidad:', error);
+      
+      // Si no hay reservas, la habitación está disponible
+      if (err.response?.status === 404 || err.response?.data?.message?.includes('No se encontraron')) {
+        return {
+          disponible: true,
+          mensaje: 'Habitación disponible (sin reservas en el período)'
+        };
+      }
+      
+      if (err.response?.data?.message) {
+        return {
+          disponible: false,
+          mensaje: err.response.data.message
         };
       }
       
