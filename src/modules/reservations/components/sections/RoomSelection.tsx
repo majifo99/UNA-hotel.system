@@ -100,7 +100,7 @@ export const RoomSelection: React.FC<RoomSelectionProps> = ({
       const twoIndividualPrice = individualRooms.slice(0, 2).reduce((sum, room) => sum + (room?.pricePerNight ?? 0), 0);
       
       return {
-        message: `🛏️ Opciones para 2 huéspedes: Habitación doble ₡${doublePrice.toLocaleString()} vs. 2 individuales ₡${twoIndividualPrice.toLocaleString()} (consultar preferencia del huésped)`,
+        message: `🛏️ Opciones para 2 huéspedes: Habitación doble $${doublePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} vs. 2 individuales $${twoIndividualPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (consultar preferencia del huésped)`,
         rooms: [...doubleRooms.slice(0, 1), ...individualRooms.slice(0, 2)],
         highlight: true,
         showOptions: true
@@ -124,9 +124,9 @@ export const RoomSelection: React.FC<RoomSelectionProps> = ({
         individualRooms.slice(0, 4).reduce((sum, room) => sum + (room?.pricePerNight ?? 0), 0) : Infinity;
       
       const options = [
-        `2 dobles: ₡${totalDoublePrice.toLocaleString()}`,
-        familyPrice !== Infinity ? `1 familiar: ₡${familyPrice.toLocaleString()}` : null,
-        fourIndividualPrice !== Infinity ? `4 individuales: ₡${fourIndividualPrice.toLocaleString()}` : null
+        `2 dobles: $${totalDoublePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        familyPrice !== Infinity ? `1 familiar: $${familyPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : null,
+        fourIndividualPrice !== Infinity ? `4 individuales: $${fourIndividualPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : null
       ].filter(Boolean).join(' | ');
       
       return {
@@ -361,7 +361,7 @@ export const RoomSelection: React.FC<RoomSelectionProps> = ({
                 </div>
 
                 <p className="text-lg font-semibold text-green-600">
-                  ₡{room.pricePerNight.toLocaleString()} / noche
+                  ${room.pricePerNight.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / noche
                 </p>
               </div>
 

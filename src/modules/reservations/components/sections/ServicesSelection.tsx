@@ -35,7 +35,7 @@ export const ServicesSelection: React.FC<ServicesSelectionProps> = ({
               <div className="flex justify-between items-start">
                 <h4 className="font-medium text-gray-900">{service.name}</h4>
                 <span className="text-green-600 font-semibold">
-                  ₡{service.price.toLocaleString()}
+                  ${service.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
               <p className="text-sm text-gray-600 mt-1">{service.description}</p>
