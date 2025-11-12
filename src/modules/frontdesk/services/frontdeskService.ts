@@ -181,13 +181,9 @@ export class FrontdeskService {
       return mockDashboardStats;
     }
 
-    try {
-      const response = await apiClient.get(`${this.baseURL}/dashboard/stats`);
-      return response.data;
-    } catch (error) {
-      console.error('Error al obtener estadísticas del dashboard:', error);
-      throw error;
-    }
+    // TODO: Implementar endpoint de estadísticas en el backend
+    // Por ahora, retornamos estadísticas mock incluso en producción
+    return mockDashboardStats;
   }
   
   /**

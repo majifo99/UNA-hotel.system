@@ -355,37 +355,12 @@ const CheckIn = () => {
       !hasLoadedReservationData &&
       checkInType === "reservation"
     ) {
-      console.log("🔍 Autofilling from reservation:", foundReservation);
-      console.log("📦 Reservation data structure:", {
-        id: foundReservation.id,
-        confirmationNumber: foundReservation.confirmationNumber,
-        room: foundReservation.room,
-        roomNumber: foundReservation.room?.number,
-        roomType: foundReservation.roomType,
-        roomId: foundReservation.roomId,
-        checkInDate: foundReservation.checkInDate,
-        checkOutDate: foundReservation.checkOutDate,
-        numberOfGuests: foundReservation.numberOfGuests,
-        numberOfAdults: foundReservation.numberOfAdults,
-        numberOfChildren: foundReservation.numberOfChildren,
-        numberOfInfants: foundReservation.numberOfInfants,
-      });
-
       // Autorellenar datos del huésped
       if (foundReservation.guest) {
         const guest = foundReservation.guest;
         const fullLastName = guest.secondLastName
           ? `${guest.firstLastName} ${guest.secondLastName}`
           : guest.firstLastName;
-
-        console.log("👤 Setting guest data:", {
-          firstName: guest.firstName,
-          lastName: fullLastName,
-          email: guest.email,
-          phone: guest.phone,
-          identificationNumber: guest.documentNumber,
-          nationality: guest.nationality || "US",
-        });
 
         setFormData((prev) => ({
           ...prev,
@@ -399,29 +374,10 @@ const CheckIn = () => {
       }
 
       // Autorellenar datos de la estancia
-      // Priorizar room.number, luego roomType (que puede contener el número)
       const roomNumber =
         foundReservation.room?.number ||
         foundReservation.roomType?.match(/\d+/)?.[0] ||
         "";
-
-      console.log("🏨 Setting room number:", roomNumber, {
-        fromRoom: foundReservation.room?.number,
-        fromRoomType: foundReservation.roomType,
-        extracted: foundReservation.roomType?.match(/\d+/)?.[0],
-        final: roomNumber,
-      });
-
-      console.log("📅 Setting dates and guests:", {
-        checkInDate: foundReservation.checkInDate,
-        checkInDateFormatted: foundReservation.checkInDate?.split("T")[0],
-        checkOutDate: foundReservation.checkOutDate,
-        checkOutDateFormatted: foundReservation.checkOutDate?.split("T")[0],
-        numberOfGuests: foundReservation.numberOfGuests,
-        adultos: foundReservation.numberOfAdults,
-        ninos: foundReservation.numberOfChildren,
-        bebes: foundReservation.numberOfInfants,
-      });
 
       // Verificar si faltan datos críticos
       const missingData: string[] = [];
@@ -431,7 +387,6 @@ const CheckIn = () => {
       if (!foundReservation.numberOfAdults || foundReservation.numberOfAdults === 0) missingData.push("Número de adultos");
 
       if (missingData.length > 0) {
-        console.warn("⚠️ Missing reservation data:", missingData);
         toast.warning("Datos incompletos en la reserva", {
           description: `Faltan los siguientes datos: ${missingData.join(", ")}. Por favor, complételos manualmente.`,
           duration: 8000,
@@ -635,23 +590,6 @@ const CheckIn = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    console.log("🎯 🎯 🎯 HANDLESUBMIT LLAMADO - INICIO");
-    console.log("Evento prevenir default ejecutado");
-
-    console.log("🚀 Iniciando proceso de check-in...", {
-      checkInType,
-      walkInGuestType,
-      formData: {
-        reservationId: formData.reservationId,
-        roomNumber: formData.roomNumber,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        adultos: formData.adultos,
-      },
-    });
-
     try {
       // ✅ Validar acompañantes antes de continuar
       if (formData.acompanantes.length > 0) {
@@ -686,24 +624,14 @@ const CheckIn = () => {
 
       // **WALK-IN: Lógica completamente diferente**
       if (checkInType === "walk-in") {
-        console.log("🚶 Procesando Walk-In:", {
-          walkInGuestType,
-          roomNumber: formData.roomNumber,
-          dates: `${formData.checkInDate} - ${formData.checkOutDate}`,
-          guests: `${formData.adultos} adultos, ${formData.ninos} niños, ${formData.bebes} bebés`,
-        });
-
         // Validar campos requeridos para Walk-In
         if (!formData.roomNumber) {
-          console.error("❌ Falta número de habitación");
           throw new Error("El número de habitación es requerido");
         }
         if (!formData.checkInDate || !formData.checkOutDate) {
-          console.error("❌ Faltan fechas");
           throw new Error("Las fechas de check-in y check-out son requeridas");
         }
         if (formData.adultos < 1) {
-          console.error("❌ Debe haber al menos 1 adulto");
           throw new Error("Debe haber al menos 1 adulto");
         }
 
@@ -717,28 +645,20 @@ const CheckIn = () => {
           paymentMethod: formData.paymentMethod || undefined,
         };
 
-        console.log("📋 Datos de estancia preparados:", stayData);
-
         let result;
 
         if (walkInGuestType === "new") {
-          console.log("🆕 Walk-In con huésped NUEVO");
-
           // Validar datos del huésped nuevo
           if (!formData.firstName || !formData.lastName) {
-            console.error("❌ Falta nombre o apellido");
             throw new Error("El nombre y apellido del huésped son requeridos");
           }
           if (!formData.email) {
-            console.error("❌ Falta email");
             throw new Error("El email es requerido para Walk-In");
           }
           if (!formData.phone) {
-            console.error("❌ Falta teléfono");
             throw new Error("El teléfono es requerido para Walk-In");
           }
           if (!formData.identificationNumber) {
-            console.error("❌ Falta número de identificación");
             throw new Error("El número de identificación es requerido");
           }
 
@@ -751,46 +671,23 @@ const CheckIn = () => {
             identificationNumber: formData.identificationNumber,
           };
 
-          console.log("👤 Datos del huésped preparados:", guestData);
-          console.log("📤 Llamando a performWalkInWithNewGuest...");
-
           result = await performWalkInWithNewGuest(guestData, stayData);
-
-          console.log("📥 Resultado recibido:", result);
         } else {
-          console.log("👥 Walk-In con huésped EXISTENTE");
-
           // walkInGuestType === "existing"
           if (!formData.selectedGuestId) {
-            console.error("❌ No se ha seleccionado un huésped");
             throw new Error("Debe seleccionar un huésped existente");
           }
 
           const guestId = Number.parseInt(formData.selectedGuestId, 10);
           if (Number.isNaN(guestId)) {
-            console.error(
-              "❌ ID de huésped inválido:",
-              formData.selectedGuestId
-            );
             throw new TypeError("ID de huésped inválido");
           }
 
-          console.log(
-            "📤 Llamando a performWalkInWithExistingGuest con ID:",
-            guestId
-          );
-
           result = await performWalkInWithExistingGuest(guestId, stayData);
-
-          console.log("📥 Resultado recibido:", result);
         }
 
         if (result.success) {
-          console.log("✅ Walk-In exitoso, redirigiendo a dashboard...");
           navigate(ROUTES.FRONTDESK.BASE);
-        } else {
-          console.error("❌ Walk-In falló - result.success = false");
-          console.error("Error de Walk-In:", walkInError);
         }
 
         return;
@@ -806,11 +703,6 @@ const CheckIn = () => {
 
       // 2. Validar estado de la reserva (debe ser 'pending' o 'confirmed')
       if (checkInType === "reservation" && foundReservation) {
-        console.log(
-          "🔍 Validando estado de la reserva:",
-          foundReservation.status
-        );
-
         const validStatuses = ["pending", "confirmed"];
 
         if (!validStatuses.includes(foundReservation.status)) {
@@ -827,12 +719,6 @@ const CheckIn = () => {
             statusMessages[foundReservation.status] ||
             `No se puede realizar check-in porque la reserva está en estado: ${foundReservation.status}`;
 
-          console.error("❌ Estado de reserva inválido:", {
-            status: foundReservation.status,
-            validStatuses,
-            message,
-          });
-
           // Mostrar toast de error en lugar de throw
           toast.error("Estado de Reserva Inválido", {
             description: `${message}. Solo se permite check-in para reservas Pendientes o Confirmadas.`,
@@ -842,8 +728,6 @@ const CheckIn = () => {
           // Retornar sin continuar
           return;
         }
-
-        console.log("✅ Estado de reserva válido:", foundReservation.status);
       }
 
       // Limpiar el ID de reserva (remover espacios)
@@ -856,8 +740,6 @@ const CheckIn = () => {
       // 🆕 INTEGRACIÓN CON MÓDULO DE FOLIOS
       // ============================================================================
 
-      console.log("🏨 Creando folio para la reserva:", reservaId);
-
       // 🔍 Obtener el ID real de la habitación
       // Opción 1: Si tenemos la reserva cargada, usar su roomId
       let habitacionId: number;
@@ -867,34 +749,10 @@ const CheckIn = () => {
           typeof foundReservation.roomId === "string"
             ? Number.parseInt(foundReservation.roomId, 10)
             : foundReservation.roomId;
-        console.log("✅ ID de habitación desde reserva:", habitacionId);
-      }
-      // Opción 2: Si no tenemos la reserva, intentar parsear el número de habitación
-      // NOTA: Esto solo funcionará si el número de habitación coincide con el ID
-      else {
+      } else {
         habitacionId = Number.parseInt(formData.roomNumber, 10);
-        console.warn(
-          "⚠️ Usando número de habitación como ID (puede fallar):",
-          habitacionId
-        );
-        console.warn(
-          "💡 Asegúrate de que foundReservation.roomId esté disponible"
-        );
       }
 
-      // ============================================================================
-      // 🏨 PREPARAR DATOS PARA CHECK-IN
-      // ============================================================================
-      // Nota: El backend automáticamente calcula y asigna los cargos base de alojamiento
-      
-      console.log("🏨 Preparando datos para check-in en habitación:", formData.roomNumber);
-      console.log("� Fechas de estancia:", {
-        checkIn: formData.checkInDate,
-        checkOut: formData.checkOutDate,
-        huéspedes: `${formData.adultos} adultos, ${formData.ninos} niños`
-      });
-
-      // Preparar datos para crear el folio (el backend asigna cargos automáticamente)
       const checkInDataConFolio = {
         id_cliente_titular: Number.parseInt(formData.selectedGuestId || "1"),
         fecha_llegada: formData.checkInDate,
@@ -913,8 +771,6 @@ const CheckIn = () => {
         })),
       };
 
-      console.log("📋 Payload para crear folio:", checkInDataConFolio);
-
       // Realizar check-in con creación de folio
       const nuevoFolioId = await realizarCheckInConFolio(
         reservaId,
@@ -927,15 +783,11 @@ const CheckIn = () => {
         );
       }
 
-      console.log("✅ Folio creado exitosamente:", nuevoFolioId);
-
       // ============================================================================
       // 🔧 WORKAROUND: Agregar cargo inicial usando distribución
       // ============================================================================
       
       try {
-        console.log("🔧 Agregando cargo de alojamiento como workaround...");
-        
         // Calcular cargo de alojamiento
         const checkInDateObj = new Date(formData.checkInDate);
         const checkOutDateObj = new Date(formData.checkOutDate);
@@ -943,15 +795,8 @@ const CheckIn = () => {
         const numberOfNights = Math.ceil(timeDiff / (1000 * 3600 * 24));
         
         // Obtener precio base de la habitación (con fallback a precio estándar)
-        const baseRoomPrice = roomInfo?.price?.base || 75; // Fallback a $75 si no hay precio
+        const baseRoomPrice = roomInfo?.price?.base || 75;
         const totalRoomCost = numberOfNights * baseRoomPrice;
-        
-        console.log("💰 Calculando cargo inicial:", {
-          roomNumber: formData.roomNumber,
-          nights: numberOfNights,
-          basePrice: baseRoomPrice,
-          total: totalRoomCost
-        });
         
         if (totalRoomCost > 0) {
           // Agregar cargo inicial usando distribución
@@ -961,9 +806,7 @@ const CheckIn = () => {
             id_cliente_titular: Number.parseInt(formData.selectedGuestId || "1", 10)
           };
           
-          const resultado = await folioService.agregarCargoInicial(nuevoFolioId, cargoData);
-          
-          console.log("✅ Cargo inicial agregado exitosamente:", resultado);
+          await folioService.agregarCargoInicial(nuevoFolioId, cargoData);
           
           // Mostrar mensaje de éxito con información del cargo
           toast.success("Check-in completado exitosamente", {
@@ -971,8 +814,6 @@ const CheckIn = () => {
             duration: 5000,
           });
         } else {
-          console.warn("⚠️ No se agregó cargo inicial porque el monto es 0");
-          
           // Mostrar mensaje básico sin cargo
           toast.success("Check-in completado exitosamente", {
             description: `Folio #${nuevoFolioId} creado. No se agregaron cargos automáticos.`,
@@ -980,9 +821,7 @@ const CheckIn = () => {
           });
         }
         
-      } catch (cargoError) {
-        console.error("❌ Error al agregar cargo inicial:", cargoError);
-        
+      } catch {
         // Mostrar advertencia pero no fallar el check-in
         toast.warning("Advertencia", {
           description: `Check-in completado, pero no se pudo agregar el cargo de alojamiento automáticamente. Folio #${nuevoFolioId} creado.`,
@@ -1010,8 +849,6 @@ const CheckIn = () => {
         JSON.stringify(checkInInfo)
       );
 
-      console.log("💾 Información del check-in guardada en localStorage");
-
       // Invalidar queries relacionadas
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["checkIns"] }),
@@ -1021,31 +858,8 @@ const CheckIn = () => {
         queryClient.invalidateQueries({ queryKey: ["folios"] }),
       ]);
 
-      console.log("✅ Check-in exitoso, redirigiendo...");
       navigate(ROUTES.FRONTDESK.BASE);
     } catch (validationError) {
-      console.error(
-        "❌ ❌ ❌ ERROR CAPTURADO en handleSubmit:",
-        validationError
-      );
-      console.error(
-        "Mensaje del error:",
-        validationError instanceof Error
-          ? validationError.message
-          : String(validationError)
-      );
-      console.error(
-        "Stack trace:",
-        validationError instanceof Error
-          ? validationError.stack
-          : "No stack available"
-      );
-      console.error("Tipo de check-in:", checkInType);
-      console.error("Tipo de huésped walk-in:", walkInGuestType);
-      console.error("FormData completo:", formData);
-      // El error debe mostrarse automáticamente en la UI a través del hook
-
-      // IMPORTANTE: Si el error no se está mostrando en la UI, forzar la visualización
       if (validationError instanceof Error) {
         alert(
           `ERROR al procesar ${
@@ -2215,55 +2029,33 @@ const CheckIn = () => {
 
                 {/* Habitación seleccionada - vista compacta */}
                 {!isRoomEditable && formData.roomNumber && (
-                  <>
-                    <div className="mt-2 p-3 bg-white border border-blue-200 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                        <span className="font-medium text-gray-900">
-                          Habitación #{formData.roomNumber} seleccionada
-                        </span>
-                      </div>
-                      {roomInfo && (
-                        <div className="mt-2 text-sm text-gray-600">
-                          {roomInfo.type} • Capacidad: {roomInfo.capacity.total}{" "}
-                          personas • Disponible
+                  <div className="mt-2 p-4 bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300 rounded-lg shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white rounded-full shadow-sm">
+                          <CheckCircle className="w-6 h-6 text-green-600" />
                         </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center space-x-2 mt-3">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Habitación seleccionada</p>
+                          <p className="text-lg font-bold text-gray-900">
+                            #{formData.roomNumber}
+                          </p>
+                          {roomInfo && (
+                            <p className="text-sm text-gray-700 mt-1">
+                              {roomInfo.type} • Capacidad: {roomInfo.capacity.total} personas
+                            </p>
+                          )}
+                        </div>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => setIsRoomEditable(!isRoomEditable)}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-md transition-colors"
-                        title="Editar habitación"
+                        onClick={() => setIsRoomEditable(true)}
+                        className="px-4 py-2 text-sm font-medium text-blue-700 bg-white border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors shadow-sm"
                       >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsRoomEditable(false);
-                        }}
-                        disabled={!formData.roomNumber}
-                        className="px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
-                      >
-                        Confirmar
+                        Cambiar
                       </button>
                     </div>
-                  </>
+                  </div>
                 )}
 
                 {/* Información adicional de la habitación */}
@@ -2636,3 +2428,4 @@ const CheckIn = () => {
 };
 
 export default CheckIn;
+

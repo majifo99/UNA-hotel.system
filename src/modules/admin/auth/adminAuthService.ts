@@ -185,23 +185,8 @@ export class AdminAuthService {
       return false;
     }
 
-    try {
-      // Intentar hacer una llamada simple para validar el token
-      await apiClient.get('/auth/check');
-      return true;
-    } catch (error) {
-      // Si el token no es válido, limpiar datos
-      if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { status?: number } };
-        if (axiosError.response?.status === 401) {
-          clearAdminAuthData();
-          return false;
-        }
-      }
-      // En caso de error de red, asumir que el token es válido
-      const message = error instanceof Error ? error.message : 'Error desconocido';
-      console.warn('[AdminAuth] Error de red al verificar token, asumiendo válido:', message);
-      return true;
-    }
+    // Si hay token y usuario en storage, se asume autenticado
+    // El backend validará el token en cada petición
+    return true;
   }
 }
