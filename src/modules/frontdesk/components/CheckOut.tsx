@@ -122,11 +122,18 @@ const CheckOut = () => {
   useEffect(() => {
     if (foundReservation && !hasLoadedReservationData) {
       console.log('📋 Cargando datos de reservación:', foundReservation);
+      console.log('👤 Datos del guest:', foundReservation.guest);
+      console.log('🏨 Datos de room:', foundReservation.room);
       
       // Extraer nombre del huésped
       const guestName = foundReservation.guest 
         ? `${foundReservation.guest.firstName} ${foundReservation.guest.firstLastName}${foundReservation.guest.secondLastName ? ' ' + foundReservation.guest.secondLastName : ''}`
         : '';
+      
+      console.log('✅ Nombre del huésped construido:', guestName);
+      console.log('📧 Email:', foundReservation.guest?.email);
+      console.log('📱 Teléfono:', foundReservation.guest?.phone);
+      console.log('🆔 Documento:', foundReservation.guest?.documentNumber);
       
       // Mapear datos de reservación a formData
       setFormData(prev => ({
@@ -650,10 +657,15 @@ const CheckOut = () => {
                   <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md text-green-700 text-sm">
                     <CheckCircle className="w-4 h-4" />
                     Reserva encontrada - Datos cargados automáticamente
-                    <div className="ml-auto">
+                    <div className="ml-auto flex items-center gap-2">
                       <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
                         Estado: {foundReservation.status}
                       </span>
+                      {folioId && (
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                          Folio #{folioId}
+                        </span>
+                      )}
                     </div>
                   </div>
                 )}
@@ -661,9 +673,21 @@ const CheckOut = () => {
                 {/* Información adicional de la reserva encontrada */}
                 {foundReservation && hasLoadedReservationData && (
                   <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-2">
-                      Detalles de la Reserva
-                    </h3>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        Detalles de la Reserva
+                      </h3>
+                      {folioId && (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/frontdesk/folio/${folioId}`)}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+                        >
+                          <FileText className="w-4 h-4" />
+                          Ver Gestión de Folio
+                        </button>
+                      )}
+                    </div>
                     <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
                       <div>
                         <strong>Confirmación:</strong> {foundReservation.confirmationNumber}
@@ -697,6 +721,31 @@ const CheckOut = () => {
                         Los datos se han cargado automáticamente. Verifique la información y complete el check-out.
                       </p>
                     </div>
+
+                    {/* Botones de acción para gestión de folio */}
+                    {folioId && (
+                      <div className="mt-4 space-y-2">
+                        {/* Botón Ver Resumen del Folio */}
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/frontdesk/folio/${folioId}`)}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                        >
+                          <FileText className="w-5 h-5" />
+                          <span className="font-medium">Ver Resumen del Folio</span>
+                        </button>
+                        
+                        {/* Botón Agregar Consumos / Cargos */}
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/frontdesk/folio/${folioId}?tab=cargos`)}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors shadow-sm"
+                        >
+                          <DollarSign className="w-5 h-5" />
+                          <span className="font-medium">Agregar Consumos / Cargos</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
