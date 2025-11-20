@@ -192,7 +192,7 @@ export class ReservationCrudService {
       const res = await apiClient.get('/reservas', { 
         params: { 
           codigo_reserva: normalizedCode,
-          with: 'habitaciones' // ✅ Cargar relación de habitaciones
+          with: 'habitaciones,cliente' // ✅ Cargar relaciones de habitaciones Y cliente
         } 
       });
       

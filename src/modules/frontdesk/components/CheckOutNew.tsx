@@ -49,7 +49,6 @@ import {
   Search,
   X,
   LogOut,
-  TrendingUp,
   Info,
   Eye,
   ChevronRight,
@@ -64,6 +63,7 @@ import { useEstadiaByReservaCode } from '../hooks/useCheckoutQueries';
 import { FolioResumen } from './FolioResumen';
 import { FolioHistorial } from './FolioHistorial';
 import ReceiptModal from './ReceiptModal';
+import { ModalPagoCheckout } from './ModalPagoCheckout';
 
 // Tipos
 import type { CheckoutFormData, BillingItem, BillSplit, ReceiptData } from '../types/checkout';
@@ -137,13 +137,6 @@ const FolioResumenFallback: React.FC<{ error?: Error }> = ({ error }) => (
 // TIPOS LOCALES
 // ============================================================================
 
-interface PaymentMethod {
-  id: string;
-  name: string;
-  icon: typeof CreditCard;
-  enabled: boolean;
-}
-
 interface CheckoutStep {
   id: number;
   name: string;
@@ -154,12 +147,6 @@ interface CheckoutStep {
 // ============================================================================
 // CONFIGURACIÓN
 // ============================================================================
-
-const PAYMENT_METHODS: PaymentMethod[] = [
-  { id: 'cash', name: 'Efectivo', icon: DollarSign, enabled: true },
-  { id: 'card', name: 'Tarjeta', icon: CreditCard, enabled: true },
-  { id: 'transfer', name: 'Transferencia', icon: TrendingUp, enabled: true },
-];
 
 const INITIAL_FORM_DATA: CheckoutFormData = {
   reservationId: '',
@@ -234,11 +221,9 @@ export const CheckOut: React.FC = () => {
   // Estados de vista
   const [mostrarResumenFolio, setMostrarResumenFolio] = useState(false);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
+  const [mostrarModalPago, setMostrarModalPago] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0); // Key para forzar refresh del resumen
   
-  // Estados de pago
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('card');
-  const [paymentAmount, setPaymentAmount] = useState<number>(0);
-
   // ========================================
   // HOOKS PERSONALIZADOS
   // ========================================
@@ -498,14 +483,14 @@ export const CheckOut: React.FC = () => {
         }
       ];
 
-      // Si hay pagos previos, agregarlos como items negativos
+      // Si hay pagos previos, agregarlos como items
       if (totalPagos > 0) {
         billingItems.push({
           id: 'pagos-previos',
           description: 'Pagos Realizados',
           quantity: 1,
-          unitPrice: -totalPagos,
-          total: -totalPagos,
+          unitPrice: totalPagos,
+          total: totalPagos,
           category: 'discount'
         });
       }
@@ -515,9 +500,9 @@ export const CheckOut: React.FC = () => {
         id: `persona-${persona.id_cliente}`,
         guestName: persona.nombre || `Cliente #${persona.id_cliente}`,
         items: [],
-        subtotal: persona.asignado,
+        subtotal: Math.abs(persona.pagos), // Mostrar pagos como positivos
         tax: 0,
-        total: persona.saldo,
+        total: Math.abs(persona.pagos), // Total pagado por esta persona
         percentage: totalCargos > 0 ? (persona.asignado / totalCargos) * 100 : 0
       }));
 
@@ -584,7 +569,6 @@ export const CheckOut: React.FC = () => {
     setError(null);
     setMostrarResumenFolio(false);
     setMostrarHistorial(false);
-    setPaymentAmount(0);
     
     // Resetear pasos
     setSteps([
@@ -605,49 +589,9 @@ export const CheckOut: React.FC = () => {
   // ========================================
 
   /**
-   * Registra un pago final antes del cierre
+   * NOTA: La función handlePayment fue completamente reemplazada por ModalPagoCheckout
+   * El modal maneja todos los pagos con opciones individuales y generales
    */
-  const handlePayment = useCallback(async () => {
-    if (!folioId) {
-      toast.error('No hay folio activo');
-      return;
-    }
-
-    if (paymentAmount <= 0) {
-      toast.error('Ingrese un monto válido');
-      return;
-    }
-
-    try {
-      actualizarPaso(3, 'current');
-
-      const methodName = PAYMENT_METHODS.find(m => m.id === selectedPaymentMethod)?.name || 'Tarjeta';
-
-      const exito = await checkoutFolioHook.registrarPago(
-        paymentAmount,
-        methodName,
-        idClienteTitular,
-        'Pago final de checkout'
-      );
-
-      if (exito) {
-        actualizarPaso(3, 'completed');
-        actualizarPaso(4, 'current');
-        
-        // Actualizar el resumen
-        await checkoutFolioHook.obtenerResumen();
-        
-        toast.success('Pago registrado', {
-          description: `$${toNumber(paymentAmount).toFixed(2)} - ${methodName}`
-        });
-      } else {
-        actualizarPaso(3, 'error');
-      }
-    } catch (err) {
-      actualizarPaso(3, 'error');
-      console.error('Error al registrar pago:', err);
-    }
-  }, [folioId, paymentAmount, selectedPaymentMethod, idClienteTitular, checkoutFolioHook]);
 
   // ========================================
   // FUNCIONES DE CHECKOUT
@@ -754,7 +698,7 @@ export const CheckOut: React.FC = () => {
       taxAmount: formData.taxAmount,
       discountAmount: formData.discountAmount,
       grandTotal: resumen.totales.saldo_global,
-      paymentMethod: PAYMENT_METHODS.find(m => m.id === selectedPaymentMethod)?.name || 'Tarjeta',
+      paymentMethod: 'Ver Folio',
       paymentStatus: resumen.totales.saldo_global === 0 ? 'Pagado' : 'Pendiente',
       notes: formData.notes
     };
@@ -800,15 +744,6 @@ export const CheckOut: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [folioId, hasLoadedReservationData, mostrarResumenFolio]); // Removido validarYCargarFolio
-
-  /**
-   * Efecto para actualizar monto de pago cuando cambia el saldo
-   */
-  useEffect(() => {
-    if (checkoutFolioHook.resumenFolio) {
-      setPaymentAmount(toNumber(checkoutFolioHook.resumenFolio.totales.saldo_global));
-    }
-  }, [checkoutFolioHook.resumenFolio]);
 
   // ========================================
   // RENDER
@@ -1143,6 +1078,7 @@ export const CheckOut: React.FC = () => {
               <div className="mb-6">
                 <ErrorBoundary fallback={FolioResumenFallback}>
                   <FolioResumen
+                    key={`folio-resumen-${folioId}-${refreshKey}`}
                     folioId={folioId}
                   />
                 </ErrorBoundary>
@@ -1150,7 +1086,7 @@ export const CheckOut: React.FC = () => {
                 {/* Botón para agregar consumos */}
                 <div className="mt-4 space-y-2">
                   <button
-                    onClick={() => navigate(`/frontdesk/folio/${folioId}?action=add-charge`)}
+                    onClick={() => navigate(`/frontdesk/folio/${folioId}?action=add-charge&returnTo=checkout`)}
                     className="w-full py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2 font-medium"
                   >
                     <DollarSign className="w-5 h-5" />
@@ -1182,7 +1118,7 @@ export const CheckOut: React.FC = () => {
                 
                 {/* Botón para agregar consumos (acceso rápido) */}
                 <button
-                  onClick={() => navigate(`/frontdesk/folio/${folioId}?action=add-charge`)}
+                  onClick={() => navigate(`/frontdesk/folio/${folioId}?action=add-charge&returnTo=checkout`)}
                   className="w-full py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2 font-medium"
                 >
                   <DollarSign className="w-5 h-5" />
@@ -1202,78 +1138,29 @@ export const CheckOut: React.FC = () => {
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                   <div className="flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-yellow-900">Saldo Pendiente</p>
+                    <div className="flex-1">
+                      <p className="font-semibold text-yellow-900">Saldo Pendiente de Pago</p>
                       <p className="text-3xl font-bold text-yellow-700 mt-1">
                         ${toNumber(checkoutFolioHook.resumenFolio.totales.saldo_global).toFixed(2)}
+                      </p>
+                      <p className="text-sm text-yellow-700 mt-2">
+                        Complete los pagos antes de cerrar el folio
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Método de Pago
-                    </label>
-                    <div className="grid grid-cols-3 gap-3">
-                      {PAYMENT_METHODS.map((method) => (
-                        <button
-                          key={method.id}
-                          onClick={() => setSelectedPaymentMethod(method.id)}
-                          disabled={!method.enabled}
-                          className={`
-                            p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2
-                            ${selectedPaymentMethod === method.id
-                              ? 'border-blue-500 bg-blue-50 text-blue-700'
-                              : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                            }
-                            ${!method.enabled && 'opacity-50 cursor-not-allowed'}
-                          `}
-                        >
-                          <method.icon className="w-6 h-6" />
-                          <span className="text-sm font-medium">{method.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                <button
+                  onClick={() => setMostrarModalPago(true)}
+                  className="w-full py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 font-semibold text-lg"
+                >
+                  <CreditCard className="w-6 h-6" />
+                  Registrar Pago
+                </button>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Monto a Pagar
-                    </label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                      <input
-                        type="number"
-                        value={paymentAmount}
-                        onChange={(e) => setPaymentAmount(Number.parseFloat(e.target.value) || 0)}
-                        step="0.01"
-                        min="0"
-                        max={checkoutFolioHook.resumenFolio.totales.saldo_global}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-semibold"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handlePayment}
-                    disabled={checkoutFolioHook.isLoading || paymentAmount <= 0}
-                    className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold transition-colors"
-                  >
-                    {checkoutFolioHook.isLoading ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        Procesando Pago...
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="w-5 h-5" />
-                        Registrar Pago de ${toNumber(paymentAmount).toFixed(2)}
-                      </>
-                    )}
-                  </button>
-                </div>
+                <p className="text-xs text-gray-500 mt-3 text-center">
+                  💡 Puedes hacer pagos generales o individuales por cliente
+                </p>
 
                 {/* Pagos registrados */}
                 {checkoutFolioHook.pagosRegistrados.length > 0 && (
@@ -1401,6 +1288,32 @@ export const CheckOut: React.FC = () => {
           navigate('/frontdesk');
         }}
       />
+
+      {/* Modal de Pago */}
+      {folioId && checkoutFolioHook.resumenFolio && (
+        <ModalPagoCheckout
+          isOpen={mostrarModalPago}
+          onClose={() => setMostrarModalPago(false)}
+          folioId={folioId}
+          saldoTotal={toNumber(checkoutFolioHook.resumenFolio.totales.saldo_global)}
+          clientes={
+            checkoutFolioHook.resumenFolio.personas?.map(p => ({
+              id_cliente: p.id_cliente,
+              nombre: p.nombre || 'Sin nombre',
+              saldo: toNumber(p.saldo),
+              asignado: toNumber(p.asignado),
+              pagos: toNumber(p.pagos)
+            })) || []
+          }
+          onPagoRegistrado={async () => {
+            await checkoutFolioHook.obtenerResumen();
+            setRefreshKey(prev => prev + 1); // Forzar refresh del FolioResumen
+          }}
+          registrarPagoFn={async (monto, metodo, idCliente, nota) => {
+            return await checkoutFolioHook.registrarPago(monto, metodo, idCliente, nota);
+          }}
+        />
+      )}
     </div>
   );
 };

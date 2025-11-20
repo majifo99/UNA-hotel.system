@@ -35,6 +35,7 @@ import type { PaymentMethod, Currency } from "../types/checkin";
 import type { Guest } from "../../../types/core/domain";
 import type { RoomInfo } from "../types/room";
 import { CurrencySelector } from "./CurrencySelector";
+import { BuscarClienteModal } from "./BuscarClienteModal";
 import { Alert } from "../../../components/ui";
 
 type CheckInType = "reservation" | "walk-in";
@@ -310,7 +311,6 @@ const CheckIn = () => {
   const [currentAcompananteId, setCurrentAcompananteId] = useState<
     string | null
   >(null);
-  const [guestSearchQuery, setGuestSearchQuery] = useState("");
 
   // Estados para búsqueda de reserva
   const [reservationSearchId, setReservationSearchId] = useState("");
@@ -521,56 +521,8 @@ const CheckIn = () => {
     }));
   };
 
-  // Función para vincular un huésped existente como acompañante
-  const handleSelectGuestAsAcompanante = (guest: Guest) => {
-    if (!currentAcompananteId) return;
-
-    const fullLastName = guest.secondLastName
-      ? `${guest.firstLastName} ${guest.secondLastName}`
-      : guest.firstLastName;
-
-    const updatedAcompanantes = formData.acompanantes.map((a) => {
-      if (a.id === currentAcompananteId) {
-        return {
-          ...a,
-          nombre: `${guest.firstName} ${fullLastName}`,
-          documento: guest.documentNumber,
-          email: guest.email,
-          id_cliente: Number.parseInt(guest.id),
-          isExisting: true,
-        };
-      }
-      return a;
-    });
-
-    setFormData((prev) => ({
-      ...prev,
-      acompanantes: updatedAcompanantes,
-    }));
-
-    // Cerrar modal y limpiar búsqueda
-    setShowGuestSearchModal(false);
-    setCurrentAcompananteId(null);
-    setGuestSearchQuery("");
-
-    toast.success("Cliente vinculado", {
-      description: `${guest.firstName} ${fullLastName} ha sido vinculado como acompañante`,
-    });
-  };
-
-  // Filtrar huéspedes para búsqueda de acompañantes
-  const filteredGuestsForAcompanante = guests.filter((guest) => {
-    if (!guestSearchQuery || guestSearchQuery.length < 2) return false;
-    const searchTerm = guestSearchQuery.toLowerCase();
-    const fullName = `${guest.firstName} ${guest.firstLastName} ${
-      guest.secondLastName || ""
-    }`.toLowerCase();
-    return (
-      fullName.includes(searchTerm) ||
-      guest.email.toLowerCase().includes(searchTerm) ||
-      guest.documentNumber.toLowerCase().includes(searchTerm)
-    );
-  });
+  // NOTA: Las funciones handleSelectGuestAsAcompanante y filteredGuestsForAcompanante
+  // fueron reemplazadas por el componente BuscarClienteModal
 
   // Filtrar huéspedes para mostrar en la búsqueda
   const filteredGuests = guests.filter((guest) => {
@@ -2241,7 +2193,6 @@ const CheckIn = () => {
                             onClick={() => {
                               setCurrentAcompananteId(acomp.id);
                               setShowGuestSearchModal(true);
-                              setGuestSearchQuery("");
                             }}
                             className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
                           >
@@ -2289,140 +2240,40 @@ const CheckIn = () => {
       </div>
 
       {/* Modal de Búsqueda de Cliente para Acompañante */}
-      {showGuestSearchModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <Search className="w-6 h-6 text-blue-600" />
-                <h2 className="text-xl font-bold text-gray-900">
-                  Buscar Cliente Existente
-                </h2>
-              </div>
-              <button
-                onClick={() => {
-                  setShowGuestSearchModal(false);
-                  setCurrentAcompananteId(null);
-                  setGuestSearchQuery("");
-                }}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-
-            {/* Search Input */}
-            <div className="p-6 border-b border-gray-200">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  value={guestSearchQuery}
-                  onChange={(e) => {
-                    setGuestSearchQuery(e.target.value);
-                    if (e.target.value.length >= 2) {
-                      searchGuests({
-                        query: e.target.value,
-                        isActive: true,
-                        limit: 20,
-                      });
-                    }
-                  }}
-                  placeholder="Buscar por nombre, email o documento..."
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  autoFocus
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Escribe al menos 2 caracteres para buscar
-              </p>
-            </div>
-
-            {/* Results */}
-            <div className="p-6 max-h-96 overflow-y-auto">
-              {guestSearchQuery.length < 2 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <User className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                  <p className="text-lg font-medium">Comienza a buscar</p>
-                  <p className="text-sm mt-2">
-                    Ingresa el nombre, email o documento del cliente
-                  </p>
-                </div>
-              ) : filteredGuestsForAcompanante.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <AlertCircle className="w-16 h-16 mx-auto mb-4 text-amber-400" />
-                  <p className="text-lg font-medium">
-                    No se encontraron clientes
-                  </p>
-                  <p className="text-sm mt-2">
-                    No hay clientes que coincidan con "{guestSearchQuery}"
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {filteredGuestsForAcompanante.map((guest) => {
-                    const fullLastName = guest.secondLastName
-                      ? `${guest.firstLastName} ${guest.secondLastName}`
-                      : guest.firstLastName;
-
-                    return (
-                      <button
-                        key={guest.id}
-                        type="button"
-                        onClick={() => handleSelectGuestAsAcompanante(guest)}
-                        className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <User className="w-5 h-5 text-gray-600" />
-                              <span className="font-semibold text-gray-900">
-                                {guest.firstName} {fullLastName}
-                              </span>
-                            </div>
-                            <div className="space-y-1 text-sm text-gray-600">
-                              <p className="flex items-center gap-2">
-                                <span className="font-medium">Doc:</span>
-                                {guest.documentNumber}
-                              </p>
-                              <p className="flex items-center gap-2">
-                                <span className="font-medium">Email:</span>
-                                {guest.email}
-                              </p>
-                              {guest.phone && (
-                                <p className="flex items-center gap-2">
-                                  <span className="font-medium">Tel:</span>
-                                  {guest.phone}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <CheckCircle className="w-6 h-6 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
-              <button
-                onClick={() => {
-                  setShowGuestSearchModal(false);
-                  setCurrentAcompananteId(null);
-                  setGuestSearchQuery("");
-                }}
-                className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <BuscarClienteModal
+        isOpen={showGuestSearchModal}
+        onClose={() => {
+          setShowGuestSearchModal(false);
+          setCurrentAcompananteId(null);
+        }}
+        onSelectCliente={(cliente) => {
+          if (currentAcompananteId) {
+            const updatedAcompanantes = formData.acompanantes.map((acomp) =>
+              acomp.id === currentAcompananteId
+                ? {
+                    ...acomp,
+                    nombre: `${cliente.nombre} ${cliente.apellido1} ${cliente.apellido2 || ''}`.trim(),
+                    documento: cliente.numero_doc || '',
+                    email: cliente.email || '',
+                    id_cliente: cliente.id_cliente,
+                    isExisting: true,
+                  }
+                : acomp
+            );
+            
+            setFormData((prev) => ({
+              ...prev,
+              acompanantes: updatedAcompanantes,
+            }));
+            
+            setCurrentAcompananteId(null);
+            
+            toast.success('Cliente seleccionado', {
+              description: `${cliente.nombre} ${cliente.apellido1} agregado como acompañante`
+            });
+          }
+        }}
+      />
     </div>
   );
 };

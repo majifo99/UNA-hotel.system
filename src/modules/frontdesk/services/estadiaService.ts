@@ -31,6 +31,14 @@ export interface EstadiaApiResponse {
       nombre: string;
       codigo: string;
     };
+    cliente_titular?: {
+      id_cliente: number;
+      nombre: string;
+      apellido1: string;
+      apellido2?: string;
+      email?: string;
+      telefono?: string;
+    };
   };
   acompanantes: Array<{
     id_cliente: number;
@@ -103,42 +111,14 @@ export interface EstadiaCheckout {
 const adaptEstadiaToCheckout = async (apiResponse: EstadiaApiResponse, codigo: string): Promise<EstadiaCheckout> => {
   const { estadia, asignacion, folio } = apiResponse;
   
-  // Extraer nombre y apellidos del cliente titular desde asignacion.nombre
-  const nombreCompleto = asignacion.nombre.split(' ');
-  const firstName = nombreCompleto[0] || '';
-  const firstLastName = nombreCompleto[1] || '';
-  const secondLastName = nombreCompleto.slice(2).join(' ') || undefined;
-
-  // Buscar email del cliente titular en acompañantes (si está disponible)
-  const clienteTitular = apiResponse.acompanantes.find(
-    acomp => acomp.id_cliente === estadia.id_cliente_titular
-  );
-
-  // Intentar obtener información adicional de la habitación
-  let roomNumber = asignacion.id_hab.toString();
-  try {
-    const roomResponse = await apiClient.get(`/rooms/${asignacion.id_hab}`);
-    roomNumber = roomResponse.data.number || roomNumber;
-  } catch (error) {
-    console.warn('No se pudo obtener información detallada de la habitación:', error);
-  }
-
-  // Intentar obtener información adicional del cliente
-  let guestDetails = {
-    phone: '',
-    nationality: '',
-    documentNumber: '',
-  };
-  try {
-    const clientResponse = await apiClient.get(`/clients/${estadia.id_cliente_titular}`);
-    guestDetails = {
-      phone: clientResponse.data.phone || '',
-      nationality: clientResponse.data.nationality || '',
-      documentNumber: clientResponse.data.documentNumber || '',
-    };
-  } catch (error) {
-    console.warn('No se pudo obtener información detallada del cliente:', error);
-  }
+  // Usar datos del cliente titular que vienen del backend
+  const clienteTitular = estadia.cliente_titular;
+  
+  const firstName = clienteTitular?.nombre || '';
+  const firstLastName = clienteTitular?.apellido1 || '';
+  const secondLastName = clienteTitular?.apellido2 || undefined;
+  const email = clienteTitular?.email || '';
+  const phone = clienteTitular?.telefono || '';
 
   return {
     id: estadia.id_estadia,
@@ -148,16 +128,16 @@ const adaptEstadiaToCheckout = async (apiResponse: EstadiaApiResponse, codigo: s
       firstName,
       firstLastName,
       secondLastName,
-      email: clienteTitular?.email || '',
-      phone: guestDetails.phone,
-      nationality: guestDetails.nationality,
-      documentNumber: guestDetails.documentNumber,
+      email,
+      phone,
+      nationality: '', // No viene del backend actualmente
+      documentNumber: '', // No viene del backend actualmente
     },
     // Incluir información de acompañantes
     acompanantes: apiResponse.acompanantes,
     room: {
       id: asignacion.id_hab,
-      number: roomNumber,
+      number: asignacion.id_hab.toString(), // Usar el ID como número por ahora
     },
     checkInDate: estadia.fecha_llegada,
     checkOutDate: estadia.fecha_salida,

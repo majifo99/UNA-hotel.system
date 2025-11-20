@@ -1,4 +1,10 @@
 import apiClient from '../../../services/apiClient';
+import type { 
+  CargoPayload, 
+  CargoResponse,
+  FolioApiResponse,
+  FolioLinea
+} from '../types/folio.types';
 
 // ============================================================================
 // INTERFACES PARA MANEJAR LOS DATOS DEL API DE FOLIOS
@@ -19,6 +25,8 @@ export interface FolioResumen {
   personas: Array<{
     id_cliente: number;
     nombre?: string;
+    email?: string;
+    documento?: string;
     asignado: number;
     pagos: number;
     saldo: number;
@@ -99,27 +107,6 @@ export interface HistorialResponse {
   last_page: number;
   per_page: number;
   total: number;
-}
-
-/**
- * Respuesta genérica del API de folios
- * Estructura actualizada para coincidir con Laravel backend
- */
-export interface FolioApiResponse<T = any> {
-  success?: boolean; // Opcional para compatibilidad
-  message?: string;
-  data?: T;
-  
-  // Campos directos del backend Laravel
-  folio?: number; // ID del folio creado (check-in)
-  estadia?: any; // Datos de estadía
-  acompanantes?: any[]; // Lista de acompañantes
-  asignacion?: any; // Datos de asignación de habitación
-  
-  // Campos para otras operaciones
-  id?: number; // ID genérico
-  resumen?: any; // Para obtenerResumen
-  historial?: HistorialItem[]; // Para obtenerHistorial
 }
 
 // ============================================================================
@@ -358,7 +345,46 @@ export const folioService = {
   },
 
   // --------------------------------------------------------------------------
-  // 6. WORKAROUND: Agregar cargo inicial usando distribución
+  // 6. CARGOS: Agregar y obtener cargos del folio
+  // --------------------------------------------------------------------------
+
+  /**
+   * Obtiene la lista de cargos de un folio
+   * Endpoint: GET /folios/:id/cargos
+   * 
+   * @param folioId - ID del folio
+   * @returns Lista de cargos del folio
+   */
+  getCargos: async (folioId: number): Promise<FolioLinea[]> => {
+    const response = await apiClient.get<{
+      status: string;
+      data: FolioLinea[];
+      total: number;
+    }>(`/folios/${folioId}/cargos`);
+    return response.data.data || [];
+  },
+
+  /**
+   * Agrega un cargo al folio (general o individual)
+   * Endpoint: POST /folios/:id/cargos
+   * 
+   * @param folioId - ID del folio
+   * @param data - Payload del cargo (monto, descripción, cliente_id)
+   * @returns Respuesta con el cargo creado
+   */
+  postCargo: async (
+    folioId: number,
+    data: CargoPayload
+  ): Promise<FolioApiResponse<CargoResponse>> => {
+    const response = await apiClient.post<FolioApiResponse<CargoResponse>>(
+      `/folios/${folioId}/cargos`,
+      data
+    );
+    return response.data;
+  },
+
+  // --------------------------------------------------------------------------
+  // 7. WORKAROUND: Agregar cargo inicial usando distribución
   // --------------------------------------------------------------------------
 
   /**
@@ -401,7 +427,7 @@ export const folioService = {
   },
 
   // --------------------------------------------------------------------------
-  // 7. UTILIDADES: Generadores de IDs únicos
+  // 8. UTILIDADES: Generadores de IDs únicos
   // --------------------------------------------------------------------------
 
   /**
@@ -409,7 +435,10 @@ export const folioService = {
    */
   generarOperacionUID: (tipo: 'dist' | 'pay' | 'close'): string => {
     const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 8);
+    // Usar crypto.randomUUID si está disponible, sino timestamp + random
+    const random = typeof crypto !== 'undefined' && crypto.randomUUID 
+      ? crypto.randomUUID().substring(0, 8)
+      : Math.random().toString(36).substring(2, 8);
     return `${tipo}-${timestamp}-${random}`;
   },
 };
