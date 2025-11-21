@@ -8,10 +8,9 @@ import type {
 } from "../types/limpieza";
 import { ESTADO_HAB } from "../types/limpieza";
 import { toQueryString } from "../utils/formatters";
-import { authenticatedRequest } from "../utils/apiHelpers";
-import { getApiBaseUrl } from "../../../config/api";
 
-const API_URL = getApiBaseUrl();
+import apiClient from "../lib/apiClient";
+
 
 export const limpiezaService = {
   async getLimpiezas(
@@ -29,18 +28,18 @@ export const limpiezaService = {
       page: filters.page,
     });
 
-    return await authenticatedRequest(`${API_URL}/limpiezas${query}`, { signal: opts?.signal });
+    const response = await apiClient.get<LimpiezaPaginatedResponse>(`/limpiezas${query}`, { signal: opts?.signal });
+    return response.data;
   },
 
   async getLimpiezaById(id: number): Promise<{ data: LimpiezaItem }> {
-    return await authenticatedRequest(`${API_URL}/limpiezas/${id}`);
+    const response = await apiClient.get<{ data: LimpiezaItem }>(`/limpiezas/${id}`);
+    return response.data;
   },
 
   async createLimpieza(body: LimpiezaCreateDTO): Promise<{ data: LimpiezaItem }> {
-    return await authenticatedRequest(`${API_URL}/limpiezas`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
+    const response = await apiClient.post<{ data: LimpiezaItem }>(`/limpiezas`, body);
+    return response.data;
   },
 
   async updateLimpieza(
@@ -48,28 +47,26 @@ export const limpiezaService = {
     body: Partial<LimpiezaCreateDTO>,
     method: "PATCH" | "PUT" = "PATCH"
   ): Promise<{ data: LimpiezaItem }> {
-    return await authenticatedRequest(`${API_URL}/limpiezas/${id}`, {
-      method,
-      body: JSON.stringify(body),
-    });
+    const response = method === "PATCH"
+      ? await apiClient.patch<{ data: LimpiezaItem }>(`/limpiezas/${id}`, body)
+      : await apiClient.put<{ data: LimpiezaItem }>(`/limpiezas/${id}`, body);
+    return response.data;
   },
 
   async finalizarLimpieza(id: number, body: FinalizarLimpiezaDTO): Promise<{ data: LimpiezaItem }> {
     // Usar directamente el endpoint estándar PATCH en lugar de /finalizar
     // para evitar el error 404 y la demora de dos peticiones
-    return await authenticatedRequest(`${API_URL}/limpiezas/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        fecha_final: body.fecha_final,
-        notas: body.notas ?? null,
-        id_estado_hab: ESTADO_HAB.LIMPIA,
-        id_usuario_asigna: null, // ✅ Limpiar usuario asignado al finalizar
-      }),
+    const response = await apiClient.patch<{ data: LimpiezaItem }>(`/limpiezas/${id}`, {
+      fecha_final: body.fecha_final,
+      notas: body.notas ?? null,
+      id_estado_hab: ESTADO_HAB.LIMPIA,
+      id_usuario_asigna: null, // ✅ Limpiar usuario asignado al finalizar
     });
+    return response.data;
   },
 
   async deleteLimpieza(id: number): Promise<void> {
-    await authenticatedRequest(`${API_URL}/limpiezas/${id}`, { method: "DELETE" });
+    await apiClient.delete(`/limpiezas/${id}`);
   },
 
   // ✅ Obtener historial de limpiezas de una habitación (últimas 3)
@@ -79,6 +76,7 @@ export const limpiezaService = {
       per_page: 3,
       // Ordenar por fecha_final desc para obtener las más recientes
     });
-    return await authenticatedRequest(`${API_URL}/limpiezas${query}`);
+    const response = await apiClient.get<{ data: LimpiezaItem[] }>(`/limpiezas${query}`);
+    return response.data;
   },
 };

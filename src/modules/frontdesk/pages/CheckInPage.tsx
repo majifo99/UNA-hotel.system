@@ -1,7 +1,7 @@
-import { CheckInFlow } from '../components/CheckInFlow';
+import CheckIn from '../components/CheckIn';
 
 const CheckInPage = () => {
-  return <CheckInFlow />;
+  return <CheckIn />;
 };
 
 export default CheckInPage;

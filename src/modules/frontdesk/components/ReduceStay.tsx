@@ -174,9 +174,12 @@ const ReduceStay = () => {
         <div className="bg-white rounded-lg shadow-lg p-8">
           {/* Header */}
           <div className="relative flex items-center justify-center mb-8">
-            <div className="flex items-center gap-3">
-              <Clock className="w-8 h-8 text-orange-600" />
-              <h1 className="text-3xl font-bold text-gray-900">Reducir Estadía / Checkout Anticipado</h1>
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex items-center gap-3">
+                <Clock className="w-8 h-8 text-orange-600" />
+                <h1 className="text-3xl font-bold text-gray-900">Reducir Estadía</h1>
+              </div>
+              <p className="text-gray-600 text-sm">Checkout Anticipado</p>
             </div>
             
             <button

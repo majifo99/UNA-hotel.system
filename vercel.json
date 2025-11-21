@@ -4,6 +4,5 @@
         "source": "/(.*)",
         "destination": "/index.html"
       }
-    ],
-    "$comment": "Note: This configuration handles SPA routing only. API requests must use the full backend URL set in VITE_API_URL environment variable. Vercel does not provide automatic API proxying like Vite dev server."
+    ]
   }

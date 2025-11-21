@@ -22,9 +22,23 @@ export const useModificacionReserva = () => {
   const cambiarHabitacionMutation = useMutation({
     mutationFn: ({ idReserva, data }: { idReserva: number | string; data: CambiarHabitacionRequest }) =>
       ModificacionReservaService.cambiarHabitacion(idReserva, data),
-    onSuccess: () => {
+    onSuccess: (response) => {
       setError(null);
-      toast.success('Cambio de habitación realizado exitosamente');
+      
+      // Mostrar información detallada del cambio
+      toast.success('Cambio de habitación realizado exitosamente', {
+        description: `De habitación #${response.habitacion_antigua.nombre} a #${response.habitacion_nueva.nombre}`,
+        duration: 5000,
+      });
+
+      // Si hay diferencia de precio, mostrar info adicional
+      if (response.tipo_ajuste !== 'sin_cambio') {
+        const tipoMensaje = response.tipo_ajuste === 'cargo_adicional' ? '💰 Cargo adicional' : '💵 Reembolso';
+        toast.info(`${tipoMensaje}: $${Math.abs(response.monto_ajuste).toFixed(2)}`, {
+          duration: 5000,
+        });
+      }
+      
       // Invalidar queries relacionadas
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
@@ -34,7 +48,12 @@ export const useModificacionReserva = () => {
       console.error('Error al cambiar habitación:', err);
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cambiar habitación';
       setError(errorMessage);
-      toast.error(`Error: ${errorMessage}`);
+      
+      // Toast de error con mensaje específico del backend
+      toast.error('Error al cambiar la habitación', {
+        description: errorMessage,
+        duration: 6000,
+      });
     },
   });
 
@@ -165,6 +184,7 @@ export const useModificacionReserva = () => {
     cambiarHabitacion,
     modificarFechas,
     reducirEstadia,
+    validarDisponibilidad: ModificacionReservaService.validarDisponibilidad,
 
     // Error handling
     error,

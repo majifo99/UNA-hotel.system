@@ -133,31 +133,40 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, receiptDat
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {receiptData.billingItems.map((item) => (
-                    <tr key={item.id}>
-                      <td className="px-4 py-3 text-sm text-gray-900">{item.description}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 text-right">{item.quantity}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 text-right">${toNumber(item.unitPrice).toFixed(2)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">${toNumber(item.total).toFixed(2)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 text-center">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          item.category === 'room' ? 'bg-blue-100 text-blue-800' :
-                          item.category === 'service' ? 'bg-green-100 text-green-800' :
-                          item.category === 'amenity' ? 'bg-purple-100 text-purple-800' :
-                          item.category === 'tax' ? 'bg-red-100 text-red-800' :
-                          item.category === 'fee' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {item.category === 'room' ? 'Habitación' :
-                           item.category === 'service' ? 'Servicio' :
-                           item.category === 'amenity' ? 'Amenidad' :
-                           item.category === 'tax' ? 'Impuesto' :
-                           item.category === 'fee' ? 'Cargo' :
-                           'Descuento'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {receiptData.billingItems.map((item) => {
+                    // Determinar si es un pago (categoría discount)
+                    const isPago = item.category === 'discount';
+                    const displayTotal = isPago ? -Math.abs(toNumber(item.total)) : toNumber(item.total);
+                    const displayUnitPrice = isPago ? -Math.abs(toNumber(item.unitPrice)) : toNumber(item.unitPrice);
+                    
+                    return (
+                      <tr key={item.id}>
+                        <td className="px-4 py-3 text-sm text-gray-900">{item.description}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 text-right">{item.quantity}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 text-right">${displayUnitPrice.toFixed(2)}</td>
+                        <td className={`px-4 py-3 text-sm text-right font-medium ${isPago ? 'text-green-600' : 'text-gray-900'}`}>
+                          ${displayTotal.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900 text-center">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            item.category === 'room' ? 'bg-blue-100 text-blue-800' :
+                            item.category === 'service' ? 'bg-green-100 text-green-800' :
+                            item.category === 'amenity' ? 'bg-purple-100 text-purple-800' :
+                            item.category === 'tax' ? 'bg-red-100 text-red-800' :
+                            item.category === 'fee' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {item.category === 'room' ? 'Habitación' :
+                             item.category === 'service' ? 'Servicio' :
+                             item.category === 'amenity' ? 'Amenidad' :
+                             item.category === 'tax' ? 'Impuesto' :
+                             item.category === 'fee' ? 'Cargo' :
+                             'Descuento'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

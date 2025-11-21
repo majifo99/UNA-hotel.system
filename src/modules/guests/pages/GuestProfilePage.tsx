@@ -2,8 +2,7 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, User, Heart, Phone, Star, Edit3,
-  Mail, MapPin, Shield, FileText, Globe,
-  CreditCard, Bed, Settings, AlertTriangle
+  Mail, Shield, FileText, Globe, Bed, AlertTriangle
 } from 'lucide-react';
 import ReactFlagsSelect from 'react-flags-select';
 import { useGuestById } from '../hooks/useGuests';
@@ -103,11 +102,6 @@ const getDocumentTypeDisplay = (documentType?: string): string => {
 const getSmokingDisplay = (smokingAllowed?: boolean): string => {
   if (smokingAllowed === undefined) return '—';
   return smokingAllowed ? 'Sí' : 'No';
-};
-
-const getCommunicationPreferences = (preferences?: Record<string, boolean>) => {
-  if (!preferences) return [];
-  return Object.entries(preferences).filter(([, value]) => value).map(([key]) => key);
 };
 
 // Profile Header Component
@@ -238,145 +232,95 @@ const DocumentsSection: React.FC<{ guest: any }> = ({ guest }) => (
 );
 
 // Sidebar Component
-const Sidebar: React.FC<{ guest: any }> = ({ guest }) => (
-  <div className="space-y-8">
-    {/* Emergency Contact */}
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-orange-50 rounded-lg">
-            <Shield className="h-5 w-5 text-orange-600" />
+const Sidebar: React.FC<{ guest: any }> = ({ guest }) => {
+  // Verificar si hay datos de contacto de emergencia
+  const hasEmergencyContact = guest.emergencyContact?.name || guest.emergencyContact?.relationship || 
+                               guest.emergencyContact?.phone || guest.emergencyContact?.email;
+  
+  return (
+    <div className="space-y-8">
+      {/* Emergency Contact - Solo mostrar si hay datos */}
+      {hasEmergencyContact && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-orange-50 rounded-lg">
+                <Shield className="h-5 w-5 text-orange-600" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">Contacto de Emergencia</h2>
+            </div>
           </div>
-          <h2 className="text-lg font-semibold text-gray-900">Contacto de Emergencia</h2>
+          <div className="p-6 space-y-4">
+            <DisplayField label="Nombre" value={guest.emergencyContact?.name} />
+            <DisplayField label="Relación" value={guest.emergencyContact?.relationship} />
+            <DisplayField label="Teléfono" value={guest.emergencyContact?.phone} />
+            <DisplayField label="Email" value={guest.emergencyContact?.email} />
+          </div>
         </div>
-      </div>
-      <div className="p-6 space-y-4">
-        <DisplayField label="Nombre" value={guest.emergencyContact?.name} />
-        <DisplayField label="Relación" value={guest.emergencyContact?.relationship} />
-        <DisplayField label="Teléfono" value={guest.emergencyContact?.phone} />
-        <DisplayField label="Email" value={guest.emergencyContact?.email} />
-      </div>
-    </div>
+      )}
 
-    {/* Room Preferences */}
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-indigo-50 rounded-lg">
-            <Bed className="h-5 w-5 text-indigo-600" />
+      {/* Room Preferences - Solo mostrar si hay datos */}
+      {(guest.roomPreferences?.floor || guest.roomPreferences?.view || 
+        guest.roomPreferences?.bedType || guest.roomPreferences?.smokingAllowed !== undefined) && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-indigo-50 rounded-lg">
+                <Bed className="h-5 w-5 text-indigo-600" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">Preferencias de Habitación</h2>
+            </div>
           </div>
-          <h2 className="text-lg font-semibold text-gray-900">Preferencias de Habitación</h2>
+          <div className="p-6">
+            <div className="space-y-3">
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-sm text-gray-600">Piso</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {guest.roomPreferences?.floor || '—'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-sm text-gray-600">Vista</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {guest.roomPreferences?.view || '—'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-sm text-gray-600">Tipo de Cama</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {guest.roomPreferences?.bedType || '—'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-sm text-gray-600">Permite Fumar</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {getSmokingDisplay(guest.roomPreferences?.smokingAllowed)}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div className="p-6">
-        <div className="space-y-3">
-          <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-sm text-gray-600">Piso</span>
-            <span className="text-sm font-medium text-gray-900">
-              {guest.roomPreferences?.floor || '—'}
-            </span>
-          </div>
-          <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-sm text-gray-600">Vista</span>
-            <span className="text-sm font-medium text-gray-900">
-              {guest.roomPreferences?.view || '—'}
-            </span>
-          </div>
-          <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-sm text-gray-600">Tipo de Cama</span>
-            <span className="text-sm font-medium text-gray-900">
-              {guest.roomPreferences?.bedType || '—'}
-            </span>
-          </div>
-          <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-sm text-gray-600">Permite Fumar</span>
-            <span className="text-sm font-medium text-gray-900">
-              {getSmokingDisplay(guest.roomPreferences?.smokingAllowed)}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
+      )}
 
-    {/* Loyalty Program */}
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-yellow-50 rounded-lg">
-            <CreditCard className="h-5 w-5 text-yellow-600" />
+      {/* Notes - Solo mostrar si hay notas */}
+      {guest.notes && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-gray-50 rounded-lg">
+                <FileText className="h-5 w-5 text-gray-600" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">Notas del Personal</h2>
+            </div>
           </div>
-          <h2 className="text-lg font-semibold text-gray-900">Programa de Lealtad</h2>
-        </div>
-      </div>
-      <div className="p-6">
-        <div className="space-y-3">
-          <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-sm text-gray-600">ID de Membresía</span>
-            <span className="text-sm font-medium text-gray-900">
-              {guest.loyaltyProgram?.memberId || '—'}
-            </span>
-          </div>
-          <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-sm text-gray-600">Nivel</span>
-            <span className="text-sm font-medium text-gray-900">
-              {guest.loyaltyProgram?.tier || '—'}
-            </span>
-          </div>
-          <div className="flex justify-between items-center py-2">
-            <span className="text-sm text-gray-600">Puntos</span>
-            <span className="text-sm font-medium text-gray-900">
-              {guest.loyaltyProgram?.points !== undefined ? guest.loyaltyProgram.points : '—'}
-            </span>
+          <div className="p-6">
+            <DisplayField label="Notas" value={guest.notes} />
           </div>
         </div>
-      </div>
+      )}
     </div>
-
-    {/* Communication Preferences */}
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-teal-50 rounded-lg">
-            <Settings className="h-5 w-5 text-teal-600" />
-          </div>
-          <h2 className="text-lg font-semibold text-gray-900">Preferencias de Comunicación</h2>
-        </div>
-      </div>
-      <div className="p-6">
-        <div className="space-y-2">
-          {(() => {
-            const preferences = getCommunicationPreferences(guest.communicationPreferences);
-            return preferences.length > 0 ? (
-              preferences.map((key) => (
-                <div key={key} className="flex items-center space-x-2">
-                  <div className="h-2 w-2 bg-green-400 rounded-full"></div>
-                  <span className="text-sm text-gray-700 capitalize">{key}</span>
-                </div>
-              ))
-            ) : (
-              <span className="text-gray-500 text-sm">—</span>
-            );
-          })()}
-        </div>
-      </div>
-    </div>
-
-    {/* Notes */}
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-gray-50 rounded-lg">
-            <FileText className="h-5 w-5 text-gray-600" />
-          </div>
-          <h2 className="text-lg font-semibold text-gray-900">Notas del Personal</h2>
-        </div>
-      </div>
-      <div className="p-6">
-        <DisplayField label="Notas" value={guest.notes} />
-      </div>
-    </div>
-  </div>
-);
+  );
+};
 
 export const GuestProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -445,27 +389,6 @@ export const GuestProfilePage: React.FC = () => {
 
             {/* Documents */}
             <DocumentsSection guest={guest} />
-
-            {/* Address - Siempre mostrar */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-purple-50 rounded-lg">
-                    <MapPin className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <h2 className="text-lg font-semibold text-gray-900">Dirección</h2>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <DisplayField label="Calle" value={guest.address?.street} />
-                  <DisplayField label="Ciudad" value={guest.address?.city} />
-                  <DisplayField label="Provincia/Estado" value={guest.address?.state} />
-                  <DisplayField label="País" value={guest.address?.country} />
-                  <DisplayField label="Código Postal" value={guest.address?.postalCode} />
-                </div>
-              </div>
-            </div>
 
             {/* Medical Information - Siempre mostrar */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200">
