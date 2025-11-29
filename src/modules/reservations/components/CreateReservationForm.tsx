@@ -2,16 +2,18 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { type FieldError } from 'react-hook-form';
 import { useCreateReservationForm } from '../hooks/useCreateReservationForm';
+import { useRoomAvailabilityCheck } from '../hooks/useRoomAvailabilityCheck';
+import { useMultiStepForm } from '../hooks/useMultiStepForm';
 import { GuestSelector } from './GuestSelector';
 import { RoomSelection } from './sections/RoomSelection';
 import { ServicesSelection } from './ServicesSelection';
+import { PriceCalculatorWidget } from './ui/PriceCalculatorWidget';
+import { AvailabilityStatusBadge, StepIndicator, StepNavigation } from './common';
 import {
   FormHeader,
   SectionWrapper,
   ReservationDetailsForm,
-  PricingSummary,
-  SpecialRequests,
-  FormActions
+  SpecialRequests
 } from './index';
 
 export const CreateReservationForm: React.FC = () => {
@@ -33,6 +35,31 @@ export const CreateReservationForm: React.FC = () => {
 
   const { handleSubmit } = form;
 
+  // Multi-step wizard configuration
+  const steps = [
+    { id: 'guest', title: 'Huésped', description: 'Seleccione cliente', icon: '👤' },
+    { id: 'dates', title: 'Fechas', description: 'Check-in/out', icon: '📅' },
+    { id: 'rooms', title: 'Habitación', description: 'Seleccione habitación', icon: '🏨' },
+    { id: 'services', title: 'Extras', description: 'Servicios opcionales', icon: '➕' },
+    { id: 'review', title: 'Revisar', description: 'Confirmar reserva', icon: '✅' },
+  ];
+
+  const {
+    currentStep,
+    isFirstStep,
+    isLastStep,
+    nextStep,
+    previousStep,
+    goToStep,
+  } = useMultiStepForm({ steps });
+
+  // Real-time availability check
+  const availabilityCheck = useRoomAvailabilityCheck(
+    formData.checkInDate,
+    formData.checkOutDate,
+    formData.numberOfGuests
+  );
+
   // Recibir datos de servicios seleccionados cuando se regresa de la página de servicios
   React.useEffect(() => {
     if (location.state?.additionalServices) {
@@ -40,6 +67,18 @@ export const CreateReservationForm: React.FC = () => {
       window.scrollTo(0, 0);
     }
   }, [location.state, setValue]);
+
+  // Validation for each step
+  const canProceed = (): boolean => {
+    switch (currentStep) {
+      case 0: return !!formData.guestId;
+      case 1: return !!(formData.checkInDate && formData.checkOutDate && formData.numberOfGuests > 0);
+      case 2: return formData.roomIds.length > 0;
+      case 3: return true; // Optional
+      case 4: return isValid;
+      default: return false;
+    }
+  };
 
   const onSubmit = handleSubmit(async (data) => {
     await submitReservation(data);
@@ -60,200 +99,199 @@ export const CreateReservationForm: React.FC = () => {
     return error?.message || undefined;
   };
 
+  // Render step content
+  const renderStep = () => {
+    switch (currentStep) {
+      case 0: // Guest
+        return (
+          <SectionWrapper title="👤 Información del Huésped" description="Seleccione o cree un huésped para la reserva">
+            <GuestSelector
+              selectedGuestId={formData.guestId}
+              onGuestSelect={(guestId) => setValue('guestId', guestId)}
+              onCreateNewGuest={handleCreateNewGuest}
+              error={getErrorMessage(errors.guestId)}
+            />
+          </SectionWrapper>
+        );
+
+      case 1: // Dates
+        return (
+          <SectionWrapper title="📅 Detalles de la Reserva" description="Configure las fechas y número de huéspedes">
+            <ReservationDetailsForm
+              formData={{
+                checkInDate: formData.checkInDate,
+                checkOutDate: formData.checkOutDate,
+                numberOfAdults: formData.numberOfAdults,
+                numberOfChildren: formData.numberOfChildren,
+                numberOfInfants: formData.numberOfInfants,
+                numberOfGuests: formData.numberOfGuests,
+                numberOfNights: formData.numberOfNights,
+              }}
+              errors={{
+                checkInDate: getErrorMessage(errors.checkInDate),
+                checkOutDate: getErrorMessage(errors.checkOutDate),
+                numberOfAdults: getErrorMessage(errors.numberOfAdults),
+                numberOfChildren: getErrorMessage(errors.numberOfChildren),
+                numberOfInfants: getErrorMessage(errors.numberOfInfants),
+                numberOfGuests: getErrorMessage(errors.numberOfGuests),
+              }}
+              onFieldChange={(field, value) => setValue(field, value)}
+            />
+            {formData.checkInDate && formData.checkOutDate && (
+              <div className="mt-4">
+                <AvailabilityStatusBadge availabilityResult={availabilityCheck} />
+              </div>
+            )}
+          </SectionWrapper>
+        );
+
+      case 2: // Rooms
+        return (
+          <SectionWrapper title="🏨 Selección de Habitación" description="Elija el tipo de habitación disponible">
+            {availableRooms.length > 0 ? (
+              <RoomSelection
+                availableRooms={availableRooms}
+                selectedRoomIds={formData.roomIds}
+                onRoomSelect={(roomIds: string[]) => {
+                  const sorted = [...roomIds].sort((a, b) => a.localeCompare(b));
+                  const current = [...formData.roomIds].sort((a, b) => a.localeCompare(b));
+                  if (JSON.stringify(sorted) !== JSON.stringify(current)) {
+                    setValue('roomIds', roomIds);
+                    if (roomIds.length > 0) {
+                      const first = availableRooms.find(r => r.id === roomIds[0]);
+                      setValue('roomId', roomIds[0]);
+                      if (first) setValue('roomType', first.type as 'single' | 'double' | 'triple' | 'suite' | 'family');
+                    } else {
+                      setValue('roomId', '');
+                      setValue('roomType', 'single');
+                    }
+                    trigger('roomIds');
+                  }
+                }}
+                numberOfGuests={formData.numberOfGuests}
+                allowMultiple={formData.numberOfGuests > 2}
+                error={errors.roomIds?.message || getErrorMessage(errors.roomId)}
+              />
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-gray-500">{formData.checkInDate ? 'No hay habitaciones disponibles' : 'Seleccione fechas primero'}</p>
+              </div>
+            )}
+          </SectionWrapper>
+        );
+
+      case 3: // Services
+        return (
+          <div className="space-y-6">
+            <SectionWrapper title="➕ Servicios Adicionales" description="Seleccione servicios adicionales para la estadía">
+              {additionalServices.length > 0 ? (
+                <ServicesSelection
+                  services={additionalServices}
+                  selectedServices={formData.additionalServices || []}
+                  onServiceToggle={(id: string) => {
+                    const current = formData.additionalServices || [];
+                    setValue('additionalServices', current.includes(id) ? current.filter(i => i !== id) : [...current, id]);
+                  }}
+                />
+              ) : <p className="text-sm text-gray-500">Cargando...</p>}
+            </SectionWrapper>
+            <SectionWrapper title="💬 Solicitudes Especiales" description="Comentarios o solicitudes adicionales del huésped">
+              <SpecialRequests value={formData.specialRequests || ''} onChange={(v) => setValue('specialRequests', v)} />
+            </SectionWrapper>
+          </div>
+        );
+
+      case 4: // Review
+        return (
+          <SectionWrapper title="✅ Resumen de la Reserva" description="Revise la información antes de confirmar">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <p className="text-xs font-medium text-gray-700 mb-1">Huésped</p>
+                <p className="text-sm text-gray-600 truncate">{formData.guestId || 'N/A'}</p>
+              </div>
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <p className="text-xs font-medium text-gray-700 mb-1">Fechas</p>
+                <p className="text-sm text-gray-600">{formData.checkInDate} → {formData.checkOutDate}</p>
+                <p className="text-xs text-gray-500 mt-1">{formData.numberOfGuests} huéspedes</p>
+              </div>
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <p className="text-xs font-medium text-gray-700 mb-1">Habitaciones</p>
+                <p className="text-sm text-gray-600">{formData.roomIds.length} habitación(es)</p>
+              </div>
+              {formData.additionalServices && formData.additionalServices.length > 0 && (
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <p className="text-xs font-medium text-gray-700 mb-1">Servicios</p>
+                  <p className="text-sm text-gray-600">{formData.additionalServices.length} servicio(s)</p>
+                </div>
+              )}
+            </div>
+            <div className="max-h-[280px] overflow-y-auto">
+              <PriceCalculatorWidget
+                selectedRooms={availableRooms.filter(r => formData.roomIds.includes(r.id))}
+                checkInDate={formData.checkInDate}
+                checkOutDate={formData.checkOutDate}
+                additionalServices={additionalServices.filter(s => formData.additionalServices?.includes(s.id))}
+              />
+            </div>
+          </SectionWrapper>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="max-w-6xl mx-auto p-8 bg-gray-50">
+    <div className="max-w-6xl mx-auto p-8 bg-gray-50 min-h-screen">
+      <div className="mb-6">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Volver
+        </button>
+      </div>
+
       <FormHeader
         title="Crear Nueva Reserva"
-        subtitle="Sistema de gestión hotelera - Panel de recepción"
+        subtitle="Complete la información del huésped paso a paso. Los campos marcados con * son obligatorios."
         badge="FrontDesk"
       />
 
-      <form onSubmit={onSubmit} className="space-y-8">
-        {/* Selector de Huésped */}
-        <SectionWrapper
-          title="Información del Huésped"
-          description="Seleccione o cree un huésped para la reserva"
-        >
-          <GuestSelector
-            selectedGuestId={formData.guestId}
-            onGuestSelect={(guestId) => setValue('guestId', guestId)}
-            onCreateNewGuest={handleCreateNewGuest}
-            error={getErrorMessage(errors.guestId)}
+      <StepIndicator steps={steps} currentStep={currentStep} onStepClick={goToStep} />
+      
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <form onSubmit={onSubmit}>
+          <div className="min-h-[400px]">{renderStep()}</div>
+          
+          <StepNavigation
+            isFirstStep={isFirstStep}
+            isLastStep={isLastStep}
+            onPrevious={previousStep}
+            onNext={nextStep}
+            onSubmit={handleSubmit(submitReservation)}
+            isSubmitting={isSubmitting}
+            canProceed={canProceed()}
           />
-        </SectionWrapper>
+        </form>
+      </div>
 
-        {/* Detalles de la Reserva */}
-        <SectionWrapper
-          title="Detalles de la Reserva"
-          description="Configure las fechas y número de huéspedes"
-        >
-          <ReservationDetailsForm
-            formData={{
-              checkInDate: formData.checkInDate,
-              checkOutDate: formData.checkOutDate,
-              numberOfAdults: formData.numberOfAdults,
-              numberOfChildren: formData.numberOfChildren,
-              numberOfInfants: formData.numberOfInfants,
-              numberOfGuests: formData.numberOfGuests,
-              numberOfNights: formData.numberOfNights,
-            }}
-            errors={{
-              checkInDate: getErrorMessage(errors.checkInDate),
-              checkOutDate: getErrorMessage(errors.checkOutDate),
-              numberOfAdults: getErrorMessage(errors.numberOfAdults),
-              numberOfChildren: getErrorMessage(errors.numberOfChildren),
-              numberOfInfants: getErrorMessage(errors.numberOfInfants),
-              numberOfGuests: getErrorMessage(errors.numberOfGuests),
-            }}
-            onFieldChange={(field, value) => setValue(field, value)}
+      {/* Floating price calculator - Top right */}
+      {currentStep !== 4 && (
+        <div className="fixed top-8 right-8 w-96 z-50 hidden xl:block">
+          <PriceCalculatorWidget
+            selectedRooms={availableRooms.filter(r => formData.roomIds.includes(r.id))}
+            checkInDate={formData.checkInDate}
+            checkOutDate={formData.checkOutDate}
+            additionalServices={additionalServices.filter(s => formData.additionalServices?.includes(s.id))}
+            defaultCollapsed={true}
+            className="shadow-2xl"
           />
-        </SectionWrapper>
-
-        {/* Selección de Habitación */}
-        <SectionWrapper
-          title="Selección de Habitación"
-          description="Elija el tipo de habitación disponible"
-        >
-          {availableRooms.length > 0 ? (
-            <RoomSelection
-              availableRooms={availableRooms}
-              selectedRoomIds={formData.roomIds}
-              onRoomSelect={(roomIds: string[]) => {
-                // Only update if the selection actually changed
-                // Use toSorted() to avoid mutating the original arrays and provide compare function
-                const sortedNewRoomIds = [...roomIds].sort((a, b) => a.localeCompare(b));
-                const sortedCurrentRoomIds = [...formData.roomIds].sort((a, b) => a.localeCompare(b));
-                
-                if (JSON.stringify(sortedNewRoomIds) !== JSON.stringify(sortedCurrentRoomIds)) {
-                  setValue('roomIds', roomIds);
-                  
-                  // For backwards compatibility, also set roomId and roomType with the first selected room
-                  if (roomIds.length > 0) {
-                    const firstRoom = availableRooms.find(room => room.id === roomIds[0]);
-                    setValue('roomId', roomIds[0]);
-                    if (firstRoom) {
-                      setValue('roomType', firstRoom.type as 'single' | 'double' | 'triple' | 'suite' | 'family');
-                    }
-                  } else {
-                    setValue('roomId', '');
-                    setValue('roomType', 'single');
-                  }
-                  
-                  // Trigger validation only after all updates
-                  trigger('roomIds');
-                }
-              }}
-              numberOfGuests={formData.numberOfGuests}
-              allowMultiple={formData.numberOfGuests > 2}
-              error={errors.roomIds?.message || getErrorMessage(errors.roomId) || getErrorMessage(errors.roomType)}
-            />
-          ) : (
-            <div className="border border-gray-200 rounded-lg p-6 text-center">
-              <div className="space-y-3">
-                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                <h3 className="text-lg font-medium text-gray-900">
-                  {!formData.checkInDate || !formData.checkOutDate 
-                    ? 'Seleccione las fechas para ver habitaciones disponibles' 
-                    : 'No hay habitaciones disponibles'}
-                </h3>
-                <p className="text-sm text-gray-500">
-                  {!formData.checkInDate || !formData.checkOutDate 
-                    ? 'Complete las fechas de entrada y salida en la sección anterior'
-                    : 'No se encontraron habitaciones disponibles para las fechas seleccionadas. Intente con otras fechas.'}
-                </p>
-              </div>
-            </div>
-          )}
-        </SectionWrapper>
-
-        {/* Servicios Adicionales */}
-        <SectionWrapper
-          title="Servicios Adicionales"
-          description="Seleccione servicios adicionales para la estadía"
-        >
-          <div className="space-y-4">
-            {additionalServices.length > 0 ? (
-              <ServicesSelection
-                services={additionalServices}
-                selectedServices={formData.additionalServices || []}
-                onServiceToggle={(serviceId: string) => {
-                  const currentServices = formData.additionalServices || [];
-                  const newServices = currentServices.includes(serviceId)
-                    ? currentServices.filter(id => id !== serviceId)
-                    : [...currentServices, serviceId];
-                  setValue('additionalServices', newServices);
-                  trigger('additionalServices');
-                }}
-              />
-            ) : (
-              <div className="border border-gray-200 rounded-lg p-6 text-center">
-                <div className="space-y-3">
-                  <h4 className="text-lg font-medium text-gray-900">
-                    Cargando servicios disponibles...
-                  </h4>
-                  <p className="text-sm text-gray-600">
-                    Por favor espere mientras cargamos los servicios adicionales.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </SectionWrapper>
-
-        {/* Resumen de Precios */}
-        <SectionWrapper
-          title="Resumen de Precios"
-          description="Desglose de costos de la reserva"
-        >
-          {formData.total > 0 ? (
-            <PricingSummary
-              pricing={{
-                subtotal: formData.subtotal,
-                servicesTotal: formData.servicesTotal,
-                taxes: formData.taxes,
-                total: formData.total,
-                depositRequired: formData.depositRequired,
-                numberOfNights: formData.numberOfNights,
-              }}
-            />
-          ) : (
-            <div className="border border-gray-200 rounded-lg p-6 text-center">
-              <div className="space-y-3">
-                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                </svg>
-                <h3 className="text-lg font-medium text-gray-900">
-                  Precios por calcular
-                </h3>
-                <p className="text-sm text-gray-500">
-                  Complete la información de fechas y habitación para ver el desglose de precios
-                </p>
-              </div>
-            </div>
-          )}
-        </SectionWrapper>
-
-        {/* Solicitudes Especiales */}
-        <SectionWrapper
-          title="Solicitudes Especiales"
-          description="Comentarios o solicitudes adicionales del huésped"
-        >
-          <SpecialRequests
-            value={formData.specialRequests || ''}
-            onChange={(value) => setValue('specialRequests', value)}
-          />
-        </SectionWrapper>
-
-        {/* Botones de Acción */}
-        <FormActions
-          isLoading={isSubmitting}
-          isDisabled={!isValid || availableRooms.length === 0}
-          onSubmit={onSubmit}
-          submitText="Crear Reserva"
-        />
-      </form>
+        </div>
+      )}
     </div>
   );
 };

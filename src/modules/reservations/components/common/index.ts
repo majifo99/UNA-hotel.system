@@ -24,3 +24,7 @@ export type {
   ActionButtonsProps,
   WarningAlertProps,
 } from './reservationFormComponents';
+
+export { StepIndicator } from './StepIndicator';
+export { StepNavigation } from './StepNavigation';
+export { AvailabilityStatusBadge } from './AvailabilityStatusBadge';
