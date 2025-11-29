@@ -29,6 +29,7 @@ export const ROUTES = {
     DASHBOARD: '/frontdesk/dashboard',
     REGISTER: '/frontdesk/register',
     FOLIO_MANAGEMENT: (folioId: string) => `/frontdesk/folio/${folioId}`,
+    ESTADIAS: '/frontdesk/estadias',
   },
 
   // Reservations Module

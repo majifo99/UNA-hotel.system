@@ -24,11 +24,12 @@ export { useCalendarReservations, useRoomReservations } from './useCalendarReser
 export { useCheckIn } from './useCheckIn';
 export { useCheckInImproved } from './useCheckInImproved';
 export { useWalkIn } from './useWalkIn';
+export { useEstadias } from './useEstadias';
 export { useCheckout } from './useCheckout';
 export { useCheckoutRefactored } from './useCheckoutRefactored';
 
 // Checkout queries para estadía
-export { useEstadiaByReservaCode } from './useCheckoutQueries';
+export { useEstadiaByReservaCode, useEstadiaByWalkinCode, useEstadiaByCode } from './useCheckoutQueries';
 
 // 🏨 Folio Management Hooks
 export { useDeposito } from './useDeposito';
