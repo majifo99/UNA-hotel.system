@@ -8,6 +8,7 @@ import type {
   AdminAuthContextType, 
   AdminAuthState, 
   AdminLoginFormData,
+  AdminRegisterFormData,
   AdminUser 
 } from './types';
 import { AdminAuthService } from './adminAuthService';
@@ -198,6 +199,20 @@ export function AdminAuthProvider({ children }: AdminAuthProviderProps) {
     }
   }, []);
 
+  const register = useCallback(async (data: AdminRegisterFormData): Promise<void> => {
+    try {
+      dispatch({ type: 'AUTH_START' });
+      
+      const response = await AdminAuthService.register(data);
+      
+      dispatch({ type: 'AUTH_SUCCESS', payload: response.user });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error al registrar usuario';
+      dispatch({ type: 'AUTH_FAILURE', payload: message });
+      throw error;
+    }
+  }, []);
+
   const logout = useCallback(async (): Promise<void> => {
     try {
       dispatch({ type: 'AUTH_SET_LOADING', payload: true });
@@ -292,10 +307,11 @@ export function AdminAuthProvider({ children }: AdminAuthProviderProps) {
   const contextValue: AdminAuthContextType = useMemo(() => ({
     ...state,
     login,
+    register,
     logout,
     clearError,
     refreshUser,
-  }), [state, login, logout, clearError, refreshUser]);
+  }), [state, login, register, logout, clearError, refreshUser]);
 
   return (
     <AdminAuthContext.Provider value={contextValue}>

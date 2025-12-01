@@ -12,6 +12,7 @@ export type { AdminLoginFormData, AdminRegisterFormData } from './auth/schemas';
 
 // Pages
 export { AdminLoginPage } from './pages/AdminLoginPage';
+export { AdminRegisterPage } from './pages/AdminRegisterPage';
 
 // Components
 export { ProtectedRoute } from './components/ProtectedRoute';

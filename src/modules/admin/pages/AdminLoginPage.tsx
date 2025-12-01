@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { adminLoginSchema, type AdminLoginFormData } from '../auth/schemas';
@@ -156,6 +156,16 @@ export function AdminLoginPage() {
                 'Iniciar Sesión'
               )}
             </button>
+
+            {/* Register Link */}
+            <div className="text-center">
+              <Link 
+                to="/admin/register" 
+                className="text-sm text-[#40534C] hover:text-[#1A3636] font-medium transition-colors"
+              >
+                ¿No tienes cuenta? Regístrate
+              </Link>
+            </div>
           </div>
         </form>
 

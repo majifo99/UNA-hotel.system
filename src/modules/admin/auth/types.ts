@@ -35,6 +35,17 @@ export interface AdminLoginFormData {
   rememberMe?: boolean;
 }
 
+export interface AdminRegisterFormData {
+  nombre: string;
+  apellido1: string;
+  apellido2?: string;
+  email: string;
+  password: string;
+  password_confirmation: string;
+  telefono?: string;
+  id_rol: number;
+}
+
 // =================== AUTH CONTEXT TYPES ===================
 
 export interface AdminAuthState {
@@ -46,6 +57,7 @@ export interface AdminAuthState {
 
 export interface AdminAuthActions {
   login: (credentials: AdminLoginFormData) => Promise<void>;
+  register: (data: AdminRegisterFormData) => Promise<void>;
   logout: () => void;
   clearError: () => void;
   refreshUser: () => Promise<void>;

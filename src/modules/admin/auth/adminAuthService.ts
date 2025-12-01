@@ -7,7 +7,8 @@
 import apiClient from '../../../services/apiClient';
 import type { 
   AdminAuthResponse, 
-  AdminLoginFormData, 
+  AdminLoginFormData,
+  AdminRegisterFormData,
   AdminUser 
 } from './types';
 
@@ -115,6 +116,53 @@ export class AdminAuthService {
       const message = error instanceof Error 
         ? error.message 
         : (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al iniciar sesión';
+      throw new Error(message);
+    }
+  }
+
+  /**
+   * Register new admin user
+   * Endpoint: POST /api/auth/register
+   */
+  static async register(data: AdminRegisterFormData): Promise<AdminAuthResponse> {
+    try {
+      const response = await apiClient.post<LaravelAdminLoginResponse>('/auth/register', {
+        nombre: data.nombre,
+        apellido1: data.apellido1,
+        apellido2: data.apellido2 || '',
+        email: data.email,
+        password: data.password,
+        password_confirmation: data.password_confirmation,
+        telefono: data.telefono || '',
+        id_rol: data.id_rol,
+      });
+
+      const { token, user } = response.data;
+
+      const adminUser: AdminUser = {
+        id: user.id_usuario.toString(),
+        email: user.email,
+        firstName: user.nombre,
+        lastName: `${user.apellido1} ${user.apellido2 || ''}`.trim(),
+        role: user.rol as AdminUser['role'],
+        permissions: [],
+        isActive: true,
+      };
+
+      saveAdminToken(token);
+      saveAdminUser(adminUser);
+
+      return {
+        user: adminUser,
+        tokens: {
+          accessToken: token,
+          expiresIn: 3600,
+        }
+      };
+    } catch (error) {
+      const message = error instanceof Error 
+        ? error.message 
+        : (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al registrar usuario';
       throw new Error(message);
     }
   }

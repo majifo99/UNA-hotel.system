@@ -17,6 +17,7 @@ import RoomChange from '../modules/frontdesk/components/RoomChange';
 import DateModification from '../modules/frontdesk/components/DateModification';
 import ReduceStay from '../modules/frontdesk/components/ReduceStay';
 import { FolioPage } from '../modules/frontdesk/pages/FolioPage';
+import { EstadiasPage } from '../modules/frontdesk/pages/EstadiasPage';
 import { GuestProfilePage } from '../modules/guests/pages/GuestProfilePage';
 import Mantenimiento from '../modules/Mantenimiento/pages/Mantenimiento';
 
@@ -29,7 +30,7 @@ import DisponibilidadPage from '../modules/habitaciones/pages/DisponibilidadPage
 
 
 
-import { AdminLoginPage, AdminAuthProvider, ProtectedRoute } from '../modules/admin';
+import { AdminLoginPage, AdminRegisterPage, AdminAuthProvider, ProtectedRoute } from '../modules/admin';
 import { ReservationReportsPage } from '../modules/reservations/features/reports';
 
 
@@ -110,6 +111,17 @@ const router = createBrowserRouter([
     ),
   },
   {
+    // Admin register route - standalone without layout
+    path: '/admin/register',
+    element: (
+      <QueryClientProvider client={queryClient}>
+        <AdminAuthProvider>
+          <AdminRegisterPage />
+        </AdminAuthProvider>
+      </QueryClientProvider>
+    ),
+  },
+  {
     path: '/',
     element: <RootLayout />,
     // Error boundary for route-level errors
@@ -155,6 +167,10 @@ const router = createBrowserRouter([
           {
             path: 'folio/:folioId',
             element: <FolioPage />,
+          },
+          {
+            path: 'estadias',
+            element: <EstadiasPage />,
           },
           {
             path: 'register',
