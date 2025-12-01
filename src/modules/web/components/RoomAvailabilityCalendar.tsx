@@ -324,9 +324,109 @@ export function RoomAvailabilityCalendar({
     </div>
   );
 
-  // If embedded, return content only
+  // If embedded, return enhanced content with sticky footer
   if (embedded) {
-    return calendarContent;
+    return (
+      <div className="flex flex-col h-full">
+        {/* Calendar Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto px-6 pt-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            </div>
+          ) : (
+            calendarContent
+          )}
+
+          {/* Selection Info Banner - Always visible when dates selected */}
+          {selectedCheckIn && (
+            <div className="mt-6 mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg shadow-sm">
+              <p className="text-base font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                {selectedCheckOut ? (
+                  <>
+                    <span className="text-lg">✓</span>
+                    <span>Fechas seleccionadas</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-lg">📅</span>
+                    <span>Check-in seleccionado</span>
+                  </>
+                )}
+              </p>
+              <div className="flex flex-wrap gap-4 text-sm text-blue-800">
+                <div className="flex items-center gap-1">
+                  <span className="font-semibold">Entrada:</span>
+                  <span className="font-medium">
+                    {new Date(selectedCheckIn + 'T00:00:00').toLocaleDateString('es-ES', { 
+                      weekday: 'short', 
+                      day: '2-digit', 
+                      month: '2-digit', 
+                      year: 'numeric' 
+                    })}
+                  </span>
+                </div>
+                {selectedCheckOut && (
+                  <div className="flex items-center gap-1">
+                    <span className="font-semibold">Salida:</span>
+                    <span className="font-medium">
+                      {new Date(selectedCheckOut + 'T00:00:00').toLocaleDateString('es-ES', { 
+                        weekday: 'short', 
+                        day: '2-digit', 
+                        month: '2-digit', 
+                        year: 'numeric' 
+                      })}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {!selectedCheckOut && (
+                <div className="mt-2 flex items-center gap-2 text-sm">
+                  <span className="text-xl">👉</span>
+                  <span className="text-blue-700 font-medium">
+                    Ahora selecciona la fecha de salida en el calendario arriba
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer Buttons - Sticky at bottom with clear visibility */}
+        <div className="flex-shrink-0 bg-white border-t-2 border-gray-200 px-6 py-4 flex justify-end gap-3 shadow-lg">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-2.5 text-gray-700 font-medium bg-white border-2 border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition-all"
+          >
+            Cancelar
+          </button>
+          {onSelectDates && (
+            <button
+              type="button"
+              onClick={handleConfirmSelection}
+              disabled={!selectedCheckIn || !selectedCheckOut}
+              className={`px-8 py-2.5 font-bold rounded-lg transition-all shadow-md flex items-center gap-2 ${
+                selectedCheckIn && selectedCheckOut
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-xl transform hover:scale-105'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
+              }`}
+            >
+              {selectedCheckIn && selectedCheckOut ? (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Continuar con estas fechas</span>
+                </>
+              ) : (
+                <span>Selecciona ambas fechas primero</span>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    );
   }
 
   // Otherwise, return modal wrapper

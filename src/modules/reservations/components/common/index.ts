@@ -28,3 +28,6 @@ export type {
 export { StepIndicator } from './StepIndicator';
 export { StepNavigation } from './StepNavigation';
 export { AvailabilityStatusBadge } from './AvailabilityStatusBadge';
+export { DateRangeValidationBadge } from './DateRangeValidationBadge';
+export { ReservationFlowToggle } from './ReservationFlowToggle';
+export type { ReservationFlowMode } from './ReservationFlowToggle';

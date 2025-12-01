@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { type FieldError } from 'react-hook-form';
 import { useCreateReservationForm } from '../hooks/useCreateReservationForm';
@@ -8,17 +8,440 @@ import { GuestSelector } from './GuestSelector';
 import { RoomSelection } from './sections/RoomSelection';
 import { ServicesSelection } from './ServicesSelection';
 import { PriceCalculatorWidget } from './ui/PriceCalculatorWidget';
-import { AvailabilityStatusBadge, StepIndicator, StepNavigation } from './common';
+import { AvailabilityStatusBadge, StepIndicator, StepNavigation, DateRangeValidationBadge, ReservationFlowToggle } from './common';
+import { type ReservationFlowMode } from './common/ReservationFlowToggle';
+import { RoomSelectorWithCalendar } from './sections/RoomSelectorWithCalendar';
 import {
   FormHeader,
   SectionWrapper,
   ReservationDetailsForm,
   SpecialRequests
 } from './index';
+import { validateDateRange } from '../utils/dateValidation';
+import type { Room, AdditionalService } from '../../../types/core/domain';
+import { guestApiService } from '../../guests/services/guestApiService';
+import type { CreateGuestData } from '../../guests/types';
+
+// Quick Mode Flow Component
+interface QuickModeFlowProps {
+  formData: {
+    roomIds: string[];
+    checkInDate: string | null;
+    checkOutDate: string | null;
+    guestId: string | null;
+    numberOfGuests: number;
+    additionalServices?: string[];
+    specialRequests?: string;
+  };
+  errors: Record<string, FieldError | undefined>;
+  setValue: (field: string, value: unknown) => void;
+  availableRooms: Room[];
+  additionalServices: AdditionalService[];
+  isSubmitting: boolean;
+  onSubmit: () => void;
+  getErrorMessage: (error: FieldError | undefined) => string | undefined;
+}
+
+const QuickModeFlow: React.FC<QuickModeFlowProps> = ({
+  formData,
+  errors,
+  setValue,
+  availableRooms,
+  additionalServices,
+  isSubmitting,
+  onSubmit,
+  getErrorMessage,
+}) => {
+  const [quickStep, setQuickStep] = useState(0);
+
+  // Quick mode steps: 0=Room+Dates, 1=Guest, 2=Services, 3=Review
+  const quickSteps = [
+    { id: 'room-dates', title: 'Habitación & Fechas', description: 'Seleccione habitación y fechas', icon: '🏨' },
+    { id: 'guest', title: 'Huésped', description: 'Seleccione cliente', icon: '👤' },
+    { id: 'services', title: 'Extras', description: 'Servicios opcionales', icon: '➕' },
+    { id: 'review', title: 'Revisar', description: 'Confirmar reserva', icon: '✅' },
+  ];
+
+  const canProceedQuick = (): boolean => {
+    switch (quickStep) {
+      case 0: return formData.roomIds.length > 0 && !!formData.checkInDate && !!formData.checkOutDate;
+      case 1: return !!formData.guestId;
+      case 2: return true; // Services optional
+      case 3: return true;
+      default: return false;
+    }
+  };
+
+  const handleRoomAndDatesSelected = (roomId: string, checkIn: string, checkOut: string) => {
+    setValue('roomIds', [roomId]);
+    setValue('checkInDate', checkIn);
+    setValue('checkOutDate', checkOut);
+    setValue('numberOfGuests', 1);
+    setQuickStep(1);
+  };
+
+  // Estado para crear huésped inline
+  const [showInlineGuestForm, setShowInlineGuestForm] = useState(false);
+  const [isCreatingGuest, setIsCreatingGuest] = useState(false);
+  const [newGuestData, setNewGuestData] = useState({
+    nombre: '',
+    apellido: '',
+    email: '',
+    telefono: '',
+    identificacion: '',
+  });
+
+  const handleCreateGuestInline = async () => {
+    // Validación básica
+    if (!newGuestData.nombre || !newGuestData.apellido || !newGuestData.identificacion) {
+      alert('Por favor complete los campos obligatorios (Nombre, Apellido, Identificación)');
+      return;
+    }
+
+    setIsCreatingGuest(true);
+    
+    try {
+      // Preparar datos para el API
+      const guestDataForApi: CreateGuestData = {
+        firstName: newGuestData.nombre,
+        firstLastName: newGuestData.apellido,
+        secondLastName: '', // Opcional
+        email: newGuestData.email || '',
+        phone: newGuestData.telefono || '',
+        documentNumber: newGuestData.identificacion,
+        documentType: 'id_card', // Tipo por defecto (cédula)
+        nationality: 'CR', // Nacionalidad por defecto Costa Rica
+        // gender: NO enviar - dejar que el backend use null por defecto
+        vipStatus: false,
+      };
+
+      // Crear huésped en el backend
+      const createdGuest = await guestApiService.createGuest(guestDataForApi);
+      
+      // Guardar el ID real del huésped
+      setValue('guestId', createdGuest.id);
+      
+      // Resetear formulario y avanzar
+      setShowInlineGuestForm(false);
+      setNewGuestData({ nombre: '', apellido: '', email: '', telefono: '', identificacion: '' });
+      setQuickStep(2);
+      
+      console.log('Huésped creado exitosamente:', createdGuest);
+    } catch (error) {
+      console.error('Error al crear huésped:', error);
+      alert('Error al crear el huésped. Por favor intente nuevamente.');
+    } finally {
+      setIsCreatingGuest(false);
+    }
+  };
+
+  return (
+    <>
+      <StepIndicator steps={quickSteps} currentStep={quickStep} onStepClick={setQuickStep} />
+      
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <div className="min-h-[400px]">
+          {/* Step 0: Room & Dates */}
+          {quickStep === 0 && (
+            <SectionWrapper 
+              title="🏨 Seleccione Habitación y Fechas" 
+              description="Elija una habitación y luego seleccione las fechas en el calendario"
+            >
+              <RoomSelectorWithCalendar
+                onRoomAndDatesSelected={handleRoomAndDatesSelected}
+              />
+            </SectionWrapper>
+          )}
+
+          {/* Step 1: Guest - Inline Quick Form */}
+          {quickStep === 1 && (
+            <SectionWrapper 
+              title="👤 Información del Huésped" 
+              description="Ingrese los datos del huésped rápidamente"
+            >
+              <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Habitación seleccionada:</strong> {availableRooms.find(r => r.id === formData.roomIds[0])?.name || 'N/A'}
+                </p>
+                <p className="text-sm text-blue-800">
+                  <strong>Fechas:</strong> {formData.checkInDate} → {formData.checkOutDate}
+                </p>
+              </div>
+
+              {showInlineGuestForm ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Datos del Nuevo Huésped</h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowInlineGuestForm(false)}
+                      className="text-sm text-gray-600 hover:text-gray-800"
+                    >
+                      ← Buscar existente
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="quick-nombre" className="block text-sm font-medium text-gray-700 mb-1">
+                        Nombre <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="quick-nombre"
+                        type="text"
+                        value={newGuestData.nombre}
+                        onChange={(e) => setNewGuestData({ ...newGuestData, nombre: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Ej: Juan"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="quick-apellido" className="block text-sm font-medium text-gray-700 mb-1">
+                        Apellido <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="quick-apellido"
+                        type="text"
+                        value={newGuestData.apellido}
+                        onChange={(e) => setNewGuestData({ ...newGuestData, apellido: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Ej: Pérez"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="quick-identificacion" className="block text-sm font-medium text-gray-700 mb-1">
+                        Identificación <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="quick-identificacion"
+                        type="text"
+                        value={newGuestData.identificacion}
+                        onChange={(e) => setNewGuestData({ ...newGuestData, identificacion: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Ej: 123456789"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="quick-telefono" className="block text-sm font-medium text-gray-700 mb-1">
+                        Teléfono
+                      </label>
+                      <input
+                        id="quick-telefono"
+                        type="tel"
+                        value={newGuestData.telefono}
+                        onChange={(e) => setNewGuestData({ ...newGuestData, telefono: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Ej: +506 8888-8888"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label htmlFor="quick-email" className="block text-sm font-medium text-gray-700 mb-1">
+                        Email
+                      </label>
+                      <input
+                        id="quick-email"
+                        type="email"
+                        value={newGuestData.email}
+                        onChange={(e) => setNewGuestData({ ...newGuestData, email: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Ej: juan.perez@email.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4 border-t">
+                    <button
+                      type="button"
+                      onClick={() => setShowInlineGuestForm(false)}
+                      className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCreateGuestInline}
+                      disabled={isCreatingGuest}
+                      className="px-6 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {isCreatingGuest ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Creando huésped...
+                        </>
+                      ) : (
+                        'Guardar y Continuar'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <div>
+                      <p className="font-medium text-gray-900">¿Huésped nuevo?</p>
+                      <p className="text-sm text-gray-600">Ingrese los datos básicos del huésped</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowInlineGuestForm(true)}
+                      className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      + Nuevo Huésped
+                    </button>
+                  </div>
+                  
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-500">o</p>
+                  </div>
+
+                  <GuestSelector
+                    selectedGuestId={formData.guestId || undefined}
+                    onGuestSelect={(guestId) => setValue('guestId', guestId)}
+                    onCreateNewGuest={() => setShowInlineGuestForm(true)}
+                    error={getErrorMessage(errors.guestId)}
+                  />
+                </div>
+              )}
+            </SectionWrapper>
+          )}
+
+          {/* Step 2: Services */}
+          {quickStep === 2 && (
+            <div className="space-y-6">
+              <SectionWrapper 
+                title="➕ Servicios Adicionales" 
+                description="Seleccione servicios adicionales para la estadía"
+              >
+                {additionalServices.length > 0 ? (
+                  <ServicesSelection
+                    services={additionalServices}
+                    selectedServices={formData.additionalServices || []}
+                    onServiceToggle={(id: string) => {
+                      const current = formData.additionalServices || [];
+                      setValue('additionalServices', current.includes(id) ? current.filter(i => i !== id) : [...current, id]);
+                    }}
+                  />
+                ) : <p className="text-sm text-gray-500">Cargando...</p>}
+              </SectionWrapper>
+              <SectionWrapper 
+                title="💬 Solicitudes Especiales" 
+                description="Comentarios o solicitudes adicionales del huésped"
+              >
+                <SpecialRequests 
+                  value={formData.specialRequests || ''} 
+                  onChange={(v) => setValue('specialRequests', v)} 
+                />
+              </SectionWrapper>
+            </div>
+          )}
+
+          {/* Step 3: Review */}
+          {quickStep === 3 && (
+            <SectionWrapper 
+              title="✅ Resumen de la Reserva" 
+              description="Revise la información antes de confirmar"
+            >
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Room */}
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 mb-2">Habitación</h3>
+                    <p className="text-sm text-gray-700">
+                      {availableRooms.find(r => r.id === formData.roomIds[0])?.name || 'N/A'}
+                    </p>
+                  </div>
+
+                  {/* Dates */}
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 mb-2">Fechas</h3>
+                    <p className="text-sm text-gray-700">Check-in: {formData.checkInDate}</p>
+                    <p className="text-sm text-gray-700">Check-out: {formData.checkOutDate}</p>
+                  </div>
+
+                  {/* Services */}
+                  {formData.additionalServices && formData.additionalServices.length > 0 && (
+                    <div className="p-4 bg-gray-50 rounded-lg md:col-span-2">
+                      <h3 className="font-semibold text-gray-900 mb-2">Servicios Adicionales</h3>
+                      <ul className="text-sm text-gray-700 space-y-1">
+                        {formData.additionalServices.map(serviceId => {
+                          const service = additionalServices.find(s => s.id === serviceId);
+                          return service ? <li key={serviceId}>• {service.name}</li> : null;
+                        })}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Special Requests */}
+                  {formData.specialRequests && (
+                    <div className="p-4 bg-gray-50 rounded-lg md:col-span-2">
+                      <h3 className="font-semibold text-gray-900 mb-2">Solicitudes Especiales</h3>
+                      <p className="text-sm text-gray-700">{formData.specialRequests}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </SectionWrapper>
+          )}
+        </div>
+
+        {/* Navigation */}
+        <StepNavigation
+          isFirstStep={quickStep === 0}
+          isLastStep={quickStep === 3}
+          onPrevious={() => setQuickStep(prev => Math.max(0, prev - 1))}
+          onNext={() => setQuickStep(prev => Math.min(3, prev + 1))}
+          onSubmit={onSubmit}
+          isSubmitting={isSubmitting}
+          canProceed={canProceedQuick()}
+        />
+      </div>
+
+      {/* Floating Price Calculator - Show on steps 1, 2 (after room is selected) */}
+      {quickStep > 0 && quickStep < 3 && formData.roomIds.length > 0 && (
+        <div className="fixed top-8 right-8 w-96 z-40 hidden xl:block">
+          <PriceCalculatorWidget
+            selectedRooms={availableRooms.filter(r => formData.roomIds.includes(r.id))}
+            checkInDate={formData.checkInDate}
+            checkOutDate={formData.checkOutDate}
+            additionalServices={additionalServices.filter(s => formData.additionalServices?.includes(s.id))}
+            defaultCollapsed={true}
+            className="shadow-2xl"
+          />
+        </div>
+      )}
+
+      {/* Price Calculator inline on review step */}
+      {quickStep === 3 && (
+        <div className="mt-6">
+          <PriceCalculatorWidget
+            selectedRooms={availableRooms.filter(r => formData.roomIds.includes(r.id))}
+            checkInDate={formData.checkInDate}
+            checkOutDate={formData.checkOutDate}
+            additionalServices={additionalServices.filter(s => formData.additionalServices?.includes(s.id))}
+            defaultCollapsed={false}
+          />
+        </div>
+      )}
+    </>
+  );
+};
 
 export const CreateReservationForm: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Flow mode state (quick = Room→Dates→Guest, client-first = Guest→Dates→Room)
+  const [flowMode, setFlowMode] = useState<ReservationFlowMode>('client-first');
   
   const {
     form,
@@ -114,7 +537,13 @@ export const CreateReservationForm: React.FC = () => {
           </SectionWrapper>
         );
 
-      case 1: // Dates
+      case 1: { // Dates
+        const dateValidation = validateDateRange(formData.checkInDate, formData.checkOutDate, {
+          minStayNights: 1,
+          maxStayNights: 365,
+          allowSameDay: false,
+        });
+        
         return (
           <SectionWrapper title="📅 Detalles de la Reserva" description="Configure las fechas y número de huéspedes">
             <ReservationDetailsForm
@@ -137,13 +566,25 @@ export const CreateReservationForm: React.FC = () => {
               }}
               onFieldChange={(field, value) => setValue(field, value)}
             />
+            
+            {/* Date Range Validation */}
             {formData.checkInDate && formData.checkOutDate && (
-              <div className="mt-4">
-                <AvailabilityStatusBadge availabilityResult={availabilityCheck} />
+              <div className="mt-4 space-y-3">
+                <DateRangeValidationBadge
+                  checkInDate={formData.checkInDate}
+                  checkOutDate={formData.checkOutDate}
+                  validationResult={dateValidation}
+                />
+                
+                {/* Room Availability Check */}
+                {dateValidation.isValid && (
+                  <AvailabilityStatusBadge availabilityResult={availabilityCheck} />
+                )}
               </div>
             )}
           </SectionWrapper>
         );
+      }
 
       case 2: // Rooms
         return (
@@ -261,36 +702,70 @@ export const CreateReservationForm: React.FC = () => {
         badge="FrontDesk"
       />
 
-      <StepIndicator steps={steps} currentStep={currentStep} onStepClick={goToStep} />
-      
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-        <form onSubmit={onSubmit}>
-          <div className="min-h-[400px]">{renderStep()}</div>
-          
-          <StepNavigation
-            isFirstStep={isFirstStep}
-            isLastStep={isLastStep}
-            onPrevious={previousStep}
-            onNext={nextStep}
-            onSubmit={handleSubmit(submitReservation)}
-            isSubmitting={isSubmitting}
-            canProceed={canProceed()}
-          />
-        </form>
+      {/* Flow Mode Toggle */}
+      <div className="mb-6">
+        <ReservationFlowToggle
+          currentMode={flowMode}
+          onModeChange={setFlowMode}
+        />
       </div>
 
-      {/* Floating price calculator - Top right */}
-      {currentStep !== 4 && (
-        <div className="fixed top-8 right-8 w-96 z-50 hidden xl:block">
-          <PriceCalculatorWidget
-            selectedRooms={availableRooms.filter(r => formData.roomIds.includes(r.id))}
-            checkInDate={formData.checkInDate}
-            checkOutDate={formData.checkOutDate}
-            additionalServices={additionalServices.filter(s => formData.additionalServices?.includes(s.id))}
-            defaultCollapsed={true}
-            className="shadow-2xl"
-          />
-        </div>
+      {/* Conditional rendering based on flow mode */}
+      {flowMode === 'quick' ? (
+        // Quick mode: Room → Dates → Guest flow
+        <QuickModeFlow
+          formData={{
+            roomIds: formData.roomIds,
+            checkInDate: formData.checkInDate,
+            checkOutDate: formData.checkOutDate,
+            guestId: formData.guestId,
+            numberOfGuests: formData.numberOfGuests,
+            additionalServices: formData.additionalServices,
+            specialRequests: formData.specialRequests,
+          }}
+          errors={errors as Record<string, FieldError | undefined>}
+          setValue={(field, value) => setValue(field as never, value as never)}
+          availableRooms={availableRooms}
+          additionalServices={additionalServices}
+          isSubmitting={isSubmitting}
+          onSubmit={handleSubmit(submitReservation)}
+          getErrorMessage={getErrorMessage}
+        />
+      ) : (
+        // Client-first mode: Guest → Dates → Room flow (original)
+        <>
+          <StepIndicator steps={steps} currentStep={currentStep} onStepClick={goToStep} />
+          
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+            <form onSubmit={onSubmit}>
+              <div className="min-h-[400px]">{renderStep()}</div>
+              
+              <StepNavigation
+                isFirstStep={isFirstStep}
+                isLastStep={isLastStep}
+                onPrevious={previousStep}
+                onNext={nextStep}
+                onSubmit={handleSubmit(submitReservation)}
+                isSubmitting={isSubmitting}
+                canProceed={canProceed()}
+              />
+            </form>
+          </div>
+
+          {/* Floating price calculator - Top right */}
+          {currentStep !== 4 && (
+            <div className="fixed top-8 right-8 w-96 z-50 hidden xl:block">
+              <PriceCalculatorWidget
+                selectedRooms={availableRooms.filter(r => formData.roomIds.includes(r.id))}
+                checkInDate={formData.checkInDate}
+                checkOutDate={formData.checkOutDate}
+                additionalServices={additionalServices.filter(s => formData.additionalServices?.includes(s.id))}
+                defaultCollapsed={true}
+                className="shadow-2xl"
+              />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

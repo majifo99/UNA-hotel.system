@@ -464,7 +464,7 @@ class GuestApiService {
     const genderMap: Record<string, string | null> = {
       'male': 'M',
       'female': 'F',
-      'other': 'Otro',
+      'other': 'O', // Backend DB column is char(1), must use 'O' not 'Otro'
       'prefer_not_to_say': null
     };
     
@@ -480,7 +480,8 @@ class GuestApiService {
     const backendGenderMap: Record<string, 'male' | 'female' | 'other' | 'prefer_not_to_say'> = {
       'M': 'male',
       'F': 'female', 
-      'Otro': 'other'
+      'O': 'other', // Backend DB uses 'O' for other (char(1) column)
+      'Otro': 'other' // Legacy support in case backend sends 'Otro'
     };
     
     return backendGenderMap[genero];
