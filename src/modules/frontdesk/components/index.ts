@@ -20,7 +20,11 @@ export { FacturacionResumen } from './FacturacionResumen';
 export { FrontDeskStats } from './FrontDeskStats';
 export { DashboardWithStats } from './DashboardWithStats';
 
-// � Integration Components
+// 🏠 Estadías Management
+export { EstadiasList } from './EstadiasList';
+
+// 🔗 Integration Components
 export { CheckInFlow } from './CheckInFlow';
 export { FolioManagerPage } from './FolioManagerPage';
+
 

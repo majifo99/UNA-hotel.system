@@ -57,7 +57,7 @@ import {
 
 // Hooks personalizados
 import { useCheckoutFolio } from '../hooks/useCheckoutFolio';
-import { useEstadiaByReservaCode } from '../hooks/useCheckoutQueries';
+import { useEstadiaByCode } from '../hooks/useCheckoutQueries';
 
 // Componentes reutilizables
 import { FolioResumen } from './FolioResumen';
@@ -228,12 +228,12 @@ export const CheckOut: React.FC = () => {
   // HOOKS PERSONALIZADOS
   // ========================================
 
-  // Hook para búsqueda de reservaciones usando estadía
+  // Hook para búsqueda de estadías (soporta códigos de reserva y walk-in)
   const {
     data: foundReservation,
     isLoading: isLoadingReservation,
     error: reservationError
-  } = useEstadiaByReservaCode(reservationSearchId);
+  } = useEstadiaByCode(reservationSearchId);
 
   // Hook para checkout con folio
   const checkoutFolioHook = useCheckoutFolio({
@@ -547,7 +547,7 @@ export const CheckOut: React.FC = () => {
    */
   const handleSearchReservation = useCallback(() => {
     if (!formData.reservationId.trim()) {
-      toast.error('Ingrese un código de reservación');
+      toast.error('Ingrese un código de reserva o walk-in');
       return;
     }
 
@@ -705,7 +705,7 @@ export const CheckOut: React.FC = () => {
   };
 
   /**
-   * Valida el formato del código de reservación
+   * Valida el formato del código (reserva o walk-in)
    */
   const validarCodigoReservacion = (value: string): string => {
     // Solo permitir letras mayúsculas, números y guiones
@@ -810,12 +810,12 @@ export const CheckOut: React.FC = () => {
         </div>
 
         {/* ========================================
-            BÚSQUEDA DE RESERVACIÓN
+            BÚSQUEDA DE RESERVACIÓN O WALK-IN
         ======================================== */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <Search className="w-5 h-5 text-blue-600" />
-            Buscar Reservación
+            Buscar Estadía
           </h2>
 
           <div className="flex gap-3">
@@ -825,7 +825,7 @@ export const CheckOut: React.FC = () => {
                 value={formData.reservationId}
                 onChange={(e) => handleInputChange('reservationId', validarCodigoReservacion(e.target.value))}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearchReservation()}
-                placeholder="Ej: RES-123"
+                placeholder="Código de reserva (RES-123) o Walk-In (WI-20251129-A1B2)"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 disabled={isLoadingReservation || hasLoadedReservationData}
               />
@@ -864,14 +864,14 @@ export const CheckOut: React.FC = () => {
           {isLoadingReservation && (
             <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
               <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-              <p className="text-blue-800">Buscando reservación...</p>
+              <p className="text-blue-800">Buscando estadía...</p>
             </div>
           )}
 
           {reservationError && (
             <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-red-600" />
-              <p className="text-red-800">No se encontró la reservación</p>
+              <p className="text-red-800">No se encontró la estadía con ese código</p>
             </div>
           )}
 
