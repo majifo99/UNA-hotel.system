@@ -118,7 +118,7 @@ export class MultiHttpClient {
     
     const response = await axios.post<T>(`${BASE_URL}${endpoint}`, data, {
       headers,
-      timeout: 10000,
+      timeout: 30000, // Increased from 10000 to 30000 for heavy operations
     });
     
     console.log('[AXIOS CLIENT] Response:', {

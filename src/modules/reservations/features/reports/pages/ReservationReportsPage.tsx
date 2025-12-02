@@ -190,7 +190,7 @@ export const ReservationReportsPage: React.FC = () => {
         <KpiCard
           icon={DollarSign}
           title="Ingresos Totales"
-          value={data ? `₡${data.kpis.totalRevenue.toLocaleString('es-CR')}` : '-'}
+          value={data ? `$${data.kpis.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
           subtitle="Período seleccionado"
           color="#677D6A"
           isLoading={isLoading}

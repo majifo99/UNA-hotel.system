@@ -35,7 +35,7 @@ const METRIC_CONFIG = {
     key: 'revenue',
     name: 'Ingresos',
     color: getMetricColor('revenue'), // Green
-    unit: '₡'
+    unit: '$'
   },
   occupancy: {
     key: 'occupancy',

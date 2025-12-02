@@ -69,8 +69,8 @@ export const FormActions: React.FC<FormActionsProps> = ({
           onClick={onSubmit}
           className={`group relative overflow-hidden px-10 py-4 font-bold rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-300 shadow-lg ${
             isSubmitDisabled
-              ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-              : 'bg-gradient-to-r from-una-primary-600 to-una-primary-800 text-white hover:from-una-primary-800 hover:to-una-primary-900 focus:ring-una-primary-600 hover:shadow-xl transform hover:-translate-y-0.5'
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-gradient-to-r from-una-primary-600 to-una-primary-800 text-black hover:from-una-primary-800 hover:to-una-primary-900 focus:ring-una-primary-600 hover:shadow-xl transform hover:-translate-y-0.5'
           }`}
           title={hasErrors ? 'Corrija los errores del formulario para continuar' : ''}
         >

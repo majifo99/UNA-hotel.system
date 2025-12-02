@@ -256,26 +256,37 @@ export const useCreateReservationForm = () => {
 
       const guestIdNumber = guestValidation.id;
 
+      // Check if we have individual room dates (group reservation mode)
+      const roomDatesMapStr = localStorage.getItem('roomDatesMap');
+      const roomDatesMap = roomDatesMapStr ? JSON.parse(roomDatesMapStr) : {};
+
       // Convert form data to the new CreateReservationDto format
       const createReservationPayload = {
         id_cliente: guestIdNumber, // Validated guest ID as required by backend
         id_estado_res: 1, // Default to "Confirmada" or similar initial status
         id_fuente: 1, // Default source (could be "Web" or "Sistema")
         notas: data.specialRequests || undefined,
-        habitaciones: selectedRooms.map(room => ({
-          id_habitacion: parseInt(room.id), // Convert string ID to number
-          fecha_llegada: data.checkInDate,
-          fecha_salida: data.checkOutDate,
-          adultos: data.numberOfAdults || 0,
-          ninos: data.numberOfChildren || 0,
-          bebes: data.numberOfInfants || 0
-        }))
+        habitaciones: selectedRooms.map(room => {
+          // Use individual dates if available, otherwise use global dates
+          const roomDates = roomDatesMap[room.id];
+          return {
+            id_habitacion: parseInt(room.id), // Convert string ID to number
+            fecha_llegada: roomDates?.checkIn || data.checkInDate,
+            fecha_salida: roomDates?.checkOut || data.checkOutDate,
+            adultos: data.numberOfAdults || 0,
+            ninos: data.numberOfChildren || 0,
+            bebes: data.numberOfInfants || 0
+          };
+        })
       };
 
       // Debug: log payload that will be sent
       console.debug('[UI] Creating reservation with new format:', createReservationPayload);
 
       await reservationService.createNewReservation(createReservationPayload);
+
+      // Clear roomDatesMap after successful creation
+      localStorage.removeItem('roomDatesMap');
 
       toast.success('✅ Reserva creada exitosamente', {
         description: `La reserva ha sido registrada para ${selectedRooms.length} habitación${selectedRooms.length > 1 ? 'es' : ''}.`

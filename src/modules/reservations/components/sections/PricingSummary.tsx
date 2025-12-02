@@ -22,29 +22,29 @@ export const PricingSummary: React.FC<PricingSummaryProps> = ({ pricing }) => {
         <span className="text-gray-600">
           Habitación ({pricing.numberOfNights} noche{pricing.numberOfNights !== 1 ? 's' : ''})
         </span>
-        <span className="font-medium">₡{pricing.subtotal.toLocaleString()}</span>
+        <span className="font-medium">${pricing.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
       </div>
       
       {pricing.servicesTotal > 0 && (
         <div className="flex justify-between">
           <span className="text-gray-600">Servicios adicionales</span>
-          <span className="font-medium">₡{pricing.servicesTotal.toLocaleString()}</span>
+          <span className="font-medium">${pricing.servicesTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
       )}
       
       <div className="flex justify-between">
         <span className="text-gray-600">Impuestos (13%)</span>
-        <span className="font-medium">₡{pricing.taxes.toLocaleString()}</span>
+        <span className="font-medium">${pricing.taxes.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
       </div>
       
       <div className="border-t pt-3">
         <div className="flex justify-between text-lg font-semibold">
           <span>Total</span>
-          <span className="text-green-600">₡{pricing.total.toLocaleString()}</span>
+          <span className="text-green-600">${pricing.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
         <div className="flex justify-between text-sm text-gray-600 mt-1">
           <span>Depósito requerido (50%)</span>
-          <span>₡{pricing.depositRequired.toLocaleString()}</span>
+          <span>${pricing.depositRequired.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
       </div>
     </div>

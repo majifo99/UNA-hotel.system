@@ -66,7 +66,7 @@ export const ServicesSelection: React.FC<ServicesSelectionProps> = ({
                     </div>
                     <div className="text-right">
                       <span className="text-lg font-semibold text-gray-900">
-                        ₡{service.price.toLocaleString()}
+                        ${service.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                       <span className="text-sm text-gray-500 block">por día</span>
                     </div>

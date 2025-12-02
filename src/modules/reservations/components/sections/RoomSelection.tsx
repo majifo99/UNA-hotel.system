@@ -1,5 +1,73 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Room } from '../../types';
+
+// Component for individual room date inputs
+interface RoomDateInputsProps {
+  roomId: string;
+  onDatesChange: (roomId: string, dates: { checkIn: string; checkOut: string }) => void;
+}
+
+const RoomDateInputs: React.FC<RoomDateInputsProps> = ({ roomId, onDatesChange }) => {
+  // Initialize from localStorage if exists
+  const getInitialDates = () => {
+    try {
+      const stored = localStorage.getItem('roomDatesMap');
+      if (stored) {
+        const datesMap = JSON.parse(stored);
+        return datesMap[roomId] || { checkIn: '', checkOut: '' };
+      }
+    } catch (e) {
+      console.error('Error reading roomDatesMap from localStorage:', e);
+    }
+    return { checkIn: '', checkOut: '' };
+  };
+
+  const initialDates = getInitialDates();
+  const [roomCheckIn, setRoomCheckIn] = useState(initialDates.checkIn);
+  const [roomCheckOut, setRoomCheckOut] = useState(initialDates.checkOut);
+  
+  const handleCheckInChange = (value: string) => {
+    setRoomCheckIn(value);
+    onDatesChange(roomId, { checkIn: value, checkOut: roomCheckOut });
+  };
+  
+  const handleCheckOutChange = (value: string) => {
+    setRoomCheckOut(value);
+    onDatesChange(roomId, { checkIn: roomCheckIn, checkOut: value });
+  };
+  
+  return (
+    <div className="border-t pt-3 mt-3">
+      <p className="text-xs font-medium text-gray-700 mb-2">Fechas específicas para esta habitación:</p>
+      <div className="space-y-2">
+        <div>
+          <label htmlFor={`checkin-${roomId}`} className="block text-xs text-gray-600">Check-in:</label>
+          <input
+            id={`checkin-${roomId}`}
+            type="date"
+            value={roomCheckIn}
+            className="w-full text-xs border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            onChange={(e) => handleCheckInChange(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            min={new Date().toISOString().split('T')[0]}
+          />
+        </div>
+        <div>
+          <label htmlFor={`checkout-${roomId}`} className="block text-xs text-gray-600">Check-out:</label>
+          <input
+            id={`checkout-${roomId}`}
+            type="date"
+            value={roomCheckOut}
+            className="w-full text-xs border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            onChange={(e) => handleCheckOutChange(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            min={roomCheckIn || new Date().toISOString().split('T')[0]}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface RoomSelectionProps {
   availableRooms: Room[];
@@ -100,7 +168,7 @@ export const RoomSelection: React.FC<RoomSelectionProps> = ({
       const twoIndividualPrice = individualRooms.slice(0, 2).reduce((sum, room) => sum + (room?.pricePerNight ?? 0), 0);
       
       return {
-        message: `🛏️ Opciones para 2 huéspedes: Habitación doble ₡${doublePrice.toLocaleString()} vs. 2 individuales ₡${twoIndividualPrice.toLocaleString()} (consultar preferencia del huésped)`,
+        message: `🛏️ Opciones para 2 huéspedes: Habitación doble $${doublePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} vs. 2 individuales $${twoIndividualPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (consultar preferencia del huésped)`,
         rooms: [...doubleRooms.slice(0, 1), ...individualRooms.slice(0, 2)],
         highlight: true,
         showOptions: true
@@ -124,9 +192,9 @@ export const RoomSelection: React.FC<RoomSelectionProps> = ({
         individualRooms.slice(0, 4).reduce((sum, room) => sum + (room?.pricePerNight ?? 0), 0) : Infinity;
       
       const options = [
-        `2 dobles: ₡${totalDoublePrice.toLocaleString()}`,
-        familyPrice !== Infinity ? `1 familiar: ₡${familyPrice.toLocaleString()}` : null,
-        fourIndividualPrice !== Infinity ? `4 individuales: ₡${fourIndividualPrice.toLocaleString()}` : null
+        `2 dobles: $${totalDoublePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        familyPrice !== Infinity ? `1 familiar: $${familyPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : null,
+        fourIndividualPrice !== Infinity ? `4 individuales: $${fourIndividualPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : null
       ].filter(Boolean).join(' | ');
       
       return {
@@ -361,7 +429,7 @@ export const RoomSelection: React.FC<RoomSelectionProps> = ({
                 </div>
 
                 <p className="text-lg font-semibold text-green-600">
-                  ₡{room.pricePerNight.toLocaleString()} / noche
+                  ${room.pricePerNight.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / noche
                 </p>
               </div>
 
@@ -383,29 +451,7 @@ export const RoomSelection: React.FC<RoomSelectionProps> = ({
 
               {/* Fechas individuales para reservas grupales */}
               {isGroupReservation && isSelected && enableDifferentDates && (
-                <div className="border-t pt-3 mt-3">
-                  <p className="text-xs font-medium text-gray-700 mb-2">Fechas específicas para esta habitación:</p>
-                  <div className="space-y-2">
-                    <div>
-                      <label className="block text-xs text-gray-600">Check-in:</label>
-                      <input
-                        type="date"
-                        className="w-full text-xs border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        onChange={(e) => onRoomDatesChange?.(room.id, { checkIn: e.target.value, checkOut: '' })}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-600">Check-out:</label>
-                      <input
-                        type="date"
-                        className="w-full text-xs border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        onChange={(e) => onRoomDatesChange?.(room.id, { checkIn: '', checkOut: e.target.value })}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </div>
-                  </div>
-                </div>
+                <RoomDateInputs roomId={room.id} onDatesChange={onRoomDatesChange!} />
               )}
             </div>
           );
