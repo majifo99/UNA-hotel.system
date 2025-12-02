@@ -14,11 +14,15 @@ import { formatCurrency } from '../../../web/utils/currency';
 
 interface RoomSelectorWithCalendarProps {
   onRoomAndDatesSelected: (roomId: string, checkIn: string, checkOut: string) => void;
+  onMultipleRoomsSelected?: (selections: Array<{ roomId: string; checkIn: string; checkOut: string }>) => void;
+  enableMultipleSelection?: boolean;
   className?: string;
 }
 
 export const RoomSelectorWithCalendar: React.FC<RoomSelectorWithCalendarProps> = ({
   onRoomAndDatesSelected,
+  onMultipleRoomsSelected,
+  enableMultipleSelection = false,
   className = '',
 }) => {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -26,6 +30,7 @@ export const RoomSelectorWithCalendar: React.FC<RoomSelectorWithCalendarProps> =
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
+  const [selectedRooms, setSelectedRooms] = useState<Array<{ roomId: string; checkIn: string; checkOut: string }>>([]);
 
   // Load all rooms
   useEffect(() => {
@@ -50,14 +55,39 @@ export const RoomSelectorWithCalendar: React.FC<RoomSelectorWithCalendarProps> =
 
   const handleDatesSelected = (checkIn: string, checkOut: string) => {
     if (selectedRoom) {
-      onRoomAndDatesSelected(selectedRoom.id, checkIn, checkOut);
-      setShowCalendar(false);
+      if (enableMultipleSelection) {
+        // Modo grupal: agregar a la lista
+        setSelectedRooms(prev => {
+          const filtered = prev.filter(r => r.roomId !== selectedRoom.id);
+          return [...filtered, { roomId: selectedRoom.id, checkIn, checkOut }];
+        });
+        setShowCalendar(false);
+        setSelectedRoom(null);
+      } else {
+        // Modo single: continuar directamente
+        onRoomAndDatesSelected(selectedRoom.id, checkIn, checkOut);
+        setShowCalendar(false);
+      }
     }
+  };
+
+  const handleSaveSelection = () => {
+    if (onMultipleRoomsSelected && selectedRooms.length > 0) {
+      onMultipleRoomsSelected(selectedRooms);
+    }
+  };
+
+  const handleRemoveRoom = (roomId: string) => {
+    setSelectedRooms(prev => prev.filter(r => r.roomId !== roomId));
   };
 
   const handleCloseCalendar = () => {
     setShowCalendar(false);
     setSelectedRoom(null);
+  };
+
+  const isRoomSelected = (roomId: string) => {
+    return selectedRooms.some(r => r.roomId === roomId);
   };
 
   // Get unique room types
@@ -120,13 +150,55 @@ export const RoomSelectorWithCalendar: React.FC<RoomSelectorWithCalendarProps> =
         })}
       </div>
 
+      {/* Selected Rooms Summary (solo en modo múltiple) */}
+      {enableMultipleSelection && selectedRooms.length > 0 && (
+        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-blue-900">
+              Habitaciones Seleccionadas ({selectedRooms.length})
+            </h3>
+            <button
+              onClick={handleSaveSelection}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              Guardar Selección
+            </button>
+          </div>
+          <div className="space-y-2">
+            {selectedRooms.map(selection => {
+              const room = rooms.find(r => r.id === selection.roomId);
+              return (
+                <div key={selection.roomId} className="flex items-center justify-between bg-white rounded-lg p-3">
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">{room?.name || selection.roomId}</p>
+                    <p className="text-sm text-gray-600">
+                      {selection.checkIn} → {selection.checkOut}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveRoom(selection.roomId)}
+                    className="text-red-600 hover:text-red-800 transition-colors ml-2"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Rooms Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredRooms.map(room => (
+        {filteredRooms.map(room => {
+          const isSelected = isRoomSelected(room.id);
+          return (
           <button
             key={room.id}
             onClick={() => handleRoomClick(room)}
-            className="text-left bg-white border-2 border-gray-200 rounded-lg p-4 hover:border-blue-500 hover:shadow-md transition-all group"
+            className={`text-left bg-white border-2 rounded-lg p-4 hover:border-blue-500 hover:shadow-md transition-all group ${
+              isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+            }`}
           >
             {/* Room Header */}
             <div className="flex items-start justify-between mb-3">
@@ -187,7 +259,8 @@ export const RoomSelectorWithCalendar: React.FC<RoomSelectorWithCalendarProps> =
               </p>
             </div>
           </button>
-        ))}
+        );
+        })}
       </div>
 
       {/* Empty State */}

@@ -1,12 +1,14 @@
 ﻿import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Plus, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import type { Reservation } from '../types';
-import { useReservationsList } from '../hooks/useReservationQueries';
+import { useReservationsList, useConfirmReservation } from '../hooks/useReservationQueries';
 import SolLogo from '../../../assets/Lanaku.png';
 import { 
   ReservationsFilters, 
   ReservationsTable,  
+  ConfirmReservationModal,
   TablePagination,
   type ReservationListFilters,
   type PaginationInfo,
@@ -78,9 +80,13 @@ function applyFilters(reservations: Reservation[], filters: ReservationListFilte
 export const ReservationsListPage: React.FC = () => {
   const navigate = useNavigate();
   const { data = [], isLoading, isError, refetch } = useReservationsList();
+  const confirmReservation = useConfirmReservation();
   const [filters, setFilters] = React.useState<ReservationListFilters>(DEFAULT_FILTERS);
   const [currentPage, setCurrentPage] = React.useState(1);
   const [perPage, setPerPage] = React.useState(10);
+  const [reservationToConfirm, setReservationToConfirm] = React.useState<Reservation | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = React.useState(false);
+  const [confirmingId, setConfirmingId] = React.useState<string | null>(null);
 
   const filteredReservations = React.useMemo(
     () => applyFilters(data, filters),
@@ -159,6 +165,41 @@ export const ReservationsListPage: React.FC = () => {
 
   const handleResetFilters = () => {
     setFilters(DEFAULT_FILTERS);
+  };
+
+  const handleOpenConfirmModal = (reservation: Reservation) => {
+    setReservationToConfirm(reservation);
+    setShowConfirmModal(true);
+  };
+
+  const handleCloseConfirmModal = () => {
+    setShowConfirmModal(false);
+    setReservationToConfirm(null);
+    setConfirmingId(null);
+  };
+
+  const handleConfirmReservation = async (reservation: Reservation) => {
+    setConfirmingId(reservation.id);
+    
+    try {
+      await confirmReservation.mutateAsync({ 
+        id: reservation.id, 
+        notas: 'Confirmada desde la lista de reservas' 
+      });
+      
+      toast.success('Reserva confirmada', {
+        description: `La reserva ${reservation.confirmationNumber} ha sido confirmada exitosamente.`
+      });
+      
+      handleCloseConfirmModal();
+      refetch();
+    } catch (error) {
+      toast.error('Error al confirmar', {
+        description: 'No se pudo confirmar la reserva. Intenta nuevamente.'
+      });
+      console.error('Error confirming reservation:', error);
+      setConfirmingId(null);
+    }
   };
 
   const summaryCards = [
@@ -291,7 +332,9 @@ export const ReservationsListPage: React.FC = () => {
               onRetry={refetch}
               onEdit={(reservation) => navigate(`/reservations/${reservation.id}/edit`)}
               onCancel={(reservation) => navigate(`/reservations/${reservation.id}/cancel`)}
+              onConfirm={handleOpenConfirmModal}
               onViewDetail={(reservation) => navigate(`/reservations/${reservation.id}/detail`)}
+              confirmingId={confirmingId}
             />
             
             {filteredReservations.length > 0 && (
@@ -308,6 +351,15 @@ export const ReservationsListPage: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* Modal de confirmación */}
+      <ConfirmReservationModal
+        reservation={reservationToConfirm}
+        isOpen={showConfirmModal}
+        onClose={handleCloseConfirmModal}
+        onConfirm={handleConfirmReservation}
+        isLoading={confirmReservation.isPending}
+      />
     </div>
   );
 };

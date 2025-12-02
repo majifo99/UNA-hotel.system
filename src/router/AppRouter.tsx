@@ -32,6 +32,7 @@ import DisponibilidadPage from '../modules/habitaciones/pages/DisponibilidadPage
 
 import { AdminLoginPage, AdminRegisterPage, AdminAuthProvider, ProtectedRoute } from '../modules/admin';
 import { ReservationReportsPage } from '../modules/reservations/features/reports';
+import NotFoundPage from '../pages/NotFoundPage';
 
 
 
@@ -260,6 +261,11 @@ const router = createBrowserRouter([
             element: <GuestProfilePage />,
           },
         ],
+      },
+      // Catch-all route for 404 within authenticated routes
+      {
+        path: '*',
+        element: <NotFoundPage />,
       },
     ],
   },

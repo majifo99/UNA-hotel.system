@@ -2,22 +2,19 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { type FieldError } from 'react-hook-form';
 import { useCreateReservationForm } from '../hooks/useCreateReservationForm';
-import { useRoomAvailabilityCheck } from '../hooks/useRoomAvailabilityCheck';
 import { useMultiStepForm } from '../hooks/useMultiStepForm';
 import { GuestSelector } from './GuestSelector';
 import { RoomSelection } from './sections/RoomSelection';
 import { ServicesSelection } from './ServicesSelection';
 import { PriceCalculatorWidget } from './ui/PriceCalculatorWidget';
-import { AvailabilityStatusBadge, StepIndicator, StepNavigation, DateRangeValidationBadge, ReservationFlowToggle } from './common';
+import { StepIndicator, StepNavigation, ReservationFlowToggle } from './common';
 import { type ReservationFlowMode } from './common/ReservationFlowToggle';
 import { RoomSelectorWithCalendar } from './sections/RoomSelectorWithCalendar';
 import {
   FormHeader,
   SectionWrapper,
-  ReservationDetailsForm,
   SpecialRequests
 } from './index';
-import { validateDateRange } from '../utils/dateValidation';
 import type { Room, AdditionalService } from '../../../types/core/domain';
 import { guestApiService } from '../../guests/services/guestApiService';
 import type { CreateGuestData } from '../../guests/types';
@@ -53,6 +50,7 @@ const QuickModeFlow: React.FC<QuickModeFlowProps> = ({
   getErrorMessage,
 }) => {
   const [quickStep, setQuickStep] = useState(0);
+  const [enableGroupReservation, setEnableGroupReservation] = useState(false);
 
   // Quick mode steps: 0=Room+Dates, 1=Guest, 2=Services, 3=Review
   const quickSteps = [
@@ -64,7 +62,7 @@ const QuickModeFlow: React.FC<QuickModeFlowProps> = ({
 
   const canProceedQuick = (): boolean => {
     switch (quickStep) {
-      case 0: return formData.roomIds.length > 0 && !!formData.checkInDate && !!formData.checkOutDate;
+      case 0: return formData.roomIds.length > 0; // Fechas validadas en RoomSelectorWithCalendar
       case 1: return !!formData.guestId;
       case 2: return true; // Services optional
       case 3: return true;
@@ -77,6 +75,28 @@ const QuickModeFlow: React.FC<QuickModeFlowProps> = ({
     setValue('checkInDate', checkIn);
     setValue('checkOutDate', checkOut);
     setValue('numberOfGuests', 1);
+    setQuickStep(1);
+  };
+
+  const handleMultipleRoomsSelected = (selections: Array<{ roomId: string; checkIn: string; checkOut: string }>) => {
+    // Extraer roomIds
+    const roomIds = selections.map(s => s.roomId);
+    setValue('roomIds', roomIds);
+    
+    // Guardar fechas por habitación en localStorage
+    const datesMap: Record<string, { checkIn: string; checkOut: string }> = {};
+    selections.forEach(sel => {
+      datesMap[sel.roomId] = { checkIn: sel.checkIn, checkOut: sel.checkOut };
+    });
+    localStorage.setItem('roomDatesMap', JSON.stringify(datesMap));
+    
+    // Usar fechas de la primera habitación como fechas globales (para compatibilidad)
+    if (selections.length > 0) {
+      setValue('checkInDate', selections[0].checkIn);
+      setValue('checkOutDate', selections[0].checkOut);
+    }
+    
+    setValue('numberOfGuests', selections.length); // Estimación inicial
     setQuickStep(1);
   };
 
@@ -145,10 +165,30 @@ const QuickModeFlow: React.FC<QuickModeFlowProps> = ({
           {quickStep === 0 && (
             <SectionWrapper 
               title="🏨 Seleccione Habitación y Fechas" 
-              description="Elija una habitación y luego seleccione las fechas en el calendario"
+              description={enableGroupReservation 
+                ? "Seleccione múltiples habitaciones con fechas distintas para reserva grupal" 
+                : "Elija una habitación y luego seleccione las fechas en el calendario"}
             >
+              {/* Toggle Reserva Grupal */}
+              <div className="mb-4 flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <label htmlFor="quick-group-toggle" className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    id="quick-group-toggle"
+                    type="checkbox"
+                    checked={enableGroupReservation}
+                    onChange={(e) => setEnableGroupReservation(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Reserva Grupal (múltiples habitaciones)
+                  </span>
+                </label>
+              </div>
+
               <RoomSelectorWithCalendar
                 onRoomAndDatesSelected={handleRoomAndDatesSelected}
+                enableMultipleSelection={enableGroupReservation}
+                onMultipleRoomsSelected={handleMultipleRoomsSelected}
               />
             </SectionWrapper>
           )}
@@ -443,6 +483,10 @@ export const CreateReservationForm: React.FC = () => {
   // Flow mode state (quick = Room→Dates→Guest, client-first = Guest→Dates→Room)
   const [flowMode, setFlowMode] = useState<ReservationFlowMode>('client-first');
   
+  // Group reservation state
+  const [isGroupReservation, setIsGroupReservation] = useState(false);
+  const [roomDatesMap, setRoomDatesMap] = useState<Map<string, { checkIn: string; checkOut: string }>>(new Map());
+  
   const {
     form,
     formData,
@@ -458,11 +502,10 @@ export const CreateReservationForm: React.FC = () => {
 
   const { handleSubmit } = form;
 
-  // Multi-step wizard configuration
+  // Multi-step wizard configuration (4 steps - fechas ahora en habitaciones)
   const steps = [
-    { id: 'guest', title: 'Huésped', description: 'Seleccione cliente', icon: '👤' },
-    { id: 'dates', title: 'Fechas', description: 'Check-in/out', icon: '📅' },
-    { id: 'rooms', title: 'Habitación', description: 'Seleccione habitación', icon: '🏨' },
+    { id: 'guest', title: 'Huésped', description: 'Seleccione cliente y huéspedes', icon: '👤' },
+    { id: 'rooms', title: 'Habitaciones', description: 'Seleccione habitación(es) y fechas', icon: '🏨' },
     { id: 'services', title: 'Extras', description: 'Servicios opcionales', icon: '➕' },
     { id: 'review', title: 'Revisar', description: 'Confirmar reserva', icon: '✅' },
   ];
@@ -476,12 +519,7 @@ export const CreateReservationForm: React.FC = () => {
     goToStep,
   } = useMultiStepForm({ steps });
 
-  // Real-time availability check
-  const availabilityCheck = useRoomAvailabilityCheck(
-    formData.checkInDate,
-    formData.checkOutDate,
-    formData.numberOfGuests
-  );
+  // Availability check now happens inside RoomSelection component
 
   // Recibir datos de servicios seleccionados cuando se regresa de la página de servicios
   React.useEffect(() => {
@@ -491,14 +529,21 @@ export const CreateReservationForm: React.FC = () => {
     }
   }, [location.state, setValue]);
 
-  // Validation for each step
+  // Clear roomDatesMap when group mode is disabled
+  React.useEffect(() => {
+    if (!isGroupReservation && roomDatesMap.size > 0) {
+      setRoomDatesMap(new Map());
+      localStorage.removeItem('roomDatesMap');
+    }
+  }, [isGroupReservation, roomDatesMap]);
+
+  // Validation for each step (4 steps total)
   const canProceed = (): boolean => {
     switch (currentStep) {
-      case 0: return !!formData.guestId;
-      case 1: return !!(formData.checkInDate && formData.checkOutDate && formData.numberOfGuests > 0);
-      case 2: return formData.roomIds.length > 0;
-      case 3: return true; // Optional
-      case 4: return isValid;
+      case 0: return !!formData.guestId && formData.numberOfGuests > 0; // Guest + número de huéspedes
+      case 1: return formData.roomIds.length > 0; // Rooms (con fechas validadas internamente)
+      case 2: return true; // Services (optional)
+      case 3: return isValid; // Review
       default: return false;
     }
   };
@@ -522,73 +567,87 @@ export const CreateReservationForm: React.FC = () => {
     return error?.message || undefined;
   };
 
-  // Render step content
+  // Render step content (4 steps)
   const renderStep = () => {
     switch (currentStep) {
-      case 0: // Guest
+      case 0: // Guest + Number of Guests
         return (
-          <SectionWrapper title="👤 Información del Huésped" description="Seleccione o cree un huésped para la reserva">
-            <GuestSelector
-              selectedGuestId={formData.guestId}
-              onGuestSelect={(guestId) => setValue('guestId', guestId)}
-              onCreateNewGuest={handleCreateNewGuest}
-              error={getErrorMessage(errors.guestId)}
-            />
-          </SectionWrapper>
-        );
-
-      case 1: { // Dates
-        const dateValidation = validateDateRange(formData.checkInDate, formData.checkOutDate, {
-          minStayNights: 1,
-          maxStayNights: 365,
-          allowSameDay: false,
-        });
-        
-        return (
-          <SectionWrapper title="📅 Detalles de la Reserva" description="Configure las fechas y número de huéspedes">
-            <ReservationDetailsForm
-              formData={{
-                checkInDate: formData.checkInDate,
-                checkOutDate: formData.checkOutDate,
-                numberOfAdults: formData.numberOfAdults,
-                numberOfChildren: formData.numberOfChildren,
-                numberOfInfants: formData.numberOfInfants,
-                numberOfGuests: formData.numberOfGuests,
-                numberOfNights: formData.numberOfNights,
-              }}
-              errors={{
-                checkInDate: getErrorMessage(errors.checkInDate),
-                checkOutDate: getErrorMessage(errors.checkOutDate),
-                numberOfAdults: getErrorMessage(errors.numberOfAdults),
-                numberOfChildren: getErrorMessage(errors.numberOfChildren),
-                numberOfInfants: getErrorMessage(errors.numberOfInfants),
-                numberOfGuests: getErrorMessage(errors.numberOfGuests),
-              }}
-              onFieldChange={(field, value) => setValue(field, value)}
-            />
-            
-            {/* Date Range Validation */}
-            {formData.checkInDate && formData.checkOutDate && (
-              <div className="mt-4 space-y-3">
-                <DateRangeValidationBadge
-                  checkInDate={formData.checkInDate}
-                  checkOutDate={formData.checkOutDate}
-                  validationResult={dateValidation}
-                />
-                
-                {/* Room Availability Check */}
-                {dateValidation.isValid && (
-                  <AvailabilityStatusBadge availabilityResult={availabilityCheck} />
-                )}
+          <SectionWrapper title="👤 Información del Huésped" description="Seleccione un huésped y configure el número de personas">
+            <div className="space-y-6">
+              <GuestSelector
+                selectedGuestId={formData.guestId}
+                onGuestSelect={(guestId) => setValue('guestId', guestId)}
+                onCreateNewGuest={handleCreateNewGuest}
+                error={getErrorMessage(errors.guestId)}
+              />
+              
+              {/* Number of Guests */}
+              <div className="border-t pt-6">
+                <h3 className="text-sm font-semibold text-gray-900 mb-4">Número de Huéspedes</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label htmlFor="numberOfAdults" className="block text-sm font-medium text-gray-700 mb-1">
+                      Adultos *
+                    </label>
+                    <input
+                      id="numberOfAdults"
+                      type="number"
+                      min="1"
+                      value={formData.numberOfAdults || 1}
+                      onChange={(e) => {
+                        const adults = Number.parseInt(e.target.value) || 1;
+                        setValue('numberOfAdults', adults);
+                        setValue('numberOfGuests', adults + (formData.numberOfChildren || 0) + (formData.numberOfInfants || 0));
+                      }}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="numberOfChildren" className="block text-sm font-medium text-gray-700 mb-1">
+                      Niños (3-12 años)
+                    </label>
+                    <input
+                      id="numberOfChildren"
+                      type="number"
+                      min="0"
+                      value={formData.numberOfChildren || 0}
+                      onChange={(e) => {
+                        const children = Number.parseInt(e.target.value) || 0;
+                        setValue('numberOfChildren', children);
+                        setValue('numberOfGuests', (formData.numberOfAdults || 1) + children + (formData.numberOfInfants || 0));
+                      }}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="numberOfInfants" className="block text-sm font-medium text-gray-700 mb-1">
+                      Bebés (0-2 años)
+                    </label>
+                    <input
+                      id="numberOfInfants"
+                      type="number"
+                      min="0"
+                      value={formData.numberOfInfants || 0}
+                      onChange={(e) => {
+                        const infants = Number.parseInt(e.target.value) || 0;
+                        setValue('numberOfInfants', infants);
+                        setValue('numberOfGuests', (formData.numberOfAdults || 1) + (formData.numberOfChildren || 0) + infants);
+                      }}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2">
+                  Total: <span className="font-semibold text-gray-900">{formData.numberOfGuests || 1}</span> huésped{(formData.numberOfGuests || 1) !== 1 ? 'es' : ''}
+                </p>
               </div>
-            )}
+            </div>
           </SectionWrapper>
         );
-      }
 
-      case 2: // Rooms
+      case 1: // Rooms (ahora con fechas integradas)
         return (
-          <SectionWrapper title="🏨 Selección de Habitación" description="Elija el tipo de habitación disponible">
+          <SectionWrapper title="🏨 Selección de Habitaciones" description="Seleccione habitación(es) y configure las fechas de estadía. Para reservas grupales, puede asignar fechas distintas a cada habitación.">
             {availableRooms.length > 0 ? (
               <RoomSelection
                 availableRooms={availableRooms}
@@ -610,8 +669,24 @@ export const CreateReservationForm: React.FC = () => {
                   }
                 }}
                 numberOfGuests={formData.numberOfGuests}
-                allowMultiple={formData.numberOfGuests > 2}
+                allowMultiple={formData.numberOfGuests > 2 || isGroupReservation}
                 error={errors.roomIds?.message || getErrorMessage(errors.roomId)}
+                isGroupReservation={isGroupReservation}
+                onToggleGroupReservation={() => setIsGroupReservation(!isGroupReservation)}
+                enableDifferentDates={isGroupReservation}
+                onRoomDatesChange={(roomId, dates) => {
+                  setRoomDatesMap(prev => {
+                    const newMap = new Map(prev);
+                    newMap.set(roomId, dates);
+                    // Save to localStorage for use in submit
+                    const obj: Record<string, { checkIn: string; checkOut: string }> = {};
+                    newMap.forEach((value, key) => {
+                      obj[key] = value;
+                    });
+                    localStorage.setItem('roomDatesMap', JSON.stringify(obj));
+                    return newMap;
+                  });
+                }}
               />
             ) : (
               <div className="text-center py-12">
@@ -621,7 +696,7 @@ export const CreateReservationForm: React.FC = () => {
           </SectionWrapper>
         );
 
-      case 3: // Services
+      case 2: // Services
         return (
           <div className="space-y-6">
             <SectionWrapper title="➕ Servicios Adicionales" description="Seleccione servicios adicionales para la estadía">
@@ -642,7 +717,7 @@ export const CreateReservationForm: React.FC = () => {
           </div>
         );
 
-      case 4: // Review
+      case 3: // Review
         return (
           <SectionWrapper title="✅ Resumen de la Reserva" description="Revise la información antes de confirmar">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
@@ -753,7 +828,7 @@ export const CreateReservationForm: React.FC = () => {
           </div>
 
           {/* Floating price calculator - Top right */}
-          {currentStep !== 4 && (
+          {currentStep !== 3 && (
             <div className="fixed top-8 right-8 w-96 z-50 hidden xl:block">
               <PriceCalculatorWidget
                 selectedRooms={availableRooms.filter(r => formData.roomIds.includes(r.id))}

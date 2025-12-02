@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import { Pencil, Ban, Eye, Copy, Check } from 'lucide-react';
+import { Pencil, Ban, Eye, Copy, Check, CheckCircle, Loader2 } from 'lucide-react';
 import type { Reservation } from '../../types';
 import { ReservationStatusBadge } from '../ReservationStatusBadge';
 import { ReservationTableSkeleton } from '../ui/Skeleton';
@@ -13,7 +13,9 @@ interface ReservationsTableProps {
   onRetry?: () => void;
   onEdit: (reservation: Reservation) => void;
   onCancel: (reservation: Reservation) => void;
+  onConfirm: (reservation: Reservation) => void;
   onViewDetail: (reservation: Reservation) => void;
+  confirmingId?: string | null;
 }
 
 const isActionDisabled = (reservation: Reservation) => {
@@ -28,7 +30,9 @@ export const ReservationsTable: React.FC<ReservationsTableProps> = ({
   onRetry,
   onEdit,
   onCancel,
+  onConfirm,
   onViewDetail,
+  confirmingId = null,
 }) => {
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
 
@@ -84,15 +88,15 @@ export const ReservationsTable: React.FC<ReservationsTableProps> = ({
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
       {/* Vista de tabla para pantallas grandes */}
       <div className="hidden lg:block overflow-x-auto">
-        <table className="w-full table-fixed">
+        <table className="w-full">
           <colgroup>
-            <col className="w-[20%]" />
-            <col className="w-[14%]" />
-            <col className="w-[14%]" />
-            <col className="w-[8%]" />
-            <col className="w-[12%]" />
-            <col className="w-[12%]" />
-            <col className="w-[20%]" />
+            <col style={{width: '18%'}} />
+            <col style={{width: '14%'}} />
+            <col style={{width: '12%'}} />
+            <col style={{width: '6%'}} />
+            <col style={{width: '11%'}} />
+            <col style={{width: '10%'}} />
+            <col style={{width: '29%'}} />
           </colgroup>
           
           <thead className="bg-[#304D3C] text-white border-b border-slate-200">
@@ -103,7 +107,7 @@ export const ReservationsTable: React.FC<ReservationsTableProps> = ({
               <th scope="col" className="px-4 py-3 text-left font-medium text-white">Pax</th>
               <th scope="col" className="px-4 py-3 text-left font-medium text-white">Estado</th>
               <th scope="col" className="px-4 py-3 text-left font-medium text-white">Total</th>
-              <th scope="col" className="px-4 py-3 text-right font-medium text-white">Acciones</th>
+              <th scope="col" className="px-4 py-3 text-center font-medium text-white">Acciones</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-100">
@@ -157,43 +161,68 @@ export const ReservationsTable: React.FC<ReservationsTableProps> = ({
                   <td className="p-4 align-middle text-sm font-semibold text-slate-800">
                     {formatCurrency(reservation.total)}
                   </td>
-                  <td className="p-4 align-middle text-right">
-                    <div className="flex justify-end gap-2">
+                  <td className="p-3 align-middle">
+                    <div className="flex justify-center items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => onViewDetail(reservation)}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition-all hover:scale-105 shadow-sm"
+                        className="inline-flex items-center gap-1 rounded-md bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition-colors"
                         title="Ver detalle completo"
                       >
-                        <Eye className="h-3.5 w-3.5" aria-hidden />
+                        <Eye className="h-3.5 w-3.5" />
                         Ver
                       </button>
+                      {reservation.status === 'pending' && (
+                        <button
+                          type="button"
+                          onClick={() => onConfirm(reservation)}
+                          disabled={confirmingId === reservation.id}
+                          className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                            confirmingId === reservation.id
+                              ? 'cursor-not-allowed bg-green-100 text-green-700 opacity-60'
+                              : 'bg-green-100 text-green-700 hover:bg-green-200'
+                          }`}
+                          title="Confirmar reserva"
+                        >
+                          {confirmingId === reservation.id ? (
+                            <>
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              Confirmando...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="h-3.5 w-3.5" />
+                              Confirmar
+                            </>
+                          )}
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => onEdit(reservation)}
                         disabled={disabled}
-                        className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all shadow-sm ${
+                        className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                           disabled
                             ? 'cursor-not-allowed bg-slate-100 text-slate-300 opacity-50'
-                            : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 hover:scale-105'
+                            : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
                         }`}
                         title={disabled ? 'No disponible para reservas finalizadas o canceladas' : 'Editar reserva'}
                       >
-                        <Pencil className="h-3.5 w-3.5" aria-hidden />
+                        <Pencil className="h-3.5 w-3.5" />
                         Editar
                       </button>
                       <button
                         type="button"
                         onClick={() => onCancel(reservation)}
                         disabled={disabled}
-                        className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all shadow-sm ${
+                        className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                           disabled
                             ? 'cursor-not-allowed bg-slate-100 text-slate-300 opacity-50'
-                            : 'bg-rose-100 text-rose-700 hover:bg-rose-200 hover:scale-105'
+                            : 'bg-rose-100 text-rose-700 hover:bg-rose-200'
                         }`}
                         title={disabled ? 'Esta reserva ya no admite cancelaciones' : 'Cancelar reserva'}
                       >
-                        <Ban className="h-3.5 w-3.5" aria-hidden />
+                        <Ban className="h-3.5 w-3.5" />
                         Cancelar
                       </button>
                     </div>
@@ -268,41 +297,72 @@ export const ReservationsTable: React.FC<ReservationsTableProps> = ({
               </div>
 
               {/* Acciones */}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => onViewDetail(reservation)}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700 transition-colors shadow-sm"
-                >
-                  <Eye className="h-4 w-4" />
-                  Ver
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onEdit(reservation)}
-                  disabled={disabled}
-                  className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-xs font-semibold transition-colors shadow-sm ${
-                    disabled
-                      ? 'cursor-not-allowed bg-slate-100 text-slate-300 opacity-50'
-                      : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                  }`}
-                >
-                  <Pencil className="h-4 w-4" />
-                  Editar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onCancel(reservation)}
-                  disabled={disabled}
-                  className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-xs font-semibold transition-colors shadow-sm ${
-                    disabled
-                      ? 'cursor-not-allowed bg-slate-100 text-slate-300 opacity-50'
-                      : 'bg-rose-100 text-rose-700 hover:bg-rose-200'
-                  }`}
-                >
-                  <Ban className="h-4 w-4" />
-                  Cancelar
-                </button>
+              <div className="space-y-2">
+                {/* Fila 1: Ver y Confirmar */}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onViewDetail(reservation)}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700 transition-colors shadow-sm"
+                  >
+                    <Eye className="h-4 w-4" />
+                    Ver
+                  </button>
+                  {reservation.status === 'pending' && (
+                    <button
+                      type="button"
+                      onClick={() => onConfirm(reservation)}
+                      disabled={confirmingId === reservation.id}
+                      className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-xs font-semibold transition-colors shadow-sm ${
+                        confirmingId === reservation.id
+                          ? 'cursor-not-allowed bg-green-100 text-green-700 opacity-60'
+                          : 'bg-green-100 text-green-700 hover:bg-green-200'
+                      }`}
+                    >
+                      {confirmingId === reservation.id ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Confirmando...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4" />
+                          Confirmar
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+                
+                {/* Fila 2: Editar y Cancelar */}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onEdit(reservation)}
+                    disabled={disabled}
+                    className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-xs font-semibold transition-colors shadow-sm ${
+                      disabled
+                        ? 'cursor-not-allowed bg-slate-100 text-slate-300 opacity-50'
+                        : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                    }`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onCancel(reservation)}
+                    disabled={disabled}
+                    className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-xs font-semibold transition-colors shadow-sm ${
+                      disabled
+                        ? 'cursor-not-allowed bg-slate-100 text-slate-300 opacity-50'
+                        : 'bg-rose-100 text-rose-700 hover:bg-rose-200'
+                    }`}
+                  >
+                    <Ban className="h-4 w-4" />
+                    Cancelar
+                  </button>
+                </div>
               </div>
             </div>
           );
